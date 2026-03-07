@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ivory — Wedding Registry</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --ivory: #FAFAF7; --cream: #EDE8E0; --charcoal: #1C1917;
+      --taupe: #9C8B7A; --stone: #6B6560; --border: #D6D0C8;
+      --border-light: #E8E4DE; --font-serif: "Playfair Display", Georgia, serif;
+      --font-sans: "Inter", system-ui, sans-serif;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    html { -webkit-font-smoothing: antialiased; }
+    body { font-family: var(--font-sans); color: var(--charcoal); background: var(--ivory); min-height: 100vh; }
+    ::selection { background: var(--taupe); color: var(--ivory); }
+    a { text-decoration: none; color: inherit; }
+    button { cursor: pointer; border: none; font-family: inherit; }
+    input, textarea, select { font-family: inherit; }
+
+    /* Layout */
+    .page { max-width: 960px; margin: 0 auto; padding: 48px 24px 96px; }
+    .page-header { text-align: center; margin-bottom: 48px; }
+    .page-header .eyebrow { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--stone); margin-bottom: 12px; }
+    .page-header h1 { font-family: var(--font-serif); font-size: clamp(32px, 5vw, 48px); line-height: 1.1; letter-spacing: -0.02em; }
+    .page-header p { margin-top: 12px; color: var(--stone); font-size: 15px; max-width: 500px; margin-left: auto; margin-right: auto; }
+
+    /* Add form */
+    .add-form { background: white; border: 1px solid var(--border-light); border-radius: 16px; padding: 32px; margin-bottom: 32px; }
+    .add-form h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--stone); }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px;
+      color: var(--charcoal); background: var(--ivory); outline: none; transition: all 200ms;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--taupe); box-shadow: 0 0 0 3px rgba(156,139,122,0.12);
+    }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(107,101,96,0.4); }
+    .form-actions { margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end; }
+    .btn-primary {
+      background: var(--charcoal); color: var(--ivory); font-size: 14px; font-weight: 500;
+      padding: 10px 24px; border-radius: 100px; transition: all 200ms;
+    }
+    .btn-primary:hover { background: #2C2924; transform: scale(1.02); }
+    .btn-secondary {
+      background: transparent; color: var(--stone); font-size: 14px; font-weight: 500;
+      padding: 10px 24px; border-radius: 100px; border: 1px solid var(--border); transition: all 200ms;
+    }
+    .btn-secondary:hover { background: var(--cream); }
+
+    /* Category tabs */
+    .tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+    .tab {
+      padding: 8px 16px; border-radius: 100px; font-size: 13px; font-weight: 500;
+      background: var(--cream); color: var(--stone); transition: all 200ms; cursor: pointer; border: none;
+    }
+    .tab.active { background: var(--charcoal); color: var(--ivory); }
+    .tab:hover:not(.active) { background: var(--border); }
+    .tab .count { display: inline-block; margin-left: 4px; font-size: 11px; opacity: 0.6; }
+
+    /* Registry items grid */
+    .registry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .registry-card {
+      background: white; border: 1px solid var(--border-light); border-radius: 12px;
+      padding: 24px; transition: all 300ms var(--ease); position: relative;
+    }
+    .registry-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(28,25,23,0.06); }
+    .registry-card .category-badge {
+      display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--taupe); background: rgba(156,139,122,0.1);
+      padding: 4px 10px; border-radius: 100px; margin-bottom: 12px;
+    }
+    .registry-card h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .registry-card .brand { font-size: 13px; color: var(--stone); margin-bottom: 12px; }
+    .registry-card .price { font-family: var(--font-serif); font-size: 24px; margin-bottom: 4px; }
+    .registry-card .qty { font-size: 12px; color: var(--stone); }
+    .registry-card .progress-bar { height: 3px; background: var(--border-light); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+    .registry-card .progress-fill { height: 100%; background: var(--taupe); border-radius: 2px; transition: width 400ms var(--ease); }
+    .registry-card .funded-label { font-size: 11px; color: var(--taupe); margin-top: 6px; }
+    .registry-card .actions { display: flex; gap: 8px; margin-top: 16px; }
+    .registry-card .btn-sm {
+      padding: 6px 14px; font-size: 12px; border-radius: 100px; font-weight: 500;
+      border: 1px solid var(--border); background: transparent; color: var(--stone); transition: all 200ms;
+    }
+    .registry-card .btn-sm:hover { background: var(--cream); }
+    .registry-card .btn-sm.danger:hover { background: #F5E8E8; color: #C0392B; border-color: #E8C4C4; }
+    .registry-card .link { font-size: 12px; color: var(--taupe); display: block; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .registry-card .link:hover { text-decoration: underline; }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex; gap: 24px; padding: 20px 24px; background: white;
+      border: 1px solid var(--border-light); border-radius: 12px; margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .stat { text-align: center; flex: 1; min-width: 100px; }
+    .stat .value { font-family: var(--font-serif); font-size: 28px; }
+    .stat .label { font-size: 11px; color: var(--stone); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 64px 24px; border: 2px dashed var(--border); border-radius: 16px;
+    }
+    .empty-state p { color: var(--stone); font-size: 15px; }
+    .empty-state .hint { font-size: 13px; margin-top: 8px; color: rgba(107,101,96,0.5); }
+
+    /* Share panel */
+    .share-panel {
+      background: var(--charcoal); color: var(--ivory); border-radius: 16px; padding: 32px;
+      margin-top: 48px; text-align: center;
+    }
+    .share-panel h3 { font-family: var(--font-serif); font-size: 24px; margin-bottom: 8px; }
+    .share-panel p { font-size: 14px; color: rgba(250,250,247,0.5); margin-bottom: 20px; }
+    .share-link-box {
+      display: flex; gap: 8px; max-width: 400px; margin: 0 auto;
+    }
+    .share-link-box input {
+      flex: 1; padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(250,250,247,0.15);
+      background: rgba(250,250,247,0.08); color: var(--ivory); font-size: 13px; outline: none;
+    }
+    .share-link-box button {
+      padding: 10px 20px; border-radius: 8px; background: var(--ivory); color: var(--charcoal);
+      font-size: 13px; font-weight: 500; white-space: nowrap; transition: all 200ms;
+    }
+    .share-link-box button:hover { background: var(--cream); }
+
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .registry-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <div class="page-header">
+    <p class="eyebrow">Ivory Invitations</p>
+    <h1>Your Wedding Registry</h1>
+    <p>Curate the gifts that'll start your life together. Add items from any store, set quantities, and share with guests.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat"><div class="value" id="stat-total">0</div><div class="label">Total Items</div></div>
+    <div class="stat"><div class="value" id="stat-value">$0</div><div class="label">Total Value</div></div>
+    <div class="stat"><div class="value" id="stat-funded">0%</div><div class="label">Funded</div></div>
+    <div class="stat"><div class="value" id="stat-purchased">0</div><div class="label">Purchased</div></div>
+  </div>
+
+  <!-- Add form -->
+  <div class="add-form" id="add-form">
+    <h3>Add a Registry Item</h3>
+    <div class="form-grid">
+      <div class="form-group"><label>Item Name</label><input id="f-name" placeholder="e.g., Le Creuset Dutch Oven" /></div>
+      <div class="form-group"><label>Brand</label><input id="f-brand" placeholder="e.g., Le Creuset" /></div>
+      <div class="form-group"><label>Category</label>
+        <select id="f-category">
+          <option>Kitchen</option><option>Dining</option><option>Bedroom</option>
+          <option>Bath</option><option>Living Room</option><option>Outdoor</option>
+          <option>Travel</option><option>Experience</option><option>Cash Fund</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Price ($)</label><input id="f-price" type="number" min="0" step="0.01" placeholder="0.00" /></div>
+      <div class="form-group"><label>Quantity Desired</label><input id="f-qty" type="number" min="1" value="1" /></div>
+      <div class="form-group"><label>Priority</label>
+        <select id="f-priority"><option>Must Have</option><option>Nice to Have</option><option>Dream Item</option></select>
+      </div>
+      <div class="form-group full"><label>Link (optional)</label><input id="f-link" placeholder="https://..." /></div>
+      <div class="form-group full"><label>Notes (optional)</label><textarea id="f-notes" rows="2" placeholder="Color preference, size, etc."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="clearForm()">Clear</button>
+      <button class="btn-primary" onclick="addItem()">Add to Registry</button>
+    </div>
+  </div>
+
+  <!-- Category tabs -->
+  <div class="tabs" id="tabs"></div>
+
+  <!-- Grid -->
+  <div class="registry-grid" id="registry-grid"></div>
+  <div class="empty-state" id="empty-state">
+    <p>Your registry is empty</p>
+    <p class="hint">Add items above to get started</p>
+  </div>
+
+  <!-- Share -->
+  <div class="share-panel">
+    <h3>Share Your Registry</h3>
+    <p>Copy the link below and share it with your guests</p>
+    <div class="share-link-box">
+      <input id="share-url" value="https://ivory.co/registry/emma-james-2026" readonly />
+      <button onclick="copyLink()">Copy Link</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let items = [];
+let activeTab = "All";
+
+function addItem() {
+  const name = document.getElementById("f-name").value.trim();
+  const price = parseFloat(document.getElementById("f-price").value) || 0;
+  if (!name) { document.getElementById("f-name").focus(); return; }
+  items.push({
+    id: Date.now(),
+    name,
+    brand: document.getElementById("f-brand").value.trim(),
+    category: document.getElementById("f-category").value,
+    price,
+    qty: parseInt(document.getElementById("f-qty").value) || 1,
+    purchased: 0,
+    priority: document.getElementById("f-priority").value,
+    link: document.getElementById("f-link").value.trim(),
+    notes: document.getElementById("f-notes").value.trim(),
+  });
+  clearForm();
+  render();
+}
+
+function clearForm() {
+  ["f-name","f-brand","f-price","f-link","f-notes"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("f-qty").value = "1";
+}
+
+function removeItem(id) {
+  items = items.filter(i => i.id !== id);
+  render();
+}
+
+function markPurchased(id) {
+  const item = items.find(i => i.id === id);
+  if (item && item.purchased < item.qty) item.purchased++;
+  render();
+}
+
+function setTab(cat) {
+  activeTab = cat;
+  render();
+}
+
+function render() {
+  // Stats
+  const total = items.length;
+  const totalValue = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const totalPurchased = items.reduce((s, i) => s + i.purchased, 0);
+  const totalQty = items.reduce((s, i) => s + i.qty, 0);
+  const funded = totalQty > 0 ? Math.round((totalPurchased / totalQty) * 100) : 0;
+  document.getElementById("stat-total").textContent = total;
+  document.getElementById("stat-value").textContent = "$" + totalValue.toLocaleString();
+  document.getElementById("stat-funded").textContent = funded + "%";
+  document.getElementById("stat-purchased").textContent = totalPurchased;
+
+  // Tabs
+  const categories = ["All", ...new Set(items.map(i => i.category))];
+  const tabsEl = document.getElementById("tabs");
+  tabsEl.innerHTML = categories.map(c => {
+    const count = c === "All" ? items.length : items.filter(i => i.category === c).length;
+    return `<button class="tab ${activeTab === c ? 'active' : ''}" onclick="setTab('${c}')">${c}<span class="count">${count}</span></button>`;
+  }).join("");
+
+  // Grid
+  const filtered = activeTab === "All" ? items : items.filter(i => i.category === activeTab);
+  const grid = document.getElementById("registry-grid");
+  const empty = document.getElementById("empty-state");
+
+  if (filtered.length === 0) {
+    grid.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  grid.innerHTML = filtered.map(item => {
+    const progress = item.qty > 0 ? (item.purchased / item.qty) * 100 : 0;
+    return `
+      <div class="registry-card">
+        <span class="category-badge">${item.category}</span>
+        <h4>${item.name}</h4>
+        ${item.brand ? `<p class="brand">${item.brand}</p>` : ''}
+        <p class="price">$${item.price.toLocaleString()}</p>
+        <p class="qty">${item.purchased} of ${item.qty} purchased</p>
+        <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+        <p class="funded-label">${Math.round(progress)}% fulfilled</p>
+        ${item.link ? `<a class="link" href="${item.link}" target="_blank">${item.link}</a>` : ''}
+        ${item.notes ? `<p style="font-size:12px;color:var(--stone);margin-top:8px;">${item.notes}</p>` : ''}
+        <div class="actions">
+          <button class="btn-sm" onclick="markPurchased(${item.id})">Mark Purchased</button>
+          <button class="btn-sm danger" onclick="removeItem(${item.id})">Remove</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function copyLink() {
+  const input = document.getElementById("share-url");
+  navigator.clipboard.writeText(input.value).then(() => {
+    const btn = input.nextElementSibling;
+    btn.textContent = "Copied!";
+    setTimeout(() => btn.textContent = "Copy Link", 2000);
+  });
+}
+
+// Seed some example items
+items = [
+  { id: 1, name: "Dutch Oven — 5.5 Qt", brand: "Le Creuset", category: "Kitchen", price: 395, qty: 1, purchased: 0, priority: "Must Have", link: "", notes: "Color: Marseille Blue" },
+  { id: 2, name: "Linen Duvet Cover Set", brand: "Parachute", category: "Bedroom", price: 249, qty: 1, purchased: 1, priority: "Must Have", link: "", notes: "King size, Bone color" },
+  { id: 3, name: "Honeymoon Fund", brand: "", category: "Cash Fund", price: 50, qty: 20, purchased: 5, priority: "Nice to Have", link: "", notes: "Contribute any amount toward our trip to Amalfi" },
+  { id: 4, name: "Wine Glasses — Set of 4", brand: "Riedel", category: "Dining", price: 89, qty: 2, purchased: 0, priority: "Nice to Have", link: "", notes: "" },
+];
+
+render();
+</script>
+
+</body>
+</html>

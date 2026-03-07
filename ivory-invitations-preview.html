@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ivory Invitations — Wedding Stationery That Sets the Tone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Base ─── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --ivory: #FAFAF7;
+      --cream: #EDE8E0;
+      --charcoal: #1C1917;
+      --taupe: #9C8B7A;
+      --stone: #6B6560;
+      --border: #D6D0C8;
+      --border-light: #E8E4DE;
+      --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+      --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--charcoal);
+      background: var(--ivory);
+      line-height: 1.6;
+    }
+
+    ::selection {
+      background: var(--taupe);
+      color: var(--ivory);
+    }
+
+    a { text-decoration: none; color: inherit; }
+    button { cursor: pointer; border: none; font-family: inherit; }
+    input { font-family: inherit; }
+    img { display: block; max-width: 100%; }
+
+    /* ─── Scroll Reveal ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s var(--ease-spring), transform 0.6s var(--ease-spring);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 100ms; }
+    .reveal-delay-2 { transition-delay: 200ms; }
+    .reveal-delay-3 { transition-delay: 300ms; }
+    .reveal-delay-4 { transition-delay: 400ms; }
+
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* ─── Nav ─── */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 50;
+      transition: all 300ms ease;
+    }
+    .nav.scrolled {
+      background: rgba(250, 250, 247, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-light);
+      box-shadow: 0 1px 2px rgba(28,25,23,0.04);
+    }
+    .nav-inner {
+      max-width: 1152px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+    }
+    .nav-logo {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      letter-spacing: -0.01em;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 14px;
+      color: var(--stone);
+      transition: color 200ms;
+    }
+    .nav-links a:hover { color: var(--charcoal); }
+    .nav-cta {
+      display: inline-block;
+      background: var(--charcoal);
+      color: var(--ivory);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 10px 24px;
+      border-radius: 100px;
+      transition: all 200ms;
+    }
+    .nav-cta:hover { background: #2C2924; transform: scale(1.02); }
+    .nav-cta:active { transform: scale(0.98); }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100svh;
+      padding: 96px 24px 80px;
+      text-align: center;
+    }
+    .hero-flourish {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(156,139,122,0.4), transparent);
+    }
+    .hero-content {
+      max-width: 640px;
+      margin: 0 auto;
+      animation: fade-up 0.6s var(--ease-spring) both;
+    }
+    .hero-eyebrow {
+      margin-bottom: 24px;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--stone);
+    }
+    .hero h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(40px, 6vw, 64px);
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      font-weight: 400;
+    }
+    .hero h1 em {
+      font-style: italic;
+      color: var(--taupe);
+    }
+    .hero-sub {
+      margin-top: 24px;
+      font-size: clamp(16px, 2vw, 20px);
+      line-height: 1.6;
+      color: var(--stone);
+    }
+    .hero-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 460px;
+      margin: 40px auto 0;
+    }
+    .hero-form .input-row {
+      display: flex;
+      gap: 12px;
+    }
+    .hero-form input[type="email"] {
+      flex: 1;
+      padding: 14px 24px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 15px;
+      color: var(--charcoal);
+      background: #fff;
+      outline: none;
+      transition: all 200ms;
+    }
+    .hero-form input[type="email"]:focus {
+      border-color: var(--taupe);
+      box-shadow: 0 0 0 3px rgba(156,139,122,0.15);
+    }
+    .hero-form input::placeholder { color: rgba(107,101,96,0.5); }
+    .hero-form button {
+      padding: 14px 32px;
+      background: var(--charcoal);
+      color: var(--ivory);
+      font-size: 15px;
+      font-weight: 500;
+      border-radius: 100px;
+      transition: all 200ms;
+      white-space: nowrap;
+    }
+    .hero-form button:hover { background: #2C2924; transform: scale(1.02); }
+    .hero-form button:active { transform: scale(0.98); }
+    .hero-proof {
+      margin-top: 24px;
+      font-size: 14px;
+      color: rgba(107,101,96,0.6);
+    }
+    .hero-success {
+      margin-top: 40px;
+      display: inline-block;
+      padding: 14px 32px;
+      border: 1px solid rgba(156,139,122,0.3);
+      border-radius: 100px;
+      background: rgba(237,232,224,0.5);
+      font-size: 15px;
+      animation: fade-in 0.4s ease both;
+    }
+    .scroll-indicator {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1px;
+      height: 32px;
+      background: linear-gradient(to bottom, rgba(156,139,122,0.4), transparent);
+      animation: pulse 2s ease infinite;
+    }
+
+    @media (max-width: 640px) {
+      .hero-form .input-row { flex-direction: column; }
+    }
+
+    /* ─── Social Proof ─── */
+    .social-proof {
+      border-top: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      background: rgba(237,232,224,0.3);
+      padding: 48px 24px;
+    }
+    .social-proof-label {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(107,101,96,0.5);
+      margin-bottom: 32px;
+    }
+    .social-proof-logos {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 16px 48px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .social-proof-logos span {
+      font-family: var(--font-serif);
+      font-size: clamp(16px, 2vw, 20px);
+      letter-spacing: -0.01em;
+      color: rgba(107,101,96,0.35);
+    }
+
+    /* ─── Section shared ─── */
+    .section { padding: 96px 24px; }
+    .section-alt { background: rgba(237,232,224,0.4); }
+    .section-inner { max-width: 1152px; margin: 0 auto; }
+    .section-narrow { max-width: 960px; margin: 0 auto; }
+    .section-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+    .section-eyebrow {
+      margin-bottom: 16px;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--stone);
+    }
+    .section-title {
+      font-family: var(--font-serif);
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.15;
+      letter-spacing: -0.015em;
+      font-weight: 400;
+    }
+
+    @media (min-width: 768px) {
+      .section { padding: 128px 24px; }
+    }
+
+    /* ─── Gallery ─── */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .gallery-card { cursor: pointer; }
+    .gallery-card-image {
+      position: relative;
+      aspect-ratio: 3 / 4;
+      overflow: hidden;
+      border-radius: 8px;
+      transition: all 400ms var(--ease-spring);
+    }
+    .gallery-card:hover .gallery-card-image {
+      transform: scale(1.03);
+      box-shadow: 0 12px 40px rgba(28,25,23,0.08);
+    }
+    .gallery-card-inner {
+      position: absolute;
+      inset: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 4px;
+      padding: 24px;
+      text-align: center;
+    }
+    .gallery-card-line {
+      width: 48px;
+      height: 1px;
+      margin-bottom: 16px;
+    }
+    .gallery-card-families {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+    }
+    .gallery-card-names {
+      margin-top: 16px;
+      font-family: var(--font-serif);
+      font-size: 24px;
+      line-height: 1.2;
+    }
+    .gallery-card-date {
+      margin-top: 8px;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+    }
+    .gallery-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-top: 16px;
+    }
+    .gallery-meta-name { font-size: 14px; font-weight: 500; }
+    .gallery-meta-style { font-size: 12px; color: var(--stone); }
+    .gallery-meta-preview {
+      font-size: 12px;
+      color: var(--taupe);
+      opacity: 0;
+      transition: opacity 200ms;
+    }
+    .gallery-card:hover .gallery-meta-preview { opacity: 1; }
+    .gallery-browse {
+      text-align: center;
+      margin-top: 48px;
+    }
+    .gallery-browse a {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--taupe);
+      transition: color 200ms;
+    }
+    .gallery-browse a:hover { color: var(--charcoal); }
+
+    /* ─── How It Works ─── */
+    .steps-grid {
+      display: grid;
+      gap: 48px;
+    }
+    .step { text-align: center; }
+    .step-number {
+      font-family: var(--font-serif);
+      font-size: 36px;
+      color: rgba(156,139,122,0.4);
+      margin-bottom: 16px;
+    }
+    .step-divider {
+      width: 32px;
+      height: 1px;
+      background: var(--border);
+      margin: 0 auto 24px;
+    }
+    .step h3 {
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      margin-bottom: 12px;
+    }
+    .step p {
+      font-size: 14px;
+      color: var(--stone);
+      line-height: 1.7;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+
+    @media (min-width: 768px) {
+      .steps-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 32px;
+      }
+      .step { text-align: left; }
+      .step-divider { margin: 0 0 24px; }
+      .step p { margin: 0; }
+    }
+
+    /* ─── Testimonials ─── */
+    .testimonials-grid {
+      display: grid;
+      gap: 32px;
+    }
+    .testimonial-card {
+      background: #fff;
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      padding: 32px;
+      transition: all 300ms ease;
+    }
+    .testimonial-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(28,25,23,0.06);
+    }
+    .testimonial-quote {
+      font-family: var(--font-serif);
+      font-size: 28px;
+      line-height: 1;
+      color: rgba(156,139,122,0.25);
+      margin-bottom: 16px;
+    }
+    .testimonial-text {
+      font-size: 15px;
+      color: var(--stone);
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+    .testimonial-footer {
+      border-top: 1px solid var(--border-light);
+      padding-top: 16px;
+    }
+    .testimonial-name { font-size: 14px; font-weight: 500; }
+    .testimonial-location { font-size: 12px; color: rgba(107,101,96,0.5); }
+
+    @media (min-width: 768px) {
+      .testimonials-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    /* ─── Pricing ─── */
+    .pricing-grid {
+      display: grid;
+      gap: 32px;
+      align-items: start;
+    }
+    .pricing-desc {
+      font-size: 15px;
+      color: var(--stone);
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+    .pricing-features { list-style: none; }
+    .pricing-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+    }
+    .pricing-features li + li { margin-top: 16px; }
+    .pricing-dot {
+      display: block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--taupe);
+      margin-top: 7px;
+      flex-shrink: 0;
+    }
+    .pricing-card {
+      background: #fff;
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      padding: 32px;
+    }
+    .pricing-card-label {
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--stone);
+    }
+    .pricing-amount {
+      margin-top: 16px;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .pricing-amount span:first-child {
+      font-family: var(--font-serif);
+      font-size: 48px;
+      letter-spacing: -0.02em;
+    }
+    .pricing-amount span:last-child {
+      font-size: 14px;
+      color: var(--stone);
+    }
+    .pricing-note {
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--stone);
+      line-height: 1.6;
+    }
+    .pricing-divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border-light);
+      margin: 32px 0;
+    }
+    .pricing-btn {
+      display: block;
+      width: 100%;
+      padding: 14px 0;
+      background: var(--charcoal);
+      color: var(--ivory);
+      font-size: 15px;
+      font-weight: 500;
+      border-radius: 100px;
+      text-align: center;
+      transition: all 200ms;
+    }
+    .pricing-btn:hover { background: #2C2924; transform: scale(1.02); }
+    .pricing-btn:active { transform: scale(0.98); }
+    .pricing-fine {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 12px;
+      color: rgba(107,101,96,0.5);
+    }
+
+    @media (min-width: 768px) {
+      .pricing-grid { grid-template-columns: 1fr 1fr; }
+      .pricing-card { padding: 40px; }
+    }
+
+    /* ─── Final CTA ─── */
+    .final-cta {
+      position: relative;
+      overflow: hidden;
+      padding: 96px 24px;
+      background: var(--charcoal);
+    }
+    .final-cta-noise {
+      position: absolute;
+      inset: 0;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .final-cta-inner {
+      position: relative;
+      max-width: 640px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .final-cta h2 {
+      font-family: var(--font-serif);
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.15;
+      letter-spacing: -0.015em;
+      font-weight: 400;
+      color: var(--ivory);
+    }
+    .final-cta-sub {
+      margin-top: 24px;
+      font-size: 15px;
+      line-height: 1.7;
+      color: rgba(250,250,247,0.5);
+    }
+    .final-cta-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 460px;
+      margin: 40px auto 0;
+    }
+    .final-cta-form .input-row { display: flex; gap: 12px; }
+    .final-cta-form input[type="email"] {
+      flex: 1;
+      padding: 14px 24px;
+      border: 1px solid rgba(250,250,247,0.15);
+      border-radius: 100px;
+      font-size: 15px;
+      color: var(--ivory);
+      background: rgba(250,250,247,0.08);
+      outline: none;
+      transition: all 200ms;
+    }
+    .final-cta-form input:focus {
+      border-color: var(--taupe);
+      box-shadow: 0 0 0 3px rgba(156,139,122,0.15);
+    }
+    .final-cta-form input::placeholder { color: rgba(250,250,247,0.35); }
+    .final-cta-form button {
+      padding: 14px 32px;
+      background: var(--ivory);
+      color: var(--charcoal);
+      font-size: 15px;
+      font-weight: 500;
+      border-radius: 100px;
+      transition: all 200ms;
+      white-space: nowrap;
+    }
+    .final-cta-form button:hover { background: var(--cream); transform: scale(1.02); }
+    .final-cta-form button:active { transform: scale(0.98); }
+    .final-cta-trust {
+      margin-top: 32px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      font-size: 12px;
+      color: rgba(250,250,247,0.35);
+    }
+    .final-cta-trust .dot { display: none; }
+
+    @media (min-width: 640px) {
+      .final-cta-form .input-row { flex-direction: row; }
+      .final-cta-trust .dot { display: inline; }
+    }
+    @media (max-width: 639px) {
+      .final-cta-form .input-row { flex-direction: column; }
+    }
+    @media (min-width: 768px) {
+      .final-cta { padding: 128px 24px; }
+    }
+
+    /* ─── Footer ─── */
+    .footer {
+      border-top: 1px solid var(--border-light);
+      padding: 64px 24px;
+    }
+    .footer-grid {
+      display: grid;
+      gap: 48px;
+      max-width: 1152px;
+      margin: 0 auto;
+    }
+    .footer-brand-name {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      letter-spacing: -0.01em;
+    }
+    .footer-brand-desc {
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--stone);
+      line-height: 1.6;
+      max-width: 280px;
+    }
+    .footer-socials {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .footer-socials a {
+      font-size: 12px;
+      color: var(--stone);
+      transition: color 200ms;
+    }
+    .footer-socials a:hover { color: var(--charcoal); }
+    .footer-col-title {
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(107,101,96,0.5);
+      margin-bottom: 16px;
+    }
+    .footer-col-links {
+      list-style: none;
+    }
+    .footer-col-links li + li { margin-top: 12px; }
+    .footer-col-links a {
+      font-size: 14px;
+      color: var(--stone);
+      transition: color 200ms;
+    }
+    .footer-col-links a:hover { color: var(--charcoal); }
+    .footer-bottom {
+      max-width: 1152px;
+      margin: 64px auto 0;
+      padding-top: 32px;
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      font-size: 12px;
+      color: rgba(107,101,96,0.4);
+    }
+
+    @media (min-width: 768px) {
+      .footer { padding: 80px 24px; }
+      .footer-grid { grid-template-columns: 1.5fr 1fr 1fr 1fr; }
+      .footer-bottom { flex-direction: row; justify-content: space-between; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <header class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">Ivory</a>
+      <ul class="nav-links">
+        <li><a href="#gallery">Designs</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#camera">Camera</a></li>
+        <li><a href="#tools">Tools</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+      </ul>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <a href="#" class="nav-cta" onclick="event.preventDefault();document.getElementById('login-modal').style.display='flex'" style="background:transparent;color:var(--charcoal);border:1px solid var(--border);padding:8px 20px;font-size:13px;">Log In</a>
+        <a href="#signup" class="nav-cta">Start Designing</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Login Modal -->
+  <div id="login-modal" style="display:none;position:fixed;inset:0;z-index:100;align-items:center;justify-content:center;background:rgba(28,25,23,0.5);backdrop-filter:blur(4px);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:var(--ivory);border-radius:20px;padding:48px 40px;width:100%;max-width:420px;margin:24px;box-shadow:0 24px 64px rgba(28,25,23,0.2);position:relative;">
+      <!-- Close button -->
+      <button onclick="document.getElementById('login-modal').style.display='none'" style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--stone);transition:all 200ms;border:none;cursor:pointer;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--cream)'">&times;</button>
+
+      <!-- Logo -->
+      <div style="text-align:center;margin-bottom:32px;">
+        <p style="font-family:var(--font-serif);font-size:28px;">Ivory</p>
+        <p style="font-size:13px;color:var(--stone);margin-top:4px;">Welcome back to your wedding planner</p>
+      </div>
+
+      <!-- Form -->
+      <form id="login-form" onsubmit="handleLogin(event)" style="display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--stone);">Email</label>
+          <input id="login-email" type="email" required placeholder="you@example.com" style="padding:12px 18px;border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--charcoal);background:white;outline:none;transition:all 200ms;font-family:var(--font-sans);" onfocus="this.style.borderColor='var(--taupe)';this.style.boxShadow='0 0 0 3px rgba(156,139,122,0.12)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--stone);">Password</label>
+          <input id="login-password" type="password" required placeholder="Enter your password" style="padding:12px 18px;border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--charcoal);background:white;outline:none;transition:all 200ms;font-family:var(--font-sans);" onfocus="this.style.borderColor='var(--taupe)';this.style.boxShadow='0 0 0 3px rgba(156,139,122,0.12)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'" />
+        </div>
+
+        <!-- Error message -->
+        <p id="login-error" style="display:none;font-size:13px;color:#B85450;text-align:center;"></p>
+
+        <button type="submit" style="margin-top:8px;padding:14px;background:var(--charcoal);color:var(--ivory);font-size:15px;font-weight:500;border-radius:100px;border:none;cursor:pointer;transition:all 200ms;font-family:var(--font-sans);" onmouseover="this.style.background='#2C2924';this.style.transform='scale(1.02)'" onmouseout="this.style.background='var(--charcoal)';this.style.transform='scale(1)'" id="login-btn">
+          Log In
+        </button>
+      </form>
+
+      <div style="margin-top:24px;text-align:center;">
+        <a href="#" style="font-size:13px;color:var(--taupe);transition:color 200ms;" onmouseover="this.style.color='var(--charcoal)'" onmouseout="this.style.color='var(--taupe)'">Forgot your password?</a>
+      </div>
+
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border-light);text-align:center;">
+        <p style="font-size:13px;color:var(--stone);">Don't have an account? <a href="#signup" onclick="document.getElementById('login-modal').style.display='none'" style="color:var(--taupe);font-weight:500;">Sign up free</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    const err = document.getElementById('login-error');
+    btn.textContent = 'Logging in...';
+    err.style.display = 'none';
+
+    // Simulate auth delay then redirect to planner
+    setTimeout(function() {
+      window.location.href = 'ivory-wedding-planner.html';
+    }, 800);
+  }
+  </script>
+
+  <!-- Hero -->
+  <section class="hero" id="signup">
+    <div class="hero-flourish" aria-hidden="true"></div>
+    <div class="hero-content">
+      <p class="hero-eyebrow">Wedding Stationery, Reimagined</p>
+      <h1>Invitations as <em>thoughtful</em><br>as your love story</h1>
+      <p class="hero-sub">Curated designs you personalize in minutes.<br>Send digitally, print on luxury stock, or both.</p>
+      <form class="hero-form" id="hero-form">
+        <div class="input-row">
+          <input type="email" placeholder="Enter your email" required />
+          <button type="submit">Get Early Access</button>
+        </div>
+      </form>
+      <p class="hero-proof">Join 12,000+ couples already designing with Ivory</p>
+    </div>
+    <div class="scroll-indicator"></div>
+  </section>
+
+  <!-- Social Proof -->
+  <section class="social-proof">
+    <p class="social-proof-label">As featured in</p>
+    <div class="social-proof-logos">
+      <span>Vogue</span>
+      <span>Martha Stewart Weddings</span>
+      <span>Brides</span>
+      <span>The Lane</span>
+      <span>Harper's Bazaar</span>
+    </div>
+  </section>
+
+  <!-- Gallery -->
+  <section class="section" id="gallery">
+    <div class="section-inner">
+      <div class="section-header reveal">
+        <p class="section-eyebrow">The Collection</p>
+        <h2 class="section-title">Designs that set the tone</h2>
+      </div>
+      <div class="gallery-grid" id="gallery-grid"></div>
+      <div class="gallery-browse reveal">
+        <a href="#">Browse all 40+ designs &rarr;</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="section section-alt" id="how-it-works">
+    <div class="section-narrow">
+      <div class="section-header reveal">
+        <p class="section-eyebrow">Simple Process</p>
+        <h2 class="section-title">Three steps to your<br>perfect invitation</h2>
+      </div>
+      <div class="steps-grid" id="steps-grid"></div>
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="section">
+    <div class="section-narrow">
+      <div class="section-header reveal">
+        <p class="section-eyebrow">Real Couples</p>
+        <h2 class="section-title">Loved by couples everywhere</h2>
+      </div>
+      <div class="testimonials-grid" id="testimonials-grid"></div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="section section-alt" id="pricing">
+    <div style="max-width: 896px; margin: 0 auto;">
+      <div class="section-header reveal">
+        <p class="section-eyebrow">Transparent Pricing</p>
+        <h2 class="section-title">Premium invitations,<br>honest pricing</h2>
+      </div>
+      <div class="pricing-grid reveal">
+        <div>
+          <p class="pricing-desc">Everything you need to create, customize, and send wedding invitations your guests will remember. No surprise fees, no per-guest charges for digital sends.</p>
+          <ul class="pricing-features">
+            <li><span class="pricing-dot"></span>Full digital invitation suite</li>
+            <li><span class="pricing-dot"></span>Custom RSVP page with tracking</li>
+            <li><span class="pricing-dot"></span>Unlimited design revisions</li>
+            <li><span class="pricing-dot"></span>Mobile-optimized guest experience</li>
+            <li><span class="pricing-dot"></span>Matching save-the-date &amp; thank-you cards</li>
+            <li><span class="pricing-dot"></span>Print-ready PDF exports</li>
+          </ul>
+        </div>
+        <div class="pricing-card">
+          <p class="pricing-card-label">Complete Suite</p>
+          <div class="pricing-amount">
+            <span>$149</span>
+            <span>/suite</span>
+          </div>
+          <p class="pricing-note">One-time payment. Unlimited digital sends.<br>Print orders priced separately at cost.</p>
+          <div class="pricing-divider"></div>
+          <a href="#signup" class="pricing-btn">Start Designing — Free Preview</a>
+          <p class="pricing-fine">No payment required to preview designs</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="final-cta">
+    <div class="final-cta-noise" aria-hidden="true"></div>
+    <div class="final-cta-inner reveal">
+      <h2>Your love story deserves<br>beautiful stationery</h2>
+      <p class="final-cta-sub">Sign up for early access and be the first to browse our full collection. Free to explore — no commitment required.</p>
+      <form class="final-cta-form" id="cta-form">
+        <div class="input-row">
+          <input type="email" placeholder="Enter your email" required />
+          <button type="submit">Get Early Access</button>
+        </div>
+      </form>
+      <div class="final-cta-trust">
+        <span>No credit card required</span>
+        <span class="dot">&middot;</span>
+        <span>Free design preview</span>
+        <span class="dot">&middot;</span>
+        <span>Cancel anytime</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Disposable Camera Feature -->
+  <section class="section" id="camera">
+    <div style="max-width: 960px; margin: 0 auto;">
+      <div style="display: grid; gap: 48px; align-items: center;" class="camera-grid">
+        <!-- Left: Copy -->
+        <div class="reveal">
+          <p class="section-eyebrow" style="text-align:left;">New Feature</p>
+          <h2 class="section-title" style="text-align:left; margin-bottom: 24px;">Ivory Disposable Camera</h2>
+          <p style="font-size: 16px; color: var(--stone); line-height: 1.7; margin-bottom: 16px;">
+            Give every guest a digital disposable camera. One QR code on each table — guests scan, snap up to 10 photos on their phone, and every image lands in your private gallery.
+          </p>
+          <ul style="list-style: none; margin-bottom: 24px;">
+            <li style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; font-size: 14px;">
+              <span style="display:block;width:6px;height:6px;border-radius:50%;background:var(--taupe);margin-top:7px;flex-shrink:0;"></span>
+              <span><strong>No app download</strong> — works in any phone browser</span>
+            </li>
+            <li style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; font-size: 14px;">
+              <span style="display:block;width:6px;height:6px;border-radius:50%;background:var(--taupe);margin-top:7px;flex-shrink:0;"></span>
+              <span><strong>10 shots per guest</strong> — candid, unfiltered moments</span>
+            </li>
+            <li style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; font-size: 14px;">
+              <span style="display:block;width:6px;height:6px;border-radius:50%;background:var(--taupe);margin-top:7px;flex-shrink:0;"></span>
+              <span><strong>Private gallery</strong> — download all photos after the wedding</span>
+            </li>
+            <li style="display: flex; align-items: flex-start; gap: 12px; font-size: 14px;">
+              <span style="display:block;width:6px;height:6px;border-radius:50%;background:var(--taupe);margin-top:7px;flex-shrink:0;"></span>
+              <span><strong>Print-ready</strong> — high-res originals, not compressed</span>
+            </li>
+          </ul>
+          <a href="#signup" style="display:inline-block;background:var(--charcoal);color:var(--ivory);font-size:14px;font-weight:500;padding:12px 28px;border-radius:100px;transition:all 200ms;">Include with Your Suite</a>
+        </div>
+        <!-- Right: Mockup -->
+        <div class="reveal reveal-delay-2" style="display: flex; justify-content: center;">
+          <div style="width: 220px; background: white; border-radius: 20px; border: 1px solid var(--border-light); padding: 20px; box-shadow: 0 8px 32px rgba(28,25,23,0.06); text-align: center;">
+            <!-- Phone mockup -->
+            <div style="width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px;"></div>
+            <!-- QR placeholder -->
+            <div style="width: 140px; height: 140px; margin: 0 auto; background: var(--charcoal); border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative;">
+              <!-- QR pattern -->
+              <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
+                <rect x="5" y="5" width="25" height="25" rx="3" fill="white"/>
+                <rect x="9" y="9" width="17" height="17" rx="1" fill="#1C1917"/>
+                <rect x="13" y="13" width="9" height="9" rx="1" fill="white"/>
+                <rect x="70" y="5" width="25" height="25" rx="3" fill="white"/>
+                <rect x="74" y="9" width="17" height="17" rx="1" fill="#1C1917"/>
+                <rect x="78" y="13" width="9" height="9" rx="1" fill="white"/>
+                <rect x="5" y="70" width="25" height="25" rx="3" fill="white"/>
+                <rect x="9" y="74" width="17" height="17" rx="1" fill="#1C1917"/>
+                <rect x="13" y="78" width="9" height="9" rx="1" fill="white"/>
+                <rect x="35" y="5" width="8" height="8" rx="1" fill="white" opacity="0.6"/>
+                <rect x="48" y="5" width="8" height="8" rx="1" fill="white" opacity="0.8"/>
+                <rect x="35" y="18" width="8" height="8" rx="1" fill="white" opacity="0.4"/>
+                <rect x="35" y="35" width="8" height="8" rx="1" fill="white" opacity="0.7"/>
+                <rect x="48" y="35" width="8" height="8" rx="1" fill="white" opacity="0.5"/>
+                <rect x="62" y="35" width="8" height="8" rx="1" fill="white" opacity="0.6"/>
+                <rect x="35" y="48" width="8" height="8" rx="1" fill="white" opacity="0.3"/>
+                <rect x="48" y="48" width="8" height="8" rx="1" fill="white" opacity="0.9"/>
+                <rect x="62" y="48" width="8" height="8" rx="1" fill="white" opacity="0.4"/>
+                <rect x="75" y="48" width="8" height="8" rx="1" fill="white" opacity="0.7"/>
+                <rect x="48" y="62" width="8" height="8" rx="1" fill="white" opacity="0.5"/>
+                <rect x="62" y="62" width="8" height="8" rx="1" fill="white" opacity="0.8"/>
+                <rect x="75" y="62" width="8" height="8" rx="1" fill="white" opacity="0.3"/>
+                <rect x="48" y="75" width="8" height="8" rx="1" fill="white" opacity="0.6"/>
+                <rect x="62" y="75" width="8" height="8" rx="1" fill="white" opacity="0.4"/>
+                <rect x="75" y="75" width="8" height="8" rx="1" fill="white" opacity="0.7"/>
+                <rect x="88" y="75" width="8" height="8" rx="1" fill="white" opacity="0.5"/>
+              </svg>
+            </div>
+            <p style="font-family: var(--font-serif); font-size: 14px; margin-top: 16px;">Scan to Capture</p>
+            <p style="font-size: 11px; color: var(--stone); margin-top: 4px;">Emma & James's Wedding</p>
+            <div style="display: flex; justify-content: center; gap: 4px; margin-top: 16px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--taupe);"></span>
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--border);"></span>
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--border);"></span>
+            </div>
+            <p style="font-size: 10px; color: rgba(107,101,96,0.4); margin-top: 12px;">10 photos remaining</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    .camera-grid { grid-template-columns: 1fr; }
+    @media (min-width: 768px) { .camera-grid { display: grid !important; grid-template-columns: 1.2fr 0.8fr !important; } }
+  </style>
+
+  <!-- Planning Tools Section -->
+  <section class="section section-alt" id="tools">
+    <div style="max-width: 960px; margin: 0 auto;">
+      <div class="section-header reveal">
+        <p class="section-eyebrow">Planning Tools</p>
+        <h2 class="section-title">Everything you need,<br>beautifully organized</h2>
+      </div>
+      <div style="display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+        <a href="ivory-wedding-planner.html" class="reveal reveal-delay-1" style="display:block;background: white; border: 1px solid var(--border-light); border-radius: 12px; padding: 28px; transition: all 300ms ease; text-decoration:none; color:inherit;">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(156,139,122,0.1); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 18px;">
+            📋
+          </div>
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Wedding Planner</h3>
+          <p style="font-size: 13px; color: var(--stone); line-height: 1.6;">10 interactive sections: budget tracker, checklist, guest list, vendor contacts, ceremony planner, timeline, attire, stationery, honeymoon, and emergency kit.</p>
+          <p style="font-size: 12px; color: var(--taupe); margin-top: 12px; font-weight: 500;">Open Planner &rarr;</p>
+        </a>
+        <a href="ivory-wedding-registry.html" class="reveal reveal-delay-2" style="display:block;background: white; border: 1px solid var(--border-light); border-radius: 12px; padding: 28px; transition: all 300ms ease; text-decoration:none; color:inherit;">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(156,139,122,0.1); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 18px;">
+            🎁
+          </div>
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Gift Registry</h3>
+          <p style="font-size: 13px; color: var(--stone); line-height: 1.6;">Add items from any store, track purchases, and share a beautiful registry page with guests. Categories, priorities, and progress tracking.</p>
+          <p style="font-size: 12px; color: var(--taupe); margin-top: 12px; font-weight: 500;">Open Registry &rarr;</p>
+        </a>
+        <a href="ivory-photography-shotlist.html" class="reveal reveal-delay-3" style="display:block;background: white; border: 1px solid var(--border-light); border-radius: 12px; padding: 28px; transition: all 300ms ease; text-decoration:none; color:inherit;">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(156,139,122,0.1); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 18px;">
+            📸
+          </div>
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Shot List Builder</h3>
+          <p style="font-size: 13px; color: var(--stone); line-height: 1.6;">55+ must-have shots organized by moment. Check off shots, add inspiration images, and print for your photographer.</p>
+          <p style="font-size: 12px; color: var(--taupe); margin-top: 12px; font-weight: 500;">Open Shot List &rarr;</p>
+        </a>
+        <a href="ivory-disposable-camera.html" class="reveal reveal-delay-4" style="display:block;background: white; border: 1px solid var(--border-light); border-radius: 12px; padding: 28px; transition: all 300ms ease; text-decoration:none; color:inherit;">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(156,139,122,0.1); display: flex; align-items; center; justify-content: center; margin-bottom: 16px; font-size: 18px;">
+            📷
+          </div>
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Disposable Camera</h3>
+          <p style="font-size: 13px; color: var(--stone); line-height: 1.6;">One QR code per table — guests scan and snap up to 27 photos on their phone. No app needed. Every shot lands in your private gallery.</p>
+          <p style="font-size: 12px; color: var(--taupe); margin-top: 12px; font-weight: 500;">Open Camera &rarr;</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-grid">
+      <div>
+        <p class="footer-brand-name">Ivory</p>
+        <p class="footer-brand-desc">Wedding stationery for the modern couple. Designed with care, delivered with love.</p>
+        <div class="footer-socials">
+          <a href="#">Instagram</a>
+          <a href="#">Pinterest</a>
+          <a href="#">Twitter</a>
+        </div>
+      </div>
+      <div>
+        <p class="footer-col-title">Product</p>
+        <ul class="footer-col-links">
+          <li><a href="#">Invitation Designs</a></li>
+          <li><a href="#">Digital Suites</a></li>
+          <li><a href="#">Print Options</a></li>
+          <li><a href="#">RSVP Tracking</a></li>
+          <li><a href="#">Templates</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer-col-title">Company</p>
+        <ul class="footer-col-links">
+          <li><a href="#">About</a></li>
+          <li><a href="#">Journal</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Press Kit</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer-col-title">Support</p>
+        <ul class="footer-col-links">
+          <li><a href="#">Help Center</a></li>
+          <li><a href="#">Contact Us</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Ivory Invitations. All rights reserved.</p>
+      <p>Made with care for couples who care about details.</p>
+    </div>
+  </footer>
+
+  <script>
+    // ─── Gallery Data & Render ───
+    const designs = [
+      { name: "Amalfi", style: "Watercolor Botanical", bg: "linear-gradient(135deg, #E8DDD3, #D4C5B5)", accent: "#A89178", dark: false },
+      { name: "Noire", style: "Modern Minimalist", bg: "linear-gradient(135deg, #2C2924, #1C1917)", accent: "#D4C5B5", dark: true },
+      { name: "Sonnet", style: "Classic Serif", bg: "linear-gradient(135deg, #F5F0EB, #EDE8E0)", accent: "#9C8B7A", dark: false },
+      { name: "Laurel", style: "Garden Romantic", bg: "linear-gradient(135deg, #D9DDD3, #C5CCBC)", accent: "#6B7560", dark: false },
+      { name: "Dusk", style: "Warm Moody", bg: "linear-gradient(135deg, #D6CCC4, #BFB0A3)", accent: "#7A6B60", dark: false },
+      { name: "Chroma", style: "Bold Contemporary", bg: "linear-gradient(135deg, #E0D5C8, #C8B8A8)", accent: "#8B7A68", dark: false },
+    ];
+
+    const galleryGrid = document.getElementById("gallery-grid");
+    designs.forEach((d, i) => {
+      const textColor = d.dark ? "#EDE8E0" : "#1C1917";
+      const subColor = d.dark ? "rgba(237,232,224,0.5)" : "#6B6560";
+      const borderColor = d.dark ? "rgba(237,232,224,0.12)" : "rgba(28,25,23,0.08)";
+      galleryGrid.innerHTML += `
+        <div class="gallery-card reveal reveal-delay-${Math.min(i + 1, 4)}">
+          <div class="gallery-card-image" style="background: ${d.bg};">
+            <div class="gallery-card-inner" style="border-color: ${borderColor};">
+              <div class="gallery-card-line" style="background: ${d.accent};"></div>
+              <p class="gallery-card-families" style="color: ${d.accent};">Together with their families</p>
+              <p class="gallery-card-names" style="color: ${textColor};">Emma & James</p>
+              <p class="gallery-card-date" style="color: ${subColor};">September 14, 2026</p>
+              <div class="gallery-card-line" style="background: ${d.accent}; margin-top: 16px; margin-bottom: 0;"></div>
+            </div>
+          </div>
+          <div class="gallery-meta">
+            <div>
+              <p class="gallery-meta-name">${d.name}</p>
+              <p class="gallery-meta-style">${d.style}</p>
+            </div>
+            <span class="gallery-meta-preview">Preview &rarr;</span>
+          </div>
+        </div>`;
+    });
+
+    // ─── Steps Data & Render ───
+    const steps = [
+      { n: "01", title: "Choose a design", desc: "Browse our curated collection of over 40 invitation suites — from botanical watercolors to modern minimalist layouts." },
+      { n: "02", title: "Personalize every detail", desc: "Edit text, swap colors, upload photos, and preview in real-time. No design skills needed, no templates that all look the same." },
+      { n: "03", title: "Send or print", desc: "Share a beautiful digital suite with RSVP tracking, order luxury prints on cotton stock, or do both. Your call." },
+    ];
+
+    const stepsGrid = document.getElementById("steps-grid");
+    steps.forEach((s, i) => {
+      stepsGrid.innerHTML += `
+        <div class="step reveal reveal-delay-${i + 1}">
+          <div class="step-number">${s.n}</div>
+          <div class="step-divider"></div>
+          <h3>${s.title}</h3>
+          <p>${s.desc}</p>
+        </div>`;
+    });
+
+    // ─── Testimonials Data & Render ───
+    const testimonials = [
+      { quote: "Our guests wouldn't stop complimenting the invitations. They set the tone for the entire wedding before anyone even arrived.", name: "Sarah & David", loc: "Brooklyn, NY" },
+      { quote: "The digital suite saved us weeks of addressing envelopes, and the RSVP tracking was a lifesaver. The print quality was stunning too.", name: "Priya & Raj", loc: "Austin, TX" },
+      { quote: "We changed our minds on the design three times and it was never a hassle. The real-time preview made it so easy to decide.", name: "Claire & Tom", loc: "London, UK" },
+    ];
+
+    const testimonialsGrid = document.getElementById("testimonials-grid");
+    testimonials.forEach((t, i) => {
+      testimonialsGrid.innerHTML += `
+        <div class="testimonial-card reveal reveal-delay-${i + 1}">
+          <div class="testimonial-quote">&ldquo;</div>
+          <p class="testimonial-text">${t.quote}</p>
+          <div class="testimonial-footer">
+            <p class="testimonial-name">${t.name}</p>
+            <p class="testimonial-location">${t.loc}</p>
+          </div>
+        </div>`;
+    });
+
+    // ─── Scroll Reveal (IntersectionObserver) ───
+    const revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
+    );
+
+    document.querySelectorAll(".reveal").forEach((el) => revealObserver.observe(el));
+
+    // ─── Nav Scroll Effect ───
+    const nav = document.getElementById("nav");
+    window.addEventListener("scroll", () => {
+      nav.classList.toggle("scrolled", window.scrollY > 40);
+    }, { passive: true });
+
+    // ─── Form Handlers ───
+    function handleFormSubmit(formId) {
+      const form = document.getElementById(formId);
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const input = form.querySelector("input[type='email']");
+        if (input.value.trim()) {
+          form.innerHTML = `<div class="hero-success" style="${formId === 'cta-form' ? 'color: var(--ivory); border-color: rgba(250,250,247,0.2); background: rgba(250,250,247,0.08);' : ''}">You're on the list. We'll be in touch soon.</div>`;
+        }
+      });
+    }
+    handleFormSubmit("hero-form");
+    handleFormSubmit("cta-form");
+  </script>
+
+</body>
+</html>

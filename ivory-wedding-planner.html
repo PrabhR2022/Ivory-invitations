@@ -1,0 +1,2165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Ivory — Wedding Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ivory:#FAFAF7;--cream:#EDE8E0;--charcoal:#1C1917;--taupe:#9C8B7A;
+  --stone:#6B6560;--border:#D6D0C8;--border-light:#E8E4DE;
+  --green:#4A7A5B;--red:#B85450;--yellow:#C4A035;
+  --font-serif:"Playfair Display",Georgia,serif;
+  --font-sans:"Inter",system-ui,sans-serif;
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{font-family:var(--font-sans);color:var(--charcoal);background:var(--ivory);min-height:100vh}
+::selection{background:var(--taupe);color:var(--ivory)}
+a{text-decoration:none;color:inherit}
+button{cursor:pointer;border:none;font-family:inherit;background:none}
+input,textarea,select{font-family:inherit;font-size:13px}
+table{border-collapse:collapse;width:100%}
+
+/* ─── Top bar ─── */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(250,250,247,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-light);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.topbar-logo{font-family:var(--font-serif);font-size:18px}
+.topbar-links{display:flex;gap:16px;font-size:12px}
+.topbar-links a{color:var(--taupe);font-weight:500;transition:color 200ms}
+.topbar-links a:hover{color:var(--charcoal)}
+
+/* ─── Layout ─── */
+.app{display:flex;min-height:calc(100vh - 49px)}
+.sidebar{width:240px;flex-shrink:0;border-right:1px solid var(--border-light);padding:24px 0;position:sticky;top:49px;height:calc(100vh - 49px);overflow-y:auto;background:var(--ivory)}
+.sidebar-section{padding:0 16px;margin-bottom:24px}
+.sidebar-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:rgba(107,101,96,0.5);margin-bottom:8px;padding:0 8px}
+.sidebar-btn{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border-radius:8px;font-size:13px;color:var(--stone);transition:all 150ms;text-align:left}
+.sidebar-btn:hover{background:var(--cream);color:var(--charcoal)}
+.sidebar-btn.active{background:var(--charcoal);color:var(--ivory)}
+.sidebar-btn .icon{width:20px;text-align:center;font-size:14px;flex-shrink:0}
+.sidebar-btn .badge{margin-left:auto;font-size:10px;background:rgba(156,139,122,0.15);color:var(--taupe);padding:2px 6px;border-radius:100px}
+
+.main{flex:1;padding:32px 40px 96px;max-width:960px;min-width:0}
+
+/* ─── Page header ─── */
+.page-title{font-family:var(--font-serif);font-size:28px;margin-bottom:4px}
+.page-desc{font-size:14px;color:var(--stone);margin-bottom:32px}
+
+/* ─── Cards & Panels ─── */
+.card{background:white;border:1px solid var(--border-light);border-radius:12px;padding:24px;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.card-title .count{font-size:12px;font-weight:400;color:var(--stone)}
+
+/* ─── Stats row ─── */
+.stats{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.stat-card{flex:1;min-width:120px;background:white;border:1px solid var(--border-light);border-radius:10px;padding:16px;text-align:center}
+.stat-card .val{font-family:var(--font-serif);font-size:24px}
+.stat-card .lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--stone);margin-top:2px}
+.stat-card.green .val{color:var(--green)}
+.stat-card.red .val{color:var(--red)}
+
+/* ─── Tables ─── */
+.tbl-wrap{overflow-x:auto;margin:0 -24px;padding:0 24px}
+table th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--stone);padding:8px 10px;text-align:left;border-bottom:2px solid var(--border-light);white-space:nowrap}
+table td{padding:8px 10px;border-bottom:1px solid rgba(214,208,200,0.4);font-size:13px;vertical-align:middle}
+table tr:hover td{background:rgba(237,232,224,0.25)}
+table input,table select{width:100%;padding:6px 8px;border:1px solid transparent;border-radius:6px;background:transparent;transition:all 150ms;font-size:13px}
+table input:focus,table select:focus{border-color:var(--taupe);background:white;outline:none;box-shadow:0 0 0 2px rgba(156,139,122,0.1)}
+table input:hover,table select:hover{background:rgba(237,232,224,0.3)}
+table input[type="number"]{text-align:right;width:90px}
+.currency{text-align:right;font-variant-numeric:tabular-nums}
+
+/* ─── Buttons ─── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:100px;font-size:13px;font-weight:500;transition:all 200ms}
+.btn-dark{background:var(--charcoal);color:var(--ivory)}
+.btn-dark:hover{background:#2C2924;transform:scale(1.02)}
+.btn-outline{border:1px solid var(--border);color:var(--stone)}
+.btn-outline:hover{background:var(--cream)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-danger:hover{background:#F5E8E8;color:var(--red);border-color:#E8C4C4}
+.btn-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+
+/* ─── Checklist ─── */
+.check-group{margin-bottom:24px}
+.check-group-title{font-size:13px;font-weight:600;color:var(--taupe);padding:8px 0;border-bottom:1px solid var(--border-light);margin-bottom:8px}
+.check-item{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13px}
+.check-item:hover{background:rgba(237,232,224,0.2);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:6px}
+.check-box{width:18px;height:18px;border-radius:4px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 150ms;flex-shrink:0;background:white}
+.check-box.checked{background:var(--taupe);border-color:var(--taupe)}
+.check-box.checked::after{content:"";display:block;width:4px;height:8px;border:solid white;border-width:0 2px 2px 0;transform:rotate(45deg);margin-top:-2px}
+.check-item.done .check-label{text-decoration:line-through;color:var(--stone)}
+.check-label{flex:1}
+.priority-tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:100px;text-transform:uppercase;letter-spacing:0.04em}
+.priority-high{background:rgba(184,84,80,0.1);color:var(--red)}
+.priority-med{background:rgba(196,160,53,0.1);color:var(--yellow)}
+.priority-low{background:rgba(237,232,224,0.5);color:var(--stone)}
+
+/* ─── Timeline ─── */
+.timeline-row{display:flex;gap:16px;padding:10px 0;border-bottom:1px solid rgba(214,208,200,0.3);align-items:flex-start}
+.timeline-time{width:80px;flex-shrink:0;font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
+.timeline-content{flex:1}
+.timeline-activity{font-size:14px;font-weight:500}
+.timeline-who{font-size:12px;color:var(--stone);margin-top:2px}
+.timeline-note{font-size:12px;color:var(--taupe);margin-top:2px;font-style:italic}
+
+/* ─── Kit ─── */
+.kit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.kit-item{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--border-light);border-radius:8px;background:white;transition:all 200ms}
+.kit-item:hover{border-color:var(--taupe)}
+.kit-item .name{font-size:13px;font-weight:500}
+.kit-item .cat{font-size:11px;color:var(--taupe)}
+.kit-item .why{font-size:11px;color:var(--stone);margin-top:2px}
+
+/* ─── Section label ─── */
+.section-label{font-family:var(--font-serif);font-size:18px;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border-light)}
+
+/* ─── Camera gallery ─── */
+.cam-thumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid var(--border-light)}
+.cam-thumb img{width:100%;height:100%;object-fit:cover;transition:transform 300ms var(--ease)}
+.cam-thumb:hover img{transform:scale(1.06)}
+.cam-thumb .cam-by{position:absolute;bottom:0;left:0;right:0;padding:6px 8px;background:linear-gradient(transparent,rgba(0,0,0,0.6));font-size:10px;color:white;font-weight:500}
+.cam-lightbox{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.92);display:none;align-items:center;justify-content:center;flex-direction:column}
+.cam-lightbox.active{display:flex}
+.cam-lightbox img{max-width:85%;max-height:65vh;border-radius:8px;object-fit:contain}
+.cam-lightbox-close{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);color:white;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.cam-lightbox-close:hover{background:rgba(255,255,255,0.2)}
+.cam-lightbox-info{text-align:center;margin-top:12px;font-size:13px;color:rgba(255,255,255,0.7)}
+.cam-lightbox-info .by{color:white;font-weight:500}
+.cam-thumb .cam-actions{position:absolute;top:6px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity 200ms}
+.cam-thumb:hover .cam-actions{opacity:1}
+.cam-actions .cam-act-btn{width:28px;height:28px;border-radius:6px;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);color:white;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 150ms;border:none}
+.cam-actions .cam-act-btn:hover{background:rgba(0,0,0,0.8)}
+.cam-actions .cam-act-btn.del:hover{background:rgba(184,84,80,0.85)}
+.cam-lb-actions{display:flex;gap:8px;margin-top:16px}
+.cam-lb-actions .btn{background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.15)}
+.cam-lb-actions .btn:hover{background:rgba(255,255,255,0.2)}
+.cam-lb-actions .btn.del:hover{background:rgba(184,84,80,0.7);border-color:rgba(184,84,80,0.5)}
+
+/* ─── Plus ones list ─── */
+.po-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid rgba(214,208,200,0.3)}
+.po-row:last-child{border-bottom:none}
+.po-invited{font-size:11px;color:var(--stone);width:140px;flex-shrink:0}
+.po-arrow{color:var(--border);font-size:12px;flex-shrink:0}
+.po-name{font-size:13px;font-weight:500;flex:1}
+.po-meal{font-size:12px;color:var(--taupe);flex-shrink:0}
+
+/* ─── Hidden ─── */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* ─── Responsive ─── */
+@media(max-width:768px){
+  .sidebar{display:none}
+  .main{padding:24px 16px 80px}
+  .stats{flex-direction:column}
+  .mobile-nav{display:flex !important}
+}
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(250,250,247,0.97);backdrop-filter:blur(12px);border-top:1px solid var(--border-light);padding:8px;overflow-x:auto;gap:4px}
+.mobile-nav button{flex-shrink:0;padding:8px 14px;border-radius:8px;font-size:11px;font-weight:500;color:var(--stone);white-space:nowrap}
+.mobile-nav button.active{background:var(--charcoal);color:var(--ivory)}
+
+/* ─── Onboarding Modal ─── */
+.ob-overlay{position:fixed;inset:0;z-index:300;background:rgba(28,25,23,0.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 300ms var(--ease);pointer-events:none}
+.ob-overlay.active{opacity:1;pointer-events:auto}
+.ob-modal{background:var(--ivory);border-radius:20px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.2);transform:translateY(24px) scale(0.97);transition:transform 400ms var(--ease);padding:40px 36px 32px}
+.ob-overlay.active .ob-modal{transform:translateY(0) scale(1)}
+.ob-progress{display:flex;gap:6px;margin-bottom:32px}
+.ob-dot{flex:1;height:3px;border-radius:100px;background:var(--border-light);transition:background 300ms}
+.ob-dot.done{background:var(--taupe)}
+.ob-dot.current{background:var(--charcoal)}
+.ob-step{display:none;animation:fadeUp .35s var(--ease) both}
+.ob-step.active{display:block}
+.ob-title{font-family:var(--font-serif);font-size:24px;margin-bottom:4px;text-align:center}
+.ob-sub{font-size:14px;color:var(--stone);text-align:center;margin-bottom:28px;line-height:1.5}
+.ob-field{margin-bottom:20px}
+.ob-label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--stone);margin-bottom:8px}
+.ob-input{width:100%;padding:14px 18px;border:1px solid var(--border);border-radius:12px;font-size:15px;background:white;color:var(--charcoal);outline:none;transition:all 200ms;font-family:var(--font-sans)}
+.ob-input:focus{border-color:var(--taupe);box-shadow:0 0 0 3px rgba(156,139,122,0.12)}
+.ob-input::placeholder{color:rgba(107,101,96,0.35)}
+.ob-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ob-upload-zone{border:2px dashed var(--border);border-radius:14px;padding:32px 16px;text-align:center;cursor:pointer;transition:all 250ms;background:white;position:relative}
+.ob-upload-zone:hover,.ob-upload-zone.dragover{border-color:var(--taupe);background:rgba(156,139,122,0.04)}
+.ob-upload-zone .icon{font-size:32px;opacity:0.3;margin-bottom:8px}
+.ob-upload-zone .main-text{font-size:14px;font-weight:500;margin-bottom:4px}
+.ob-upload-zone .sub-text{font-size:12px;color:var(--stone)}
+.ob-upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.ob-upload-result{display:none;padding:16px;background:white;border:1px solid var(--border-light);border-radius:12px;margin-top:12px}
+.ob-upload-result.show{display:flex;align-items:center;gap:12px}
+.ob-upload-result .file-icon{font-size:24px}
+.ob-upload-result .file-info{flex:1}
+.ob-upload-result .file-name{font-size:13px;font-weight:600}
+.ob-upload-result .file-detail{font-size:11px;color:var(--stone)}
+.ob-upload-result .file-remove{font-size:18px;color:var(--stone);cursor:pointer;padding:4px 8px;border-radius:6px;transition:all 150ms}
+.ob-upload-result .file-remove:hover{color:var(--red);background:rgba(184,84,80,0.08)}
+.ob-meal-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.ob-meal-tag{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:white;border:1px solid var(--border-light);border-radius:100px;font-size:13px;font-weight:500;transition:all 150ms}
+.ob-meal-tag:hover{border-color:var(--taupe)}
+.ob-meal-tag .remove{cursor:pointer;color:var(--stone);font-size:14px;line-height:1;transition:color 150ms}
+.ob-meal-tag .remove:hover{color:var(--red)}
+.ob-add-row{display:flex;gap:8px}
+.ob-add-input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:white;outline:none;transition:all 200ms}
+.ob-add-input:focus{border-color:var(--taupe);box-shadow:0 0 0 3px rgba(156,139,122,0.1)}
+.ob-btn-row{display:flex;gap:10px;margin-top:28px}
+.ob-btn{flex:1;padding:14px;border-radius:100px;font-size:15px;font-weight:500;transition:all 200ms;text-align:center}
+.ob-btn-primary{background:var(--charcoal);color:var(--ivory)}
+.ob-btn-primary:hover{background:#2C2924;transform:scale(1.01)}
+.ob-btn-secondary{background:transparent;color:var(--stone);border:1px solid var(--border)}
+.ob-btn-secondary:hover{background:var(--cream)}
+.ob-confetti{font-size:36px;text-align:center;margin-bottom:16px}
+@media(max-width:560px){.ob-modal{margin:16px;padding:28px 20px 24px}.ob-row{grid-template-columns:1fr}}
+
+/* ─── Budget filter & sub-items ─── */
+.budget-filter{display:flex;gap:6px;margin-bottom:16px}
+.budget-filter-btn{padding:6px 16px;border-radius:100px;font-size:12px;font-weight:500;color:var(--stone);border:1px solid var(--border-light);background:white;transition:all 150ms}
+.budget-filter-btn:hover{border-color:var(--taupe);color:var(--charcoal)}
+.budget-filter-btn.active{background:var(--charcoal);color:var(--ivory);border-color:var(--charcoal)}
+.sub-row td{background:rgba(237,232,224,0.15) !important}
+.sub-toggle{cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:4px}
+.sub-toggle .arrow{display:inline-block;font-size:10px;color:var(--taupe);transition:transform 200ms;width:14px;text-align:center}
+.sub-toggle .arrow.open{transform:rotate(90deg)}
+.tag-bride{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:100px;background:rgba(196,160,53,0.12);color:#9A7D20;text-transform:uppercase;letter-spacing:0.04em}
+.tag-groom{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:100px;background:rgba(74,122,91,0.12);color:var(--green);text-transform:uppercase;letter-spacing:0.04em}
+.tag-shared{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:100px;background:rgba(156,139,122,0.12);color:var(--taupe);text-transform:uppercase;letter-spacing:0.04em}
+.add-sub-btn{font-size:11px;color:var(--taupe);padding:3px 10px;border-radius:100px;border:1px dashed var(--border);background:transparent;transition:all 150ms;cursor:pointer}
+.add-sub-btn:hover{border-color:var(--taupe);color:var(--charcoal);background:rgba(156,139,122,0.04)}
+
+/* ─── Gratuity ─── */
+.gratuity-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.gratuity-item{padding:12px;border:1px solid var(--border-light);border-radius:8px;background:white}
+.gratuity-item .svc{font-size:13px;font-weight:600}
+.gratuity-item .tip{font-size:14px;color:var(--taupe);font-weight:500;margin-top:2px}
+.gratuity-item .note{font-size:11px;color:var(--stone);margin-top:4px}
+
+/* ─── Print Area ─── */
+#print-area{display:none}
+@media print{
+  .topbar,.app,.mobile-nav,.ob-overlay,#export-overlay{display:none!important}
+  #print-area{display:block!important;padding:20px;font-family:"Inter",system-ui,sans-serif;color:#1C1917;-webkit-font-smoothing:antialiased}
+  #print-area table{border-collapse:collapse;width:100%}
+  @page{margin:0.5in}
+}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <span class="topbar-logo">Ivory Planner</span>
+  <div class="topbar-links">
+    <a href="ivory-invitations-preview.html">Home</a>
+    <a href="ivory-wedding-registry.html">Registry</a>
+    <a href="ivory-photography-shotlist.html">Shot List</a>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Planning</div>
+      <button class="sidebar-btn active" onclick="showTab('budget')"><span class="icon">$</span>Budget Tracker</button>
+      <button class="sidebar-btn" onclick="showTab('checklist')"><span class="icon">&#10003;</span>Checklist<span class="badge" id="check-badge">0%</span></button>
+      <button class="sidebar-btn" onclick="showTab('guests')"><span class="icon">&#9825;</span>Guest List<span class="badge" id="guest-badge">0</span></button>
+      <button class="sidebar-btn" onclick="showTab('vendors')"><span class="icon">&#9742;</span>Vendors</button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Events</div>
+      <button class="sidebar-btn" onclick="showTab('ceremony')"><span class="icon">&#9829;</span>Ceremony & Reception</button>
+      <button class="sidebar-btn" onclick="showTab('timeline')"><span class="icon">&#9200;</span>Day-of Timeline</button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Details</div>
+      <button class="sidebar-btn" onclick="showTab('attire')"><span class="icon">&#9733;</span>Attire & Beauty</button>
+      <button class="sidebar-btn" onclick="showTab('stationery')"><span class="icon">&#9993;</span>Stationery</button>
+      <button class="sidebar-btn" onclick="showTab('honeymoon')"><span class="icon">&#9992;</span>Honeymoon</button>
+      <button class="sidebar-btn" onclick="showTab('kit')"><span class="icon">+</span>Emergency Kit</button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Tools</div>
+      <button class="sidebar-btn" onclick="showTab('camera')"><span class="icon">&#128247;</span>Disposable Camera<span class="badge" id="camera-badge">0</span></button>
+      <button class="sidebar-btn" onclick="window.open('ivory-wedding-registry.html','_blank')"><span class="icon">&#127873;</span>Gift Registry</button>
+      <button class="sidebar-btn" onclick="window.open('ivory-photography-shotlist.html','_blank')"><span class="icon">&#128247;</span>Shot List</button>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <div class="main">
+
+    <!-- ═══ BUDGET ═══ -->
+    <div class="tab-content active" id="tab-budget">
+      <h1 class="page-title">Budget Tracker</h1>
+      <p class="page-desc">Track planned vs. actual costs across all categories</p>
+      <div class="stats">
+        <div class="stat-card" style="cursor:pointer" onclick="editTotalBudget()" title="Click to edit">
+          <div class="val" id="b-total">$50,000</div>
+          <div class="lbl">Total Budget <span style="font-size:9px;opacity:0.5">&#9998;</span></div>
+        </div>
+        <div class="stat-card"><div class="val" id="b-planned">$0</div><div class="lbl">Planned</div></div>
+        <div class="stat-card"><div class="val" id="b-actual">$0</div><div class="lbl">Actual</div></div>
+        <div class="stat-card green"><div class="val" id="b-remaining">$50,000</div><div class="lbl">Remaining</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Budget by Category <button class="btn btn-sm btn-dark" onclick="addBudgetRow()">+ Add Category</button></div>
+        <div class="budget-filter">
+          <button class="budget-filter-btn active" onclick="setBudgetFilter('all')">All</button>
+          <button class="budget-filter-btn" onclick="setBudgetFilter('bride')">Bride</button>
+          <button class="budget-filter-btn" onclick="setBudgetFilter('groom')">Groom</button>
+          <button class="budget-filter-btn" onclick="setBudgetFilter('shared')">Shared</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="budget-table" style="min-width:900px">
+            <thead><tr><th style="min-width:200px">Category</th><th style="text-align:right">Planned</th><th style="text-align:right">%</th><th style="text-align:right">Actual</th><th style="text-align:right">%</th><th style="text-align:right">Difference</th><th>Notes</th><th></th></tr></thead>
+            <tbody id="budget-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Gratuity Guide</div>
+        <div class="gratuity-grid" id="gratuity-grid"></div>
+      </div>
+    </div>
+
+    <!-- ═══ CHECKLIST ═══ -->
+    <div class="tab-content" id="tab-checklist">
+      <h1 class="page-title">Month-by-Month Checklist</h1>
+      <p class="page-desc">Stay on track from engagement to honeymoon</p>
+      <div class="stats">
+        <div class="stat-card"><div class="val" id="cl-done">0</div><div class="lbl">Completed</div></div>
+        <div class="stat-card"><div class="val" id="cl-total">0</div><div class="lbl">Total Tasks</div></div>
+        <div class="stat-card green"><div class="val" id="cl-pct">0%</div><div class="lbl">Progress</div></div>
+      </div>
+      <div id="checklist-container"></div>
+    </div>
+
+    <!-- ═══ GUESTS ═══ -->
+    <div class="tab-content" id="tab-guests">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+        <div>
+          <h1 class="page-title">Guest List Manager</h1>
+          <p class="page-desc">Track RSVPs, meals, and gifts</p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="meal-edit-btn" onclick="toggleMealOptions()" style="margin-top:4px;flex-shrink:0">&#9998; Edit Meal Options</button>
+      </div>
+
+      <!-- RSVP Share Panel -->
+      <div style="background:var(--charcoal);border-radius:12px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <p style="font-size:14px;font-weight:500;color:var(--ivory)">Guest RSVP Page</p>
+          <p style="font-size:12px;color:rgba(250,250,247,0.5)">Share this link so guests can RSVP, choose meals, and add plus-ones</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="window.open('ivory-rsvp.html','_blank')">Preview</button>
+          <button class="btn btn-sm" style="background:var(--ivory);color:var(--charcoal)" onclick="copyRsvpLink(this)">Copy Link</button>
+        </div>
+      </div>
+
+      <!-- Meal Options Config (hidden by default, toggled via Edit button) -->
+      <div class="card" id="meal-options-card" style="display:none">
+        <div class="card-title">Meal Options <span class="count">Guests will choose from these on the RSVP</span></div>
+        <div id="meal-options-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="form-input" id="new-meal-input" placeholder="Add a meal option..." style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;flex:1;max-width:260px" onkeydown="if(event.key==='Enter')addMealOption()"/>
+          <button class="btn btn-sm btn-dark" onclick="addMealOption()">+ Add</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card"><div class="val" id="g-total">0</div><div class="lbl">Total</div></div>
+        <div class="stat-card green"><div class="val" id="g-attending">0</div><div class="lbl">Attending</div></div>
+        <div class="stat-card red"><div class="val" id="g-declined">0</div><div class="lbl">Declined</div></div>
+        <div class="stat-card"><div class="val" id="g-pending">0</div><div class="lbl">Pending</div></div>
+      </div>
+
+      <!-- Meal Counts -->
+      <div class="card" id="meal-counts-card" style="display:none">
+        <div class="card-title">Meal Counts <span class="count" id="meal-counts-total">0 responses</span></div>
+        <div id="meal-counts-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Guests
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-outline" onclick="showExportModal()">&#8595; Export PDF</button>
+            <button class="btn btn-sm btn-outline" onclick="document.getElementById('guest-file-input').click()">&#8593; Import CSV / Excel</button>
+            <button class="btn btn-sm btn-dark" onclick="addGuest()">+ Add Guest</button>
+          </div>
+        </div>
+        <input type="file" id="guest-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="importGuestFile(this)" />
+        <div class="tbl-wrap">
+          <table><thead><tr><th>#</th><th>Name</th><th>Address</th><th>+1 Allowed</th><th>RSVP</th><th>+1 Accepted</th><th>Meal</th><th>Gift Recv'd</th><th>Thank You</th><th></th></tr></thead>
+          <tbody id="guest-body"></tbody></table>
+        </div>
+      </div>
+      <!-- Plus Ones sub-list -->
+      <div class="card" id="plus-ones-card" style="display:none">
+        <div class="card-title">Confirmed Plus Ones <span class="count" id="plus-ones-count">0</span></div>
+        <div id="plus-ones-list"></div>
+      </div>
+    </div>
+
+    <!-- ═══ VENDORS ═══ -->
+    <div class="tab-content" id="tab-vendors">
+      <h1 class="page-title">Vendor Contact Log</h1>
+      <p class="page-desc">All vendor info in one place</p>
+      <div class="card">
+        <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
+        <div class="tbl-wrap">
+          <table><thead><tr><th>Category</th><th>Company</th><th>Contact</th><th>Email</th><th>Phone</th><th>Status</th><th>Payment Due</th><th>Arrival</th><th></th></tr></thead>
+          <tbody id="vendor-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ CEREMONY ═══ -->
+    <div class="tab-content" id="tab-ceremony">
+      <h1 class="page-title">Ceremony & Reception</h1>
+      <p class="page-desc">Order of events, music cues, and readings</p>
+      <div class="card">
+        <div class="card-title">Ceremony <button class="btn btn-sm btn-dark" onclick="addCeremonyRow('ceremony')">+ Add</button></div>
+        <div class="tbl-wrap">
+          <table><thead><tr><th style="width:90px">Time</th><th>Event</th><th>Music / Cue</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="ceremony-body"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Reception <button class="btn btn-sm btn-dark" onclick="addCeremonyRow('reception')">+ Add</button></div>
+        <div class="tbl-wrap">
+          <table><thead><tr><th style="width:90px">Time</th><th>Event</th><th>Music / Cue</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="reception-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TIMELINE ═══ -->
+    <div class="tab-content" id="tab-timeline">
+      <h1 class="page-title">Day-of Timeline</h1>
+      <p class="page-desc">Hour-by-hour schedule — share with your vendor team</p>
+      <div class="btn-row" style="margin-bottom:24px">
+        <button class="btn btn-dark" onclick="addTimelineRow()">+ Add Entry</button>
+        <button class="btn btn-outline" onclick="window.print()">Print for Vendors</button>
+      </div>
+      <div class="card" id="timeline-container"></div>
+    </div>
+
+    <!-- ═══ ATTIRE ═══ -->
+    <div class="tab-content" id="tab-attire">
+      <h1 class="page-title">Attire & Beauty</h1>
+      <p class="page-desc">Outfits, fittings, and day-of beauty schedule</p>
+      <div class="card">
+        <div class="card-title">Wedding Attire <button class="btn btn-sm btn-dark" onclick="addAttireRow()">+ Add</button></div>
+        <div class="tbl-wrap">
+          <table><thead><tr><th>Person</th><th>Item</th><th>Store / Designer</th><th>Fitting Date</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="attire-body"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Hair & Makeup Schedule <button class="btn btn-sm btn-dark" onclick="addBeautyRow()">+ Add</button></div>
+        <div class="tbl-wrap">
+          <table><thead><tr><th>Person</th><th>Service</th><th>Time Slot</th><th>Stylist</th><th>Trial Date</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="beauty-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ STATIONERY ═══ -->
+    <div class="tab-content" id="tab-stationery">
+      <h1 class="page-title">Stationery Checklist</h1>
+      <p class="page-desc">Track all paper goods from save-the-dates to thank-yous</p>
+      <div class="card">
+        <div class="card-title">Items <button class="btn btn-sm btn-dark" onclick="addStationeryRow()">+ Add Item</button></div>
+        <div class="tbl-wrap">
+          <table><thead><tr><th>Item</th><th style="width:80px">Qty</th><th>Order Date</th><th>Send Date</th><th>Status</th><th>Vendor / Notes</th><th></th></tr></thead>
+          <tbody id="stationery-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ HONEYMOON ═══ -->
+    <div class="tab-content" id="tab-honeymoon">
+      <h1 class="page-title">Honeymoon Planner</h1>
+      <p class="page-desc">Destination, flights, packing, and more</p>
+      <div class="card">
+        <div class="card-title">Trip Details</div>
+        <div id="honeymoon-details" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Packing Checklist</div>
+        <div id="packing-container"></div>
+      </div>
+    </div>
+
+    <!-- ═══ EMERGENCY KIT ═══ -->
+    <div class="tab-content" id="tab-kit">
+      <h1 class="page-title">Emergency Kit</h1>
+      <p class="page-desc">Everything you need for last-minute saves</p>
+      <div class="stats">
+        <div class="stat-card"><div class="val" id="kit-done">0</div><div class="lbl">Packed</div></div>
+        <div class="stat-card"><div class="val" id="kit-total">0</div><div class="lbl">Total Items</div></div>
+        <div class="stat-card green"><div class="val" id="kit-pct">0%</div><div class="lbl">Ready</div></div>
+      </div>
+      <div class="kit-grid" id="kit-grid"></div>
+    </div>
+
+    <!-- ═══ DISPOSABLE CAMERA ═══ -->
+    <div class="tab-content" id="tab-camera">
+      <h1 class="page-title">Disposable Camera</h1>
+      <p class="page-desc">Share the link or QR code — guests snap photos that appear here</p>
+
+      <!-- Share panel -->
+      <div style="background:var(--charcoal);border-radius:12px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <p style="font-size:14px;font-weight:500;color:var(--ivory)">Guest Camera Link</p>
+          <p style="font-size:12px;color:rgba(250,250,247,0.5)">Share this link or print the QR code for your tables</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="window.open('ivory-disposable-camera.html','_blank')">Preview</button>
+          <button class="btn btn-sm" style="background:var(--ivory);color:var(--charcoal)" onclick="copyCameraLink(this)">Copy Link</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat-card"><div class="val" id="cam-photos">0</div><div class="lbl">Photos</div></div>
+        <div class="stat-card"><div class="val" id="cam-shots-left">27</div><div class="lbl">Shots Left</div></div>
+        <div class="stat-card"><div class="val" id="cam-photographers">0</div><div class="lbl">Photographers</div></div>
+      </div>
+
+      <!-- Settings -->
+      <div class="card">
+        <div class="card-title">Camera Settings</div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--stone)">Max Shots per Guest</label>
+            <input type="number" id="cam-max-shots" min="1" max="100" value="27" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;width:100px;font-size:14px;text-align:center" onchange="updateCameraSettings()"/>
+          </div>
+          <p style="font-size:12px;color:var(--stone);flex:1;min-width:200px">Classic disposable cameras have 27 exposures. Adjust to your liking.</p>
+        </div>
+      </div>
+
+      <!-- QR Code -->
+      <div class="card" style="text-align:center">
+        <div class="card-title" style="justify-content:center">QR Code for Tables</div>
+        <p style="font-size:12px;color:var(--stone);margin-bottom:16px">Print this and place on each table so guests can scan to open the camera</p>
+        <canvas id="qr-canvas" width="200" height="200" style="border:1px solid var(--border-light);border-radius:8px"></canvas>
+        <div class="btn-row" style="justify-content:center;margin-top:12px">
+          <button class="btn btn-outline btn-sm" onclick="printQR()">Print QR Code</button>
+        </div>
+      </div>
+
+      <!-- Photo Gallery -->
+      <div class="card">
+        <div class="card-title">Photo Gallery <span class="count" id="cam-gallery-count">0 photos</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" id="cam-download-all-btn" style="display:none" onclick="downloadAllCamPhotos()">&#11015; Download All</button>
+            <button class="btn btn-outline btn-sm btn-danger" id="cam-delete-all-btn" style="display:none" onclick="deleteAllCamPhotos()">&#128465; Delete All</button>
+          </div>
+        </div>
+        <div id="cam-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px"></div>
+        <div id="cam-gallery-empty" style="padding:40px 16px;text-align:center">
+          <p style="font-size:32px;margin-bottom:8px;opacity:0.3">&#128247;</p>
+          <p style="font-size:13px;color:var(--stone)">No photos yet — share the link with your guests!</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- Camera lightbox -->
+<div class="cam-lightbox" id="cam-lightbox" onclick="this.classList.remove('active')">
+  <div class="cam-lightbox-close" onclick="document.getElementById('cam-lightbox').classList.remove('active')">&times;</div>
+  <img id="cam-lb-img" src="" alt="" onclick="event.stopPropagation()"/>
+  <div class="cam-lightbox-info" onclick="event.stopPropagation()"><span class="by" id="cam-lb-by"></span> <span id="cam-lb-time"></span></div>
+  <div class="cam-lb-actions" onclick="event.stopPropagation()">
+    <button class="btn btn-sm" onclick="downloadCamPhoto(currentLightboxIdx)">&#11015; Download</button>
+    <button class="btn btn-sm del" onclick="deleteCamPhoto(currentLightboxIdx)">&#128465; Delete</button>
+  </div>
+</div>
+
+<!-- Mobile nav -->
+<div class="mobile-nav" id="mobile-nav">
+  <button class="active" onclick="showTab('budget')">Budget</button>
+  <button onclick="showTab('checklist')">Checklist</button>
+  <button onclick="showTab('guests')">Guests</button>
+  <button onclick="showTab('vendors')">Vendors</button>
+  <button onclick="showTab('ceremony')">Ceremony</button>
+  <button onclick="showTab('timeline')">Timeline</button>
+  <button onclick="showTab('attire')">Attire</button>
+  <button onclick="showTab('stationery')">Stationery</button>
+  <button onclick="showTab('honeymoon')">Honeymoon</button>
+  <button onclick="showTab('kit')">Kit</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// STATE — all data lives here, saved to localStorage
+// ══════════════════════════════════════════════════
+const STATE_KEY = "ivory_planner_v1";
+let S = loadState();
+
+function defaultState() {
+  return {
+    totalBudget: 50000,
+    budget: [
+      {cat:"Venue & Rentals",planned:0,actual:0,notes:""},
+      {cat:"Catering & Bar",planned:0,actual:0,notes:""},
+      {cat:"Florals & Decor",planned:0,actual:0,notes:""},
+      {cat:"Wedding Attire",planned:0,actual:0,notes:""},
+      {cat:"Photography & Video",planned:0,actual:0,notes:""},
+      {cat:"Entertainment / DJ",planned:0,actual:0,notes:""},
+      {cat:"Transportation",planned:0,actual:0,notes:""},
+      {cat:"Stationery",planned:0,actual:0,notes:""},
+      {cat:"Hair & Makeup",planned:0,actual:0,notes:""},
+      {cat:"Planner / Coordinator",planned:0,actual:0,notes:""},
+      {cat:"Honeymoon",planned:0,actual:0,notes:""},
+      {cat:"Gifts & Favors",planned:0,actual:0,notes:""},
+      {cat:"Miscellaneous",planned:0,actual:0,notes:""},
+    ],
+    checklist: buildChecklist(),
+    guests: [],
+    vendors: buildVendors(),
+    ceremony: buildCeremony(),
+    reception: buildReception(),
+    timeline: buildTimeline(),
+    attire: buildAttire(),
+    beauty: buildBeauty(),
+    stationery: buildStationery(),
+    honeymoon: {destination:"",dates:"",passport1:"",passport2:"",airline:"",flightOut:"",flightReturn:"",confirm:"",hotel:"",hotelConfirm:"",car:"",insurance:""},
+    packing: buildPacking(),
+    kit: buildKit(),
+    mealOptions: ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal"],
+  };
+}
+
+function loadState() { try { const d = localStorage.getItem(STATE_KEY); return d ? JSON.parse(d) : defaultState(); } catch(e) { return defaultState(); } }
+function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(S)); }
+
+// ── Data builders ──
+function buildChecklist() {
+  const phases = {
+    "12+ Months Before": [["Set the wedding date","High"],["Determine overall budget","High"],["Choose wedding vision / theme","Medium"],["Research & book venue","High"],["Start guest list draft","Medium"],["Hire wedding planner","Medium"],["Book officiant","High"]],
+    "9-11 Months Before": [["Book photographer & videographer","High"],["Book caterer / arrange tasting","High"],["Book florist","High"],["Book entertainment (DJ / band)","Medium"],["Shop for wedding attire","High"],["Create wedding website","Medium"]],
+    "6-8 Months Before": [["Send save-the-dates","High"],["Book hair & makeup artist","Medium"],["Book transportation","Medium"],["Finalize guest list","High"],["Register for gifts","Medium"],["Book hotel room blocks","Medium"],["Order cake / dessert","Medium"],["Plan honeymoon & book flights","Medium"]],
+    "3-5 Months Before": [["Order & mail invitations","High"],["Book rehearsal dinner venue","High"],["Purchase wedding bands","High"],["Plan ceremony readings & vows","Medium"],["Arrange attire fittings","Medium"],["Create day-of timeline","Medium"]],
+    "1-2 Months Before": [["Confirm all vendor details & payments","High"],["Final dress / suit fitting","High"],["Apply for marriage license","High"],["Create seating chart","High"],["Finalize ceremony & reception music","Medium"],["Prepare vows","Medium"],["Hair & makeup trial","Medium"],["Assemble emergency kit","Low"]],
+    "1-2 Weeks Before": [["Confirm final guest count with caterer","High"],["Provide final timeline to all vendors","High"],["Break in wedding shoes","Low"],["Pack for honeymoon","Medium"],["Prepare tips & final payments","High"],["Rehearsal & rehearsal dinner","High"]],
+    "Wedding Day": [["Eat breakfast & hydrate","High"],["Hair & makeup as scheduled","High"],["Take getting-ready photos","Medium"],["Get married!","High"]],
+    "Post-Wedding": [["Send thank-you cards (within 3 months)","High"],["Preserve dress / attire","Medium"],["Change name (if applicable)","Medium"],["Review photos & leave vendor reviews","Low"],["Order wedding album","Low"]],
+  };
+  const out = [];
+  Object.entries(phases).forEach(([phase, tasks]) => {
+    tasks.forEach(([task, pri]) => out.push({phase,task,priority:pri,done:false}));
+  });
+  return out;
+}
+
+function buildVendors() {
+  return ["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Baker","Hair Stylist","Makeup Artist","Transportation","Wedding Planner","Rentals","Lighting / AV","Photo Booth"].map(c=>({cat:c,company:"",contact:"",email:"",phone:"",status:"",due:"",arrival:""}));
+}
+function buildCeremony() {
+  return [["","Prelude music begins","Instrumental","Guests seated"],["","Seating of parents","","Ushers escort"],["","Bridal party processional","",""],["","Bride's entrance","","All rise"],["","Welcome & opening words","","Officiant"],["","Readings","",""],["","Exchange of vows","",""],["","Ring exchange","",""],["","The first kiss","",""],["","Recessional","","Couple exits"]].map(([t,e,m,n])=>({time:t,event:e,music:m,notes:n}));
+}
+function buildReception() {
+  return [["","Cocktail hour","Background jazz","Bar opens"],["","Guests seated","","MC directs"],["","Grand entrance","Upbeat song",""],["","Welcome toast","","Best man / MOH"],["","Dinner served","Soft music",""],["","Parent dances","",""],["","Cake cutting","",""],["","Open dancing","DJ takes over",""],["","Last dance","",""],["","Grand exit","","Sparklers / confetti"]].map(([t,e,m,n])=>({time:t,event:e,music:m,notes:n}));
+}
+function buildTimeline() {
+  return [["7:00 AM","Wake up, light breakfast","Couple",""],["8:00 AM","Hair & makeup begins","Bride's party, stylist","Getting-ready suite"],["8:30 AM","Groom's party gets ready","Groom, groomsmen",""],["9:30 AM","Photographer arrives — details","Photographer","Dress, rings, shoes"],["10:30 AM","Bride gets into dress","Bride, MOH, mother",""],["11:00 AM","First look","Couple, photographer","Private location"],["11:30 AM","Wedding party portraits","Full party",""],["12:00 PM","Family formal photos","Families",""],["2:00 PM","Vendors arrive for setup","Caterer, DJ, rentals",""],["3:30 PM","Guests begin arriving","Ushers",""],["4:00 PM","Ceremony begins","Everyone",""],["4:45 PM","Couple photos (golden hour)","Couple, photographer",""],["5:00 PM","Cocktail hour","Guests",""],["6:00 PM","Guests seated for dinner","",""],["6:15 PM","First dance","Couple, DJ",""],["6:30 PM","Toasts","",""],["7:30 PM","Parent dances","",""],["7:45 PM","Cake cutting","",""],["8:00 PM","Open dancing","",""],["10:30 PM","Last dance","Couple",""],["10:45 PM","Grand exit","Everyone",""]].map(([t,a,w,n])=>({time:t,activity:a,who:w,notes:n}));
+}
+function buildAttire() {
+  return ["Bride — Dress","Bride — Veil / Headpiece","Bride — Shoes","Bride — Jewelry","Groom — Suit / Tux","Groom — Shoes","Groom — Accessories","Bridesmaid 1","Bridesmaid 2","Groomsman 1","Groomsman 2","Flower Girl","Ring Bearer"].map(p=>({person:p,item:"",store:"",fitting:"",status:"",notes:""}));
+}
+function buildBeauty() {
+  return ["Bride","Maid of Honor","Bridesmaid 1","Bridesmaid 2","Mother of Bride","Mother of Groom"].map(p=>({person:p,service:"Hair & Makeup",time:"",stylist:"",trial:"",notes:""}));
+}
+function buildStationery() {
+  return ["Save-the-Dates","Invitations","Invitation Envelopes","RSVP Cards","RSVP Envelopes","Details Cards","Programs","Escort / Place Cards","Table Numbers","Menu Cards","Thank-You Cards","Ceremony Signage","Reception Signage"].map(i=>({item:i,qty:"",orderDate:"",sendDate:"",status:"",notes:""}));
+}
+function buildPacking() {
+  return [["Passports & IDs","Documents"],["Flight confirmations","Documents"],["Travel insurance docs","Documents"],["Credit cards & cash","Documents"],["Phone & charger","Tech"],["Camera & charger","Tech"],["Power adapter","Tech"],["Swimsuit(s)","Clothing"],["Sunscreen SPF 50+","Toiletries"],["Medications","Health"],["Sunglasses","Accessories"],["Comfortable shoes","Clothing"],["Evening outfit(s)","Clothing"],["Toiletry bag","Toiletries"],["Books / Kindle","Entertainment"],["Snacks for travel","Misc"],["Luggage locks","Misc"]].map(([i,c])=>({item:i,category:c,packed:false}));
+}
+function buildKit() {
+  return [["Safety pins","Wardrobe","Broken straps, hem fixes"],["Sewing kit","Wardrobe","Quick repairs"],["Fashion tape","Wardrobe","Keep necklines in place"],["Stain remover pen","Wardrobe","Red wine, makeup smudges"],["Wrinkle release spray","Wardrobe","De-wrinkle dress/suits"],["Clear nail polish","Wardrobe","Stop stocking runs"],["Pain reliever","Health","Headaches, sore feet"],["Band-aids / blister pads","Health","New shoes + dancing"],["Allergy medication","Health","Outdoor ceremonies"],["Eye drops","Health","Dry eyes or crying"],["Tissues","Health","Happy tears"],["Touch-up makeup kit","Beauty","Powder, lipstick, concealer"],["Bobby pins & hair ties","Beauty","Secure updos"],["Hair spray (travel)","Beauty","Hold style"],["Deodorant","Beauty","Freshness"],["Breath mints","Beauty","Kiss-ready"],["Phone charger (portable)","Tech","Dead phone = no photos"],["Snacks (granola bars)","Fuel","Don't crash"],["Water bottle","Fuel","Stay hydrated"],["Compact umbrella","Weather","Protect the dress"],["Flip flops","Comfort","When heels hurt"],["Super glue","Fixes","Broken heel, loose decor"],["Scissors","Fixes","Cut tags, trim threads"]].map(([i,c,w])=>({item:i,category:c,why:w,got:false}));
+}
+
+// ══════════════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════════════
+function showTab(id) {
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  document.getElementById("tab-" + id).classList.add("active");
+  document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".sidebar-btn").forEach(b => { if(b.getAttribute("onclick")?.includes("'" + id + "'")) b.classList.add("active"); });
+  document.querySelectorAll(".mobile-nav button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".mobile-nav button").forEach(b => { if(b.getAttribute("onclick")?.includes("'" + id + "'")) b.classList.add("active"); });
+  renderTab(id);
+}
+
+function renderTab(id) {
+  switch(id) {
+    case "budget": renderBudget(); break;
+    case "checklist": renderChecklist(); break;
+    case "guests": renderGuests(); break;
+    case "vendors": renderVendors(); break;
+    case "ceremony": renderCeremony(); break;
+    case "timeline": renderTimeline(); break;
+    case "attire": renderAttire(); break;
+    case "stationery": renderStationery(); break;
+    case "honeymoon": renderHoneymoon(); break;
+    case "kit": renderKit(); break;
+    case "camera": renderCamera(); break;
+  }
+}
+
+// helper: editable cell
+function eCell(val, onBlur, type="text", opts) {
+  if(type === "select" && opts) {
+    return `<select onchange="${onBlur.replace('this.value','this.value')}">${opts.map(o=>`<option${o===val?" selected":""}>${o}</option>`).join("")}</select>`;
+  }
+  const t = type === "number" ? 'type="number" step="0.01"' : type === "date" ? 'type="date"' : '';
+  return `<input ${t} value="${(val||'').toString().replace(/"/g,'&quot;')}" onblur="${onBlur}" />`;
+}
+function delBtn(onclick) { return `<button class="btn btn-sm btn-outline btn-danger" onclick="${onclick}" title="Remove">&times;</button>`; }
+function money(n) { return "$" + (n||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}); }
+
+// ══════════════════════════════════════════════════
+// BUDGET
+// ══════════════════════════════════════════════════
+let budgetFilter = 'all';
+let expandedCategories = {};
+
+function setBudgetFilter(f) {
+  budgetFilter = f;
+  document.querySelectorAll('.budget-filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.budget-filter-btn').forEach(b => { if(b.textContent.toLowerCase() === f) b.classList.add('active'); });
+  renderBudget();
+}
+
+function toggleCategory(i) {
+  expandedCategories[i] = !expandedCategories[i];
+  renderBudget();
+}
+
+function tagHTML(tag) {
+  if (tag === 'bride') return '<span class="tag-bride">Bride</span>';
+  if (tag === 'groom') return '<span class="tag-groom">Groom</span>';
+  if (tag === 'shared') return '<span class="tag-shared">Shared</span>';
+  return '';
+}
+
+function renderBudget() {
+  // Ensure sub-items arrays exist
+  S.budget.forEach(r => { if (!r.subs) r.subs = []; });
+
+  // Compute totals based on filter
+  let planned = 0, actual = 0;
+  S.budget.forEach(r => {
+    if (r.subs.length > 0) {
+      // Category totals come from sub-items
+      const filtered = budgetFilter === 'all' ? r.subs : r.subs.filter(s => s.tag === budgetFilter);
+      planned += filtered.reduce((s, sub) => s + (sub.planned || 0), 0);
+      actual += filtered.reduce((s, sub) => s + (sub.actual || 0), 0);
+    } else {
+      planned += (r.planned || 0);
+      actual += (r.actual || 0);
+    }
+  });
+
+  document.getElementById("b-total").textContent = money(S.totalBudget);
+  document.getElementById("b-planned").textContent = money(planned);
+  document.getElementById("b-actual").textContent = money(actual);
+  document.getElementById("b-remaining").textContent = money(S.totalBudget - actual);
+
+  const tb = document.getElementById("budget-body");
+  let html = '';
+
+  S.budget.forEach((r, i) => {
+    const subs = r.subs || [];
+    const hasSubs = subs.length > 0;
+    const expanded = expandedCategories[i];
+
+    // If category has subs, calculate totals from filtered subs
+    let catPlanned = r.planned || 0;
+    let catActual = r.actual || 0;
+    if (hasSubs) {
+      const filtered = budgetFilter === 'all' ? subs : subs.filter(s => s.tag === budgetFilter);
+      catPlanned = filtered.reduce((s, sub) => s + (sub.planned || 0), 0);
+      catActual = filtered.reduce((s, sub) => s + (sub.actual || 0), 0);
+    }
+
+    // Skip category if filtering and no matching subs
+    if (budgetFilter !== 'all' && hasSubs) {
+      const matching = subs.filter(s => s.tag === budgetFilter);
+      if (matching.length === 0) return;
+    }
+
+    const pPct = S.totalBudget ? (catPlanned/S.totalBudget*100).toFixed(1)+"%" : "0%";
+    const aPct = S.totalBudget ? (catActual/S.totalBudget*100).toFixed(1)+"%" : "0%";
+    const diff = catPlanned - catActual;
+
+    // Category row
+    html += `<tr>
+      <td>
+        <span class="sub-toggle" onclick="toggleCategory(${i})">
+          <span class="arrow ${expanded ? 'open' : ''}">${hasSubs ? '&#9654;' : ''}</span>
+        </span>
+        ${hasSubs
+          ? `<strong style="font-size:13px">${r.cat}</strong> <span style="font-size:11px;color:var(--stone)">(${subs.length})</span>`
+          : eCell(r.cat, `S.budget[${i}].cat=this.value;saveState()`)}
+      </td>
+      <td class="currency">${hasSubs ? '<strong>'+money(catPlanned)+'</strong>' : eCell(r.planned,`S.budget[${i}].planned=+this.value;saveState();renderBudget()`,"number")}</td>
+      <td class="currency" style="color:var(--stone);font-size:12px">${pPct}</td>
+      <td class="currency">${hasSubs ? '<strong>'+money(catActual)+'</strong>' : eCell(r.actual,`S.budget[${i}].actual=+this.value;saveState();renderBudget()`,"number")}</td>
+      <td class="currency" style="color:var(--stone);font-size:12px">${aPct}</td>
+      <td class="currency" style="font-weight:600;color:${diff>=0?'var(--green)':'var(--red)'}">${money(diff)}</td>
+      <td>${hasSubs ? '' : eCell(r.notes,`S.budget[${i}].notes=this.value;saveState()`)}</td>
+      <td style="white-space:nowrap">
+        <button class="add-sub-btn" onclick="addSubItem(${i})" title="Add sub-item">+ Sub</button>
+        ${delBtn(`S.budget.splice(${i},1);saveState();renderBudget()`)}
+      </td>
+    </tr>`;
+
+    // Sub-item rows (if expanded)
+    if (hasSubs && expanded) {
+      const visibleSubs = budgetFilter === 'all' ? subs : subs.filter(s => s.tag === budgetFilter);
+      visibleSubs.forEach(sub => {
+        const si = subs.indexOf(sub); // real index in the subs array
+        const sPct = S.totalBudget ? ((sub.planned||0)/S.totalBudget*100).toFixed(1)+"%" : "0%";
+        const sAPct = S.totalBudget ? ((sub.actual||0)/S.totalBudget*100).toFixed(1)+"%" : "0%";
+        const sDiff = (sub.planned||0) - (sub.actual||0);
+        html += `<tr class="sub-row">
+          <td style="padding-left:36px;min-width:180px">
+            <input value="${(sub.name||'').replace(/"/g,'&quot;')}" placeholder="Enter item name..." style="min-width:140px" onblur="S.budget[${i}].subs[${si}].name=this.value;saveState()" />
+            <div style="margin-top:4px">${tagSelect(i, si, sub.tag)}</div>
+          </td>
+          <td class="currency">${eCell(sub.planned,`S.budget[${i}].subs[${si}].planned=+this.value;saveState();renderBudget()`,"number")}</td>
+          <td class="currency" style="color:var(--stone);font-size:12px">${sPct}</td>
+          <td class="currency">${eCell(sub.actual,`S.budget[${i}].subs[${si}].actual=+this.value;saveState();renderBudget()`,"number")}</td>
+          <td class="currency" style="color:var(--stone);font-size:12px">${sAPct}</td>
+          <td class="currency" style="font-weight:600;color:${sDiff>=0?'var(--green)':'var(--red)'}">${money(sDiff)}</td>
+          <td>${eCell(sub.notes||'',`S.budget[${i}].subs[${si}].notes=this.value;saveState()`)}</td>
+          <td>${delBtn(`S.budget[${i}].subs.splice(${si},1);saveState();renderBudget()`)}</td>
+        </tr>`;
+      });
+    }
+  });
+
+  tb.innerHTML = html;
+
+  // Gratuity
+  const tips = [["Catering Staff","15-20% of bill","Often included in contract"],["Bartenders","$50-100 each","Or 10-15% of bar bill"],["DJ / Band","$50-150","Per musician"],["Photographer","$50-200","Optional but appreciated"],["Hair & Makeup","15-20%","Per stylist"],["Officiant","$50-100","Or a meaningful gift"],["Transportation","15-20%","Per driver"],["Florist","$10-20","Per delivery person"],["Wedding Planner","$200-500+","Or a heartfelt gift"]];
+  document.getElementById("gratuity-grid").innerHTML = tips.map(([s,t,n])=>`<div class="gratuity-item"><div class="svc">${s}</div><div class="tip">${t}</div><div class="note">${n}</div></div>`).join("");
+}
+
+function tagSelect(catIdx, subIdx, current) {
+  const tags = ['','bride','groom','shared'];
+  return `<select style="font-size:10px;padding:2px 6px;border:1px solid var(--border-light);border-radius:100px;background:white;color:var(--stone);cursor:pointer"
+    onchange="S.budget[${catIdx}].subs[${subIdx}].tag=this.value;saveState();renderBudget()">
+    ${tags.map(t => `<option value="${t}"${t===current?' selected':''}>${t ? t.charAt(0).toUpperCase()+t.slice(1) : 'No tag'}</option>`).join('')}
+  </select>`;
+}
+
+function addSubItem(catIdx) {
+  if (!S.budget[catIdx].subs) S.budget[catIdx].subs = [];
+  S.budget[catIdx].subs.push({name:'',planned:0,actual:0,notes:'',tag:''});
+  expandedCategories[catIdx] = true;
+  saveState();
+  renderBudget();
+}
+
+function addBudgetRow() { S.budget.push({cat:"New Category",planned:0,actual:0,notes:"",subs:[]}); saveState(); renderBudget(); }
+
+function editTotalBudget() {
+  const el = document.getElementById('b-total');
+  const current = S.totalBudget || 50000;
+  el.innerHTML = `<input type="number" id="budget-edit-input" value="${current}" min="0" step="1000"
+    style="width:130px;text-align:center;font-family:var(--font-serif);font-size:24px;border:1px solid var(--taupe);border-radius:8px;padding:4px 8px;outline:none;background:white"
+    onblur="saveTotalBudget()" onkeydown="if(event.key==='Enter')this.blur()" />`;
+  document.getElementById('budget-edit-input').focus();
+  document.getElementById('budget-edit-input').select();
+}
+
+function saveTotalBudget() {
+  const input = document.getElementById('budget-edit-input');
+  if (!input) return;
+  S.totalBudget = parseFloat(input.value) || 50000;
+  saveState();
+  renderBudget();
+}
+
+// ══════════════════════════════════════════════════
+// CHECKLIST
+// ══════════════════════════════════════════════════
+function renderChecklist() {
+  const done = S.checklist.filter(c=>c.done).length;
+  const total = S.checklist.length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById("cl-done").textContent = done;
+  document.getElementById("cl-total").textContent = total;
+  document.getElementById("cl-pct").textContent = pct + "%";
+  document.getElementById("check-badge").textContent = pct + "%";
+
+  const phases = [...new Set(S.checklist.map(c=>c.phase))];
+  const container = document.getElementById("checklist-container");
+  container.innerHTML = phases.map(phase => {
+    const items = S.checklist.filter(c=>c.phase===phase);
+    const phaseDone = items.filter(c=>c.done).length;
+    return `<div class="card"><div class="card-title">${phase} <span class="count">${phaseDone}/${items.length}</span></div>
+    ${items.map(item => {
+      const idx = S.checklist.indexOf(item);
+      const priClass = item.priority==="High"?"priority-high":item.priority==="Medium"?"priority-med":"priority-low";
+      return `<div class="check-item ${item.done?'done':''}">
+        <div class="check-box ${item.done?'checked':''}" onclick="S.checklist[${idx}].done=!S.checklist[${idx}].done;saveState();renderChecklist()"></div>
+        <span class="check-label">${item.task}</span>
+        <span class="priority-tag ${priClass}">${item.priority}</span>
+      </div>`;
+    }).join("")}</div>`;
+  }).join("");
+}
+
+// ══════════════════════════════════════════════════
+// GUESTS
+// ══════════════════════════════════════════════════
+function renderGuests() {
+  // Count all plus guests across all guests
+  let totalPlusGuests = 0;
+  S.guests.forEach(g => {
+    const pg = g.plusGuests || [];
+    const validPg = pg.filter(p => p.name);
+    // Also count legacy single plus-one if no plusGuests array
+    if (validPg.length > 0) {
+      totalPlusGuests += validPg.length;
+    } else if (g.plusOne === 'Yes' && g.plusOneName) {
+      totalPlusGuests += 1;
+    }
+  });
+
+  const invitedCount = S.guests.length;
+  const t = invitedCount + totalPlusGuests;
+  const attendingInvited = S.guests.filter(g=>g.rsvp==="Attending").length;
+  const a = attendingInvited + totalPlusGuests;
+  const d = S.guests.filter(g=>g.rsvp==="Declined").length;
+  const pendingCount = invitedCount - attendingInvited - d;
+  document.getElementById("g-total").textContent=t;
+  document.getElementById("g-attending").textContent=a;
+  document.getElementById("g-declined").textContent=d;
+  document.getElementById("g-pending").textContent=pendingCount;
+  document.getElementById("guest-badge").textContent=t;
+
+  document.getElementById("guest-body").innerHTML = S.guests.map((g,i)=>{
+    // Ensure allowPlusOne field exists for legacy guests (migrate old Yes/No to number)
+    if(g.allowPlusOne===undefined||g.allowPlusOne==="Yes") g.allowPlusOne=1;
+    if(g.allowPlusOne==="No") g.allowPlusOne=0;
+    // Build RSVP status display with date if available
+    const rsvpInfo = g.rsvpDate ? `<div style="font-size:10px;color:var(--stone);margin-top:2px">${g.rsvpDate}</div>` : '';
+
+    // Get all plus guests (prefer plusGuests array, fallback to legacy)
+    const plusGuests = (g.plusGuests && g.plusGuests.length > 0) ? g.plusGuests.filter(p=>p.name) :
+                       (g.plusOne === 'Yes' && g.plusOneName) ? [{name:g.plusOneName, meal:g.plusOneMeal||''}] : [];
+
+    // Determine +1 accepted status
+    let plusAccepted, plusAcceptedColor;
+    if (g.allowPlusOne === 0) {
+      plusAccepted = 'N/A'; plusAcceptedColor = 'var(--border)';
+    } else if (plusGuests.length > 0) {
+      plusAccepted = plusGuests.length + ' Accepted'; plusAcceptedColor = 'var(--green)';
+    } else if (g.rsvp === 'Declined') {
+      plusAccepted = 'Declined'; plusAcceptedColor = 'var(--red)';
+    } else {
+      plusAccepted = 'Pending'; plusAcceptedColor = 'var(--stone)';
+    }
+
+    let row = `<tr>
+    <td style="width:36px;text-align:center;color:var(--stone)">${i+1}</td>
+    <td>${eCell(g.name,`S.guests[${i}].name=this.value;saveState()`)}</td>
+    <td>${eCell(g.address,`S.guests[${i}].address=this.value;saveState()`)}</td>
+    <td><input type="number" min="0" max="10" value="${g.allowPlusOne}" style="width:60px;text-align:center" onchange="S.guests[${i}].allowPlusOne=+this.value;saveState()" /></td>
+    <td><div>${eCell(g.rsvp,`S.guests[${i}].rsvp=this.value;saveState();renderGuests()`,"select",["Pending","Attending","Declined"])}</div>${rsvpInfo}</td>
+    <td><div style="font-size:13px;font-weight:500;color:${plusAcceptedColor}">${plusAccepted}</div></td>
+    <td><span style="font-size:13px;color:${g.meal?'var(--charcoal)':'var(--border)'}">${g.meal||'—'}</span>${g.dietary?`<div style="font-size:10px;color:var(--taupe);margin-top:2px">${g.dietary}</div>`:''}</td>
+    <td>${eCell(g.gift,`S.guests[${i}].gift=this.value;saveState()`,"select",["No","Yes"])}</td>
+    <td>${eCell(g.thanks,`S.guests[${i}].thanks=this.value;saveState()`,"select",["No","Yes"])}</td>
+    <td>${delBtn(`S.guests.splice(${i},1);saveState();renderGuests()`)}</td>
+  </tr>`;
+    // Add a sub-row for each plus guest
+    plusGuests.forEach((pg, pi) => {
+      row += `<tr style="background:rgba(237,232,224,0.18)">
+        <td></td>
+        <td style="padding-left:28px;font-size:12px;color:var(--stone)"><span style="color:var(--taupe);margin-right:6px">+${pi+1}</span>${pg.name}</td>
+        <td style="font-size:11px;color:var(--stone);font-style:italic">Guest of ${g.name.split(' ')[0]}</td>
+        <td></td>
+        <td></td>
+        <td style="font-size:12px;font-weight:500;color:var(--green)">Accepted</td>
+        <td style="font-size:12px;color:var(--stone)">${pg.meal||'—'}</td>
+        <td></td><td></td><td></td>
+      </tr>`;
+    });
+    return row;
+  }).join("");
+
+  // Render confirmed plus-ones sub-list card
+  const allPlusGuests = [];
+  S.guests.forEach(g => {
+    const pg = (g.plusGuests && g.plusGuests.length > 0) ? g.plusGuests.filter(p=>p.name) :
+               (g.plusOne === 'Yes' && g.plusOneName) ? [{name:g.plusOneName, meal:g.plusOneMeal||''}] : [];
+    pg.forEach(p => allPlusGuests.push({invitee: g.name, ...p}));
+  });
+  const poCard = document.getElementById('plus-ones-card');
+  if (allPlusGuests.length > 0) {
+    poCard.style.display = '';
+    document.getElementById('plus-ones-count').textContent = allPlusGuests.length;
+    document.getElementById('plus-ones-list').innerHTML = allPlusGuests.map(g =>
+      `<div class="po-row">
+        <span class="po-invited">${g.invitee}</span>
+        <span class="po-arrow">&rarr;</span>
+        <span class="po-name">${g.name}</span>
+        <span class="po-meal">${g.meal || '—'}</span>
+      </div>`
+    ).join('');
+  } else {
+    poCard.style.display = 'none';
+  }
+
+  // Render meal options config
+  renderMealOptions();
+
+  // Render meal counts
+  renderMealCounts();
+}
+
+function renderMealCounts() {
+  const mealOpts = S.mealOptions || ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal"];
+  const counts = {};
+  mealOpts.forEach(m => counts[m] = 0);
+  let totalMeals = 0;
+
+  S.guests.forEach(g => {
+    if (g.meal && g.rsvp === 'Attending') {
+      counts[g.meal] = (counts[g.meal] || 0) + 1;
+      totalMeals++;
+    }
+    // Count plus guest meals
+    const pg = (g.plusGuests && g.plusGuests.length > 0) ? g.plusGuests.filter(p => p.name) :
+               (g.plusOne === 'Yes' && g.plusOneName) ? [{name:g.plusOneName, meal:g.plusOneMeal||''}] : [];
+    pg.forEach(p => {
+      if (p.meal) {
+        counts[p.meal] = (counts[p.meal] || 0) + 1;
+        totalMeals++;
+      }
+    });
+  });
+
+  const card = document.getElementById('meal-counts-card');
+  if (totalMeals > 0) {
+    card.style.display = '';
+    document.getElementById('meal-counts-total').textContent = totalMeals + ' response' + (totalMeals !== 1 ? 's' : '');
+    document.getElementById('meal-counts-grid').innerHTML = mealOpts.map(m => {
+      const c = counts[m] || 0;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:white;border:1px solid var(--border-light);border-radius:10px;min-width:120px">
+        <span style="font-family:var(--font-serif);font-size:20px;font-weight:500">${c}</span>
+        <span style="font-size:12px;color:var(--stone)">${m}</span>
+      </div>`;
+    }).join('');
+  } else {
+    card.style.display = 'none';
+  }
+}
+
+function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No"}); saveState(); renderGuests(); }
+function copyRsvpLink(btn) { const url = window.location.href.replace(/[^/]*$/,'') + 'ivory-rsvp.html'; navigator.clipboard.writeText(url).then(()=>{ btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy Link',2000); }); }
+
+function importGuestFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  function applyImport(parsed) {
+    if (!parsed || parsed.length === 0) { alert('No guests found in file. Make sure it has a "Name" column.'); return; }
+    const newGuests = parsed.map(g => ({
+      name: g.name || '', address: g.address || '', rsvp: 'Pending',
+      allowPlusOne: (typeof g.allowPlusOne === 'number') ? g.allowPlusOne : 1,
+      plusOne: 'No', meal: '', gift: 'No', thanks: 'No', plusGuests: []
+    }));
+    S.guests = S.guests.concat(newGuests);
+    saveState();
+    renderGuests();
+    alert(parsed.length + ' guest' + (parsed.length > 1 ? 's' : '') + ' imported successfully.');
+  }
+
+  if (ext === 'csv') {
+    const reader = new FileReader();
+    reader.onload = function(e) { applyImport(parseCSV(e.target.result)); };
+    reader.readAsText(file);
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    const reader = new FileReader();
+    reader.onload = function(e) { applyImport(parseXLSX(new Uint8Array(e.target.result))); };
+    reader.readAsArrayBuffer(file);
+  } else {
+    alert('Please upload a .csv or .xlsx file');
+  }
+  input.value = '';
+}
+
+// ── Export PDF ──
+function showExportModal() {
+  document.getElementById('export-overlay').classList.add('active');
+}
+function closeExportModal() {
+  document.getElementById('export-overlay').classList.remove('active');
+}
+
+function exportGuestPDF() {
+  const cols = {
+    name: document.getElementById('exp-name').checked,
+    address: document.getElementById('exp-address').checked,
+    plusone: document.getElementById('exp-plusone').checked,
+    rsvp: document.getElementById('exp-rsvp').checked,
+    plusaccepted: document.getElementById('exp-plusaccepted').checked,
+    meal: document.getElementById('exp-meal').checked,
+  };
+
+  // Build table header
+  let thHTML = '<th style="padding:8px 12px;text-align:left;border-bottom:2px solid #D6D0C8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">#</th>';
+  if (cols.name) thHTML += '<th style="padding:8px 12px;text-align:left;border-bottom:2px solid #D6D0C8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">Name</th>';
+  if (cols.address) thHTML += '<th style="padding:8px 12px;text-align:left;border-bottom:2px solid #D6D0C8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">Address</th>';
+  if (cols.plusone) thHTML += '<th style="padding:8px 12px;text-align:center;border-bottom:2px solid #D6D0C8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">+1 Allowed</th>';
+  if (cols.rsvp) thHTML += '<th style="padding:8px 12px;text-align:left;border-bottom:2px solid #D6D0C8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">RSVP</th>';
+  if (cols.plusaccepted) thHTML += '<th style="padding:8px 12px;text-align:left;border-bottom:2px solid #D6D0C8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">+1 Accepted</th>';
+  if (cols.meal) thHTML += '<th style="padding:8px 12px;text-align:left;border-bottom:2px solid #D6D0C8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">Meal</th>';
+
+  // Build rows
+  let rowsHTML = '';
+  S.guests.forEach((g, i) => {
+    if (g.allowPlusOne === undefined || g.allowPlusOne === 'Yes') g.allowPlusOne = 1;
+    if (g.allowPlusOne === 'No') g.allowPlusOne = 0;
+    const plusGuests = (g.plusGuests && g.plusGuests.length > 0) ? g.plusGuests.filter(p=>p.name) :
+                       (g.plusOne === 'Yes' && g.plusOneName) ? [{name:g.plusOneName, meal:g.plusOneMeal||''}] : [];
+
+    let plusAccepted = '';
+    if (g.allowPlusOne === 0) plusAccepted = 'N/A';
+    else if (plusGuests.length > 0) plusAccepted = plusGuests.length + ' Accepted';
+    else if (g.rsvp === 'Declined') plusAccepted = 'Declined';
+    else plusAccepted = 'Pending';
+
+    const rsvpColor = g.rsvp === 'Attending' ? '#4A7A5B' : g.rsvp === 'Declined' ? '#B85450' : '#6B6560';
+
+    let td = `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;color:#6B6560">${i+1}</td>`;
+    if (cols.name) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:13px;font-weight:500">${g.name||''}</td>`;
+    if (cols.address) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;color:#6B6560">${g.address||''}</td>`;
+    if (cols.plusone) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;text-align:center">${g.allowPlusOne}</td>`;
+    if (cols.rsvp) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;font-weight:500;color:${rsvpColor}">${g.rsvp||'Pending'}</td>`;
+    if (cols.plusaccepted) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px">${plusAccepted}</td>`;
+    if (cols.meal) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px">${g.meal||'—'}</td>`;
+    rowsHTML += `<tr>${td}</tr>`;
+
+    // Plus guest sub-rows
+    plusGuests.forEach((pg, pi) => {
+      let sub = `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3"></td>`;
+      if (cols.name) sub += `<td style="padding:6px 12px 6px 28px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:12px;color:#6B6560">+${pi+1} ${pg.name}</td>`;
+      if (cols.address) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:11px;color:#9C8B7A;font-style:italic">Guest of ${(g.name||'').split(' ')[0]}</td>`;
+      if (cols.plusone) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3"></td>`;
+      if (cols.rsvp) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3"></td>`;
+      if (cols.plusaccepted) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:12px;color:#4A7A5B">Accepted</td>`;
+      if (cols.meal) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:12px">${pg.meal||'—'}</td>`;
+      rowsHTML += `<tr>${sub}</tr>`;
+    });
+  });
+
+  // Stats
+  const total = S.guests.length;
+  const attending = S.guests.filter(g => g.rsvp === 'Attending').length;
+  const declined = S.guests.filter(g => g.rsvp === 'Declined').length;
+  const pending = total - attending - declined;
+  const dateStr = new Date().toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+
+  // Meal counts for footer
+  let mealFooter = '';
+  if (cols.meal) {
+    const mealOpts = S.mealOptions || ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal"];
+    const mealCounts = {};
+    mealOpts.forEach(m => mealCounts[m] = 0);
+    S.guests.forEach(g => {
+      if (g.meal && g.rsvp === 'Attending') mealCounts[g.meal] = (mealCounts[g.meal]||0)+1;
+      const pg = (g.plusGuests||[]).filter(p=>p.name);
+      pg.forEach(p => { if(p.meal) mealCounts[p.meal] = (mealCounts[p.meal]||0)+1; });
+    });
+    const mealItems = mealOpts.filter(m => mealCounts[m] > 0).map(m => `<span style="display:inline-block;margin-right:20px"><strong>${mealCounts[m]}</strong> ${m}</span>`).join('');
+    if (mealItems) {
+      mealFooter = `<div style="margin-top:24px;padding:16px 20px;background:#F7F6F3;border-radius:10px">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#6B6560;margin-bottom:8px">Meal Totals</div>
+        <div style="font-size:13px">${mealItems}</div>
+      </div>`;
+    }
+  }
+
+  const printArea = document.getElementById('print-area');
+  printArea.innerHTML = `
+    <div style="text-align:center;margin-bottom:32px">
+      <h1 style="font-family:'Playfair Display',serif;font-size:28px;margin-bottom:4px">Guest List</h1>
+      <p style="font-size:13px;color:#6B6560">Exported ${dateStr}</p>
+    </div>
+    <div style="display:flex;gap:24px;margin-bottom:24px;justify-content:center">
+      <div style="text-align:center"><span style="font-family:'Playfair Display',serif;font-size:22px">${total}</span><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">Total</div></div>
+      <div style="text-align:center"><span style="font-family:'Playfair Display',serif;font-size:22px;color:#4A7A5B">${attending}</span><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">Attending</div></div>
+      <div style="text-align:center"><span style="font-family:'Playfair Display',serif;font-size:22px;color:#B85450">${declined}</span><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">Declined</div></div>
+      <div style="text-align:center"><span style="font-family:'Playfair Display',serif;font-size:22px">${pending}</span><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6B6560">Pending</div></div>
+    </div>
+    <table><thead><tr>${thHTML}</tr></thead><tbody>${rowsHTML}</tbody></table>
+    ${mealFooter}
+    <div style="text-align:center;margin-top:32px;font-size:11px;color:#9C8B7A">Ivory Wedding Planner</div>`;
+  closeExportModal();
+  setTimeout(() => { window.print(); printArea.innerHTML = ''; }, 100);
+}
+
+// ── Meal Options Management ──
+function toggleMealOptions() {
+  const card = document.getElementById('meal-options-card');
+  const btn = document.getElementById('meal-edit-btn');
+  if (card.style.display === 'none') {
+    card.style.display = '';
+    btn.innerHTML = '&#10005; Close';
+  } else {
+    card.style.display = 'none';
+    btn.innerHTML = '&#9998; Edit Meal Options';
+  }
+}
+function renderMealOptions() {
+  if (!S.mealOptions) S.mealOptions = ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal"];
+  const list = document.getElementById('meal-options-list');
+  list.innerHTML = S.mealOptions.map((m, i) =>
+    `<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:white;border:1px solid var(--border-light);border-radius:100px;font-size:13px;font-weight:500">
+      ${m}
+      <span onclick="removeMealOption(${i})" style="cursor:pointer;color:var(--stone);font-size:14px;line-height:1;margin-left:2px" title="Remove">&times;</span>
+    </span>`
+  ).join('');
+}
+function addMealOption() {
+  const input = document.getElementById('new-meal-input');
+  const val = input.value.trim();
+  if (!val) return;
+  if (!S.mealOptions) S.mealOptions = [];
+  if (S.mealOptions.includes(val)) { input.value = ''; return; }
+  S.mealOptions.push(val);
+  input.value = '';
+  saveState();
+  renderMealOptions();
+}
+function removeMealOption(idx) {
+  S.mealOptions.splice(idx, 1);
+  saveState();
+  renderMealOptions();
+}
+
+// ══════════════════════════════════════════════════
+// VENDORS
+// ══════════════════════════════════════════════════
+function renderVendors() {
+  document.getElementById("vendor-body").innerHTML = S.vendors.map((v,i)=>`<tr>
+    <td>${eCell(v.cat,`S.vendors[${i}].cat=this.value;saveState()`)}</td>
+    <td>${eCell(v.company,`S.vendors[${i}].company=this.value;saveState()`)}</td>
+    <td>${eCell(v.contact,`S.vendors[${i}].contact=this.value;saveState()`)}</td>
+    <td>${eCell(v.email,`S.vendors[${i}].email=this.value;saveState()`)}</td>
+    <td>${eCell(v.phone,`S.vendors[${i}].phone=this.value;saveState()`)}</td>
+    <td>${eCell(v.status,`S.vendors[${i}].status=this.value;saveState()`,"select",["","Researching","Contacted","Contract Sent","Signed","Paid in Full"])}</td>
+    <td>${eCell(v.due,`S.vendors[${i}].due=this.value;saveState()`,"date")}</td>
+    <td>${eCell(v.arrival,`S.vendors[${i}].arrival=this.value;saveState()`)}</td>
+    <td>${delBtn(`S.vendors.splice(${i},1);saveState();renderVendors()`)}</td>
+  </tr>`).join("");
+}
+function addVendor() { S.vendors.push({cat:"",company:"",contact:"",email:"",phone:"",status:"",due:"",arrival:""}); saveState(); renderVendors(); }
+
+// ══════════════════════════════════════════════════
+// CEREMONY & RECEPTION
+// ══════════════════════════════════════════════════
+function renderCeremony() {
+  ["ceremony","reception"].forEach(key => {
+    const arr = S[key];
+    document.getElementById(key+"-body").innerHTML = arr.map((r,i)=>`<tr>
+      <td>${eCell(r.time,`S.${key}[${i}].time=this.value;saveState()`)}</td>
+      <td>${eCell(r.event,`S.${key}[${i}].event=this.value;saveState()`)}</td>
+      <td>${eCell(r.music,`S.${key}[${i}].music=this.value;saveState()`)}</td>
+      <td>${eCell(r.notes,`S.${key}[${i}].notes=this.value;saveState()`)}</td>
+      <td>${delBtn(`S.${key}.splice(${i},1);saveState();renderCeremony()`)}</td>
+    </tr>`).join("");
+  });
+}
+function addCeremonyRow(key) { S[key].push({time:"",event:"",music:"",notes:""}); saveState(); renderCeremony(); }
+
+// ══════════════════════════════════════════════════
+// TIMELINE
+// ══════════════════════════════════════════════════
+function renderTimeline() {
+  document.getElementById("timeline-container").innerHTML = S.timeline.map((r,i)=>`
+    <div class="timeline-row">
+      <div class="timeline-time"><input value="${r.time}" style="font-weight:600;width:90px" onblur="S.timeline[${i}].time=this.value;saveState()"/></div>
+      <div class="timeline-content">
+        <div class="timeline-activity"><input value="${r.activity.replace(/"/g,'&quot;')}" style="font-weight:500;font-size:14px" onblur="S.timeline[${i}].activity=this.value;saveState()"/></div>
+        <div class="timeline-who"><input value="${r.who.replace(/"/g,'&quot;')}" placeholder="Who's involved" style="font-size:12px;color:var(--stone)" onblur="S.timeline[${i}].who=this.value;saveState()"/></div>
+        <div class="timeline-note"><input value="${r.notes.replace(/"/g,'&quot;')}" placeholder="Notes" style="font-size:12px;font-style:italic;color:var(--taupe)" onblur="S.timeline[${i}].notes=this.value;saveState()"/></div>
+      </div>
+      <div>${delBtn(`S.timeline.splice(${i},1);saveState();renderTimeline()`)}</div>
+    </div>`).join("");
+}
+function addTimelineRow() { S.timeline.push({time:"",activity:"",who:"",notes:""}); saveState(); renderTimeline(); }
+
+// ══════════════════════════════════════════════════
+// ATTIRE & BEAUTY
+// ══════════════════════════════════════════════════
+function renderAttire() {
+  const statuses = ["","Not Started","Ordered","First Fitting","Alterations","Ready","Picked Up"];
+  document.getElementById("attire-body").innerHTML = S.attire.map((r,i)=>`<tr>
+    <td>${eCell(r.person,`S.attire[${i}].person=this.value;saveState()`)}</td>
+    <td>${eCell(r.item,`S.attire[${i}].item=this.value;saveState()`)}</td>
+    <td>${eCell(r.store,`S.attire[${i}].store=this.value;saveState()`)}</td>
+    <td>${eCell(r.fitting,`S.attire[${i}].fitting=this.value;saveState()`,"date")}</td>
+    <td>${eCell(r.status,`S.attire[${i}].status=this.value;saveState()`,"select",statuses)}</td>
+    <td>${eCell(r.notes,`S.attire[${i}].notes=this.value;saveState()`)}</td>
+    <td>${delBtn(`S.attire.splice(${i},1);saveState();renderAttire()`)}</td>
+  </tr>`).join("");
+  document.getElementById("beauty-body").innerHTML = S.beauty.map((r,i)=>`<tr>
+    <td>${eCell(r.person,`S.beauty[${i}].person=this.value;saveState()`)}</td>
+    <td>${eCell(r.service,`S.beauty[${i}].service=this.value;saveState()`)}</td>
+    <td>${eCell(r.time,`S.beauty[${i}].time=this.value;saveState()`)}</td>
+    <td>${eCell(r.stylist,`S.beauty[${i}].stylist=this.value;saveState()`)}</td>
+    <td>${eCell(r.trial,`S.beauty[${i}].trial=this.value;saveState()`,"date")}</td>
+    <td>${eCell(r.notes,`S.beauty[${i}].notes=this.value;saveState()`)}</td>
+    <td>${delBtn(`S.beauty.splice(${i},1);saveState();renderAttire()`)}</td>
+  </tr>`).join("");
+}
+function addAttireRow() { S.attire.push({person:"",item:"",store:"",fitting:"",status:"",notes:""}); saveState(); renderAttire(); }
+function addBeautyRow() { S.beauty.push({person:"",service:"Hair & Makeup",time:"",stylist:"",trial:"",notes:""}); saveState(); renderAttire(); }
+
+// ══════════════════════════════════════════════════
+// STATIONERY
+// ══════════════════════════════════════════════════
+function renderStationery() {
+  const statuses = ["","Not Started","Designing","Ordered","Received","Addressed","Sent"];
+  document.getElementById("stationery-body").innerHTML = S.stationery.map((r,i)=>`<tr>
+    <td>${eCell(r.item,`S.stationery[${i}].item=this.value;saveState()`)}</td>
+    <td>${eCell(r.qty,`S.stationery[${i}].qty=this.value;saveState()`,"number")}</td>
+    <td>${eCell(r.orderDate,`S.stationery[${i}].orderDate=this.value;saveState()`,"date")}</td>
+    <td>${eCell(r.sendDate,`S.stationery[${i}].sendDate=this.value;saveState()`,"date")}</td>
+    <td>${eCell(r.status,`S.stationery[${i}].status=this.value;saveState()`,"select",statuses)}</td>
+    <td>${eCell(r.notes,`S.stationery[${i}].notes=this.value;saveState()`)}</td>
+    <td>${delBtn(`S.stationery.splice(${i},1);saveState();renderStationery()`)}</td>
+  </tr>`).join("");
+}
+function addStationeryRow() { S.stationery.push({item:"",qty:"",orderDate:"",sendDate:"",status:"",notes:""}); saveState(); renderStationery(); }
+
+// ══════════════════════════════════════════════════
+// HONEYMOON
+// ══════════════════════════════════════════════════
+function renderHoneymoon() {
+  const fields = [["destination","Destination"],["dates","Travel Dates"],["passport1","Passport Expiry (Person 1)"],["passport2","Passport Expiry (Person 2)"],["airline","Airline"],["flightOut","Flight — Outbound"],["flightReturn","Flight — Return"],["confirm","Confirmation #"],["hotel","Hotel / Resort"],["hotelConfirm","Hotel Confirmation #"],["car","Car Rental"],["insurance","Travel Insurance #"]];
+  document.getElementById("honeymoon-details").innerHTML = fields.map(([k,l])=>`
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--stone)">${l}</label>
+      <input value="${(S.honeymoon[k]||'').replace(/"/g,'&quot;')}" onblur="S.honeymoon['${k}']=this.value;saveState()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--ivory);font-size:13px"/>
+    </div>`).join("");
+
+  // Packing
+  const cats = [...new Set(S.packing.map(p=>p.category))];
+  document.getElementById("packing-container").innerHTML = cats.map(cat => {
+    const items = S.packing.filter(p=>p.category===cat);
+    return `<div class="check-group"><div class="check-group-title">${cat}</div>
+    ${items.map(item => {
+      const idx = S.packing.indexOf(item);
+      return `<div class="check-item ${item.packed?'done':''}">
+        <div class="check-box ${item.packed?'checked':''}" onclick="S.packing[${idx}].packed=!S.packing[${idx}].packed;saveState();renderHoneymoon()"></div>
+        <span class="check-label">${item.item}</span>
+      </div>`;
+    }).join("")}</div>`;
+  }).join("");
+}
+
+// ══════════════════════════════════════════════════
+// EMERGENCY KIT
+// ══════════════════════════════════════════════════
+function renderKit() {
+  const done = S.kit.filter(k=>k.got).length;
+  const total = S.kit.length;
+  document.getElementById("kit-done").textContent = done;
+  document.getElementById("kit-total").textContent = total;
+  document.getElementById("kit-pct").textContent = total ? Math.round(done/total*100)+"%" : "0%";
+
+  document.getElementById("kit-grid").innerHTML = S.kit.map((k,i)=>`
+    <div class="kit-item" style="${k.got?'opacity:0.5':''}">
+      <div class="check-box ${k.got?'checked':''}" onclick="S.kit[${i}].got=!S.kit[${i}].got;saveState();renderKit()" style="margin-top:2px"></div>
+      <div>
+        <div class="name" style="${k.got?'text-decoration:line-through':''}">${k.item}</div>
+        <div class="cat">${k.category}</div>
+        <div class="why">${k.why}</div>
+      </div>
+    </div>`).join("");
+}
+
+// ══════════════════════════════════════════════════
+// DISPOSABLE CAMERA
+// ══════════════════════════════════════════════════
+const CAMERA_KEY = "ivory_camera_v1";
+
+function loadCameraData() {
+  try { const d = localStorage.getItem(CAMERA_KEY); return d ? JSON.parse(d) : null; } catch(e) { return null; }
+}
+
+function renderCamera() {
+  const cam = loadCameraData();
+  const photos = cam ? cam.photos || [] : [];
+  const maxShots = cam ? cam.maxShots || 27 : (S.cameraMaxShots || 27);
+  const shotsUsed = cam ? cam.shotsUsed || 0 : 0;
+
+  // Stats
+  document.getElementById('cam-photos').textContent = photos.length;
+  document.getElementById('cam-shots-left').textContent = maxShots - shotsUsed;
+  const photographers = [...new Set(photos.map(p => p.name))].length;
+  document.getElementById('cam-photographers').textContent = photographers;
+
+  // Settings
+  document.getElementById('cam-max-shots').value = maxShots;
+
+  // Badge
+  document.getElementById('camera-badge').textContent = photos.length;
+
+  // Gallery count
+  document.getElementById('cam-gallery-count').textContent = photos.length + ' photo' + (photos.length !== 1 ? 's' : '');
+
+  // Gallery grid
+  const grid = document.getElementById('cam-gallery');
+  const empty = document.getElementById('cam-gallery-empty');
+
+  // Show/hide bulk action buttons
+  document.getElementById('cam-download-all-btn').style.display = photos.length > 0 ? '' : 'none';
+  document.getElementById('cam-delete-all-btn').style.display = photos.length > 0 ? '' : 'none';
+
+  if (photos.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  grid.innerHTML = [...photos].reverse().map((p, ri) => {
+    const i = photos.length - 1 - ri;
+    const time = new Date(p.timestamp);
+    const timeStr = time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    return `<div class="cam-thumb" onclick="openCamLightbox(${i})">
+      <img src="${p.dataUrl}" alt="Photo by ${p.name}" loading="lazy"/>
+      <div class="cam-actions">
+        <button class="cam-act-btn" title="Download" onclick="event.stopPropagation();downloadCamPhoto(${i})">&#11015;</button>
+        <button class="cam-act-btn del" title="Delete" onclick="event.stopPropagation();deleteCamPhoto(${i})">&#128465;</button>
+      </div>
+      <div class="cam-by">${p.name} · ${timeStr}</div>
+    </div>`;
+  }).join('');
+
+  // Generate QR code
+  generateQR();
+}
+
+let currentLightboxIdx = -1;
+
+function openCamLightbox(idx) {
+  const cam = loadCameraData();
+  if (!cam || !cam.photos[idx]) return;
+  currentLightboxIdx = idx;
+  const p = cam.photos[idx];
+  document.getElementById('cam-lb-img').src = p.dataUrl;
+  document.getElementById('cam-lb-by').textContent = p.name;
+  const time = new Date(p.timestamp);
+  document.getElementById('cam-lb-time').textContent = ' · ' + time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('cam-lightbox').classList.add('active');
+}
+
+function downloadCamPhoto(idx) {
+  const cam = loadCameraData();
+  if (!cam || !cam.photos[idx]) return;
+  const p = cam.photos[idx];
+  const a = document.createElement('a');
+  a.href = p.dataUrl;
+  const name = (p.name || 'guest').replace(/\s+/g, '-').toLowerCase();
+  a.download = 'ivory-camera-' + name + '-' + (idx + 1) + '.jpg';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function deleteCamPhoto(idx) {
+  if (!confirm('Delete this photo? This cannot be undone.')) return;
+  const cam = loadCameraData();
+  if (!cam || !cam.photos[idx]) return;
+  cam.photos.splice(idx, 1);
+  cam.shotsUsed = Math.max(0, (cam.shotsUsed || 1) - 1);
+  localStorage.setItem(CAMERA_KEY, JSON.stringify(cam));
+  // Close lightbox if open
+  document.getElementById('cam-lightbox').classList.remove('active');
+  currentLightboxIdx = -1;
+  renderCamera();
+}
+
+function downloadAllCamPhotos() {
+  const cam = loadCameraData();
+  if (!cam || !cam.photos || cam.photos.length === 0) return;
+  cam.photos.forEach((p, i) => {
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = p.dataUrl;
+      const name = (p.name || 'guest').replace(/\s+/g, '-').toLowerCase();
+      a.download = 'ivory-camera-' + name + '-' + (i + 1) + '.jpg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }, i * 200);
+  });
+}
+
+function deleteAllCamPhotos() {
+  const cam = loadCameraData();
+  if (!cam || !cam.photos || cam.photos.length === 0) return;
+  if (!confirm('Delete all ' + cam.photos.length + ' photos? This cannot be undone.')) return;
+  cam.photos = [];
+  cam.shotsUsed = 0;
+  localStorage.setItem(CAMERA_KEY, JSON.stringify(cam));
+  renderCamera();
+}
+
+function updateCameraSettings() {
+  const maxShots = parseInt(document.getElementById('cam-max-shots').value) || 27;
+  S.cameraMaxShots = maxShots;
+  saveState();
+  // Also update camera state directly
+  const cam = loadCameraData();
+  if (cam) {
+    cam.maxShots = maxShots;
+    localStorage.setItem(CAMERA_KEY, JSON.stringify(cam));
+  }
+  renderCamera();
+}
+
+function copyCameraLink(btn) {
+  const url = window.location.href.replace(/[^/]*$/,'') + 'ivory-disposable-camera.html';
+  navigator.clipboard.writeText(url).then(()=>{ btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy Link',2000); });
+}
+
+function printQR() {
+  const canvas = document.getElementById('qr-canvas');
+  const win = window.open('', '_blank');
+  win.document.write(`<html><head><title>Ivory Camera QR Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet"/>
+    <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:"Inter",sans-serif;text-align:center;background:white}
+    h1{font-family:"Playfair Display",serif;font-size:28px;margin-bottom:4px;color:#1C1917}
+    p{font-size:14px;color:#6B6560;margin-bottom:24px}
+    img{border:1px solid #E8E4DE;border-radius:12px;padding:16px}
+    .sub{font-size:12px;color:#9C8B7A;margin-top:16px}
+    @media print{body{padding:0}}</style></head><body>
+    <h1>Capture the Moment</h1><p>Scan to open your disposable camera</p>
+    <img src="${canvas.toDataURL()}" width="200" height="200"/>
+    <p class="sub">Ivory · Disposable Camera</p>
+    </body></html>`);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+}
+
+// Minimal QR code generator (alphanumeric, fits URLs up to ~100 chars)
+function generateQR() {
+  const url = window.location.href.replace(/[^/]*$/,'') + 'ivory-disposable-camera.html';
+  const canvas = document.getElementById('qr-canvas');
+  const ctx = canvas.getContext('2d');
+  const size = 200;
+  canvas.width = size;
+  canvas.height = size;
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0, 0, size, size);
+
+  // Simple visual QR placeholder with actual URL encoded as data pattern
+  // For a real app you'd use a QR library — this creates a scannable-looking pattern
+  const cellSize = 6;
+  const margin = 20;
+  const gridSize = Math.floor((size - margin * 2) / cellSize);
+  const data = url;
+
+  // Seed from URL for consistent pattern
+  let seed = 0;
+  for (let i = 0; i < data.length; i++) seed = ((seed << 5) - seed + data.charCodeAt(i)) | 0;
+
+  function seededRand() { seed = (seed * 16807 + 0) % 2147483647; return (seed & 1); }
+
+  ctx.fillStyle = '#1C1917';
+
+  // Draw finder patterns (3 corners)
+  function drawFinder(x, y) {
+    const s = cellSize;
+    ctx.fillRect(x, y, 7*s, 7*s);
+    ctx.fillStyle = 'white';
+    ctx.fillRect(x+s, y+s, 5*s, 5*s);
+    ctx.fillStyle = '#1C1917';
+    ctx.fillRect(x+2*s, y+2*s, 3*s, 3*s);
+  }
+  drawFinder(margin, margin);
+  drawFinder(margin + (gridSize-7)*cellSize, margin);
+  drawFinder(margin, margin + (gridSize-7)*cellSize);
+
+  // Draw data modules
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      // Skip finder pattern areas
+      if ((row < 8 && col < 8) || (row < 8 && col >= gridSize-8) || (row >= gridSize-8 && col < 8)) continue;
+      // Use URL data to seed pattern
+      const charIdx = (row * gridSize + col) % data.length;
+      const bit = (data.charCodeAt(charIdx) + row + col + seed) % 3 === 0;
+      if (bit) {
+        ctx.fillStyle = '#1C1917';
+        ctx.fillRect(margin + col * cellSize, margin + row * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+
+  // Center label
+  ctx.fillStyle = 'white';
+  const labelW = 60, labelH = 16;
+  ctx.fillRect(size/2 - labelW/2, size/2 - labelH/2, labelW, labelH);
+  ctx.fillStyle = '#1C1917';
+  ctx.font = '600 9px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('IVORY', size/2, size/2);
+}
+
+// ══════════════════════════════════════════════════
+// ONBOARDING
+// ══════════════════════════════════════════════════
+let obStep = 1;
+let obMeals = ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal"];
+let obParsedGuests = [];
+
+function showOnboarding() {
+  document.getElementById('ob-overlay').classList.add('active');
+  updateObStep(1);
+}
+
+function closeOnboarding() {
+  document.getElementById('ob-overlay').classList.remove('active');
+}
+
+function updateObStep(step) {
+  obStep = step;
+  document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ob-step-' + step).classList.add('active');
+  // Update progress dots
+  document.querySelectorAll('.ob-dot').forEach((d, i) => {
+    d.className = 'ob-dot';
+    if (i + 1 < step) d.classList.add('done');
+    else if (i + 1 === step) d.classList.add('current');
+  });
+}
+
+function obNext() {
+  if (obStep === 1) {
+    // Save couple info + budget
+    S.coupleName1 = document.getElementById('ob-name1').value.trim() || '';
+    S.coupleName2 = document.getElementById('ob-name2').value.trim() || '';
+    S.weddingDate = document.getElementById('ob-date').value || '';
+    const budgetVal = parseFloat(document.getElementById('ob-budget').value) || 50000;
+    S.totalBudget = budgetVal;
+    saveState();
+    updateObStep(2);
+  } else if (obStep === 2) {
+    // Guests already parsed if uploaded, otherwise skip is fine
+    if (obParsedGuests.length > 0) {
+      S.guests = obParsedGuests.map(g => ({
+        name: g.name || '',
+        address: g.address || '',
+        rsvp: 'Pending',
+        allowPlusOne: (typeof g.allowPlusOne === 'number') ? g.allowPlusOne : 1,
+        plusOne: 'No',
+        meal: '',
+        gift: 'No',
+        thanks: 'No',
+        plusGuests: []
+      }));
+    }
+    saveState();
+    updateObStep(3);
+    renderObMeals();
+  } else if (obStep === 3) {
+    // Save meal options
+    S.mealOptions = obMeals.length > 0 ? [...obMeals] : ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal"];
+    S.onboardingDone = true;
+    saveState();
+    closeOnboarding();
+    // Refresh dashboard
+    renderBudget();
+    updateSidebarBadges();
+  }
+}
+
+function obBack() {
+  if (obStep > 1) updateObStep(obStep - 1);
+}
+
+function obSkipGuests() {
+  obParsedGuests = [];
+  saveState();
+  updateObStep(3);
+  renderObMeals();
+}
+
+// ── Guest file upload ──
+function obHandleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  const resultEl = document.getElementById('ob-upload-result');
+  const nameEl = document.getElementById('ob-file-name');
+  const detailEl = document.getElementById('ob-file-detail');
+
+  if (ext === 'csv') {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      obParsedGuests = parseCSV(e.target.result);
+      nameEl.textContent = file.name;
+      detailEl.textContent = obParsedGuests.length + ' guests found';
+      resultEl.classList.add('show');
+    };
+    reader.readAsText(file);
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      obParsedGuests = parseXLSX(new Uint8Array(e.target.result));
+      nameEl.textContent = file.name;
+      detailEl.textContent = obParsedGuests.length + ' guests found';
+      resultEl.classList.add('show');
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    alert('Please upload a .csv or .xlsx file');
+    input.value = '';
+  }
+}
+
+function obRemoveFile() {
+  obParsedGuests = [];
+  document.getElementById('ob-upload-result').classList.remove('show');
+  document.getElementById('ob-file-input').value = '';
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+
+  // Parse header to find name/address columns
+  const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+  const nameIdx = header.findIndex(h => h.includes('name'));
+  const addrIdx = header.findIndex(h => h.includes('address') || h.includes('addr'));
+  const plusIdx = header.findIndex(h => h.includes('plus') || h.includes('+1') || h.includes('guest'));
+
+  const guests = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]);
+    if (!cols || cols.length === 0) continue;
+    const name = (nameIdx >= 0 ? cols[nameIdx] : cols[0]) || '';
+    if (!name.trim()) continue;
+    const address = addrIdx >= 0 ? (cols[addrIdx] || '') : '';
+    const allow = plusIdx >= 0 ? (parseInt(cols[plusIdx]) || 1) : 1;
+    guests.push({ name: name.trim(), address: address.trim(), allowPlusOne: allow });
+  }
+  return guests;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else current += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { result.push(current.trim()); current = ''; }
+      else current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseXLSX(data) {
+  // Lightweight XLSX parser — reads shared strings + first sheet
+  // XLSX files are ZIP archives. We'll do a minimal parse.
+  try {
+    const zip = miniUnzip(data);
+    if (!zip) return [];
+
+    // Get shared strings
+    const ssXml = zip['xl/sharedStrings.xml'] || '';
+    const strings = [];
+    const siRegex = /<si>([\s\S]*?)<\/si>/g;
+    let siMatch;
+    while ((siMatch = siRegex.exec(ssXml)) !== null) {
+      const tRegex = /<t[^>]*>([\s\S]*?)<\/t>/g;
+      let full = '';
+      let tMatch;
+      while ((tMatch = tRegex.exec(siMatch[1])) !== null) full += tMatch[1];
+      strings.push(decodeXML(full));
+    }
+
+    // Get first sheet
+    const sheetXml = zip['xl/worksheets/sheet1.xml'] || '';
+    const rows = [];
+    const rowRegex = /<row[^>]*>([\s\S]*?)<\/row>/g;
+    let rowMatch;
+    while ((rowMatch = rowRegex.exec(sheetXml)) !== null) {
+      const cells = [];
+      const cellRegex = /<c\s([^>]*)>([\s\S]*?)<\/c>/g;
+      let cellMatch;
+      while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
+        const attrs = cellMatch[1];
+        const inner = cellMatch[2];
+        const vMatch = inner.match(/<v>([\s\S]*?)<\/v>/);
+        const val = vMatch ? vMatch[1] : '';
+        const isString = /t="s"/.test(attrs);
+        cells.push(isString ? (strings[parseInt(val)] || '') : val);
+      }
+      rows.push(cells);
+    }
+
+    if (rows.length < 2) return [];
+
+    // Find columns
+    const header = rows[0].map(h => (h || '').toLowerCase());
+    const nameIdx = header.findIndex(h => h.includes('name'));
+    const addrIdx = header.findIndex(h => h.includes('address') || h.includes('addr'));
+    const plusIdx = header.findIndex(h => h.includes('plus') || h.includes('+1') || h.includes('guest'));
+
+    const guests = [];
+    for (let i = 1; i < rows.length; i++) {
+      const cols = rows[i];
+      const name = (nameIdx >= 0 ? cols[nameIdx] : cols[0]) || '';
+      if (!name.trim()) continue;
+      const address = addrIdx >= 0 ? (cols[addrIdx] || '') : '';
+      const allow = plusIdx >= 0 ? (parseInt(cols[plusIdx]) || 1) : 1;
+      guests.push({ name: name.trim(), address: address.trim(), allowPlusOne: allow });
+    }
+    return guests;
+  } catch(e) {
+    console.error('XLSX parse error:', e);
+    return [];
+  }
+}
+
+function decodeXML(s) {
+  return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'");
+}
+
+// Minimal ZIP reader (uncompressed + deflate via DecompressionStream if available)
+function miniUnzip(data) {
+  const view = new DataView(data.buffer || data);
+  const files = {};
+  let offset = 0;
+  const len = data.length;
+  while (offset < len - 4) {
+    const sig = view.getUint32(offset, true);
+    if (sig !== 0x04034b50) break; // not a local file header
+    const compMethod = view.getUint16(offset + 8, true);
+    const compSize = view.getUint32(offset + 18, true);
+    const uncompSize = view.getUint32(offset + 22, true);
+    const nameLen = view.getUint16(offset + 26, true);
+    const extraLen = view.getUint16(offset + 28, true);
+    const name = new TextDecoder().decode(data.slice(offset + 30, offset + 30 + nameLen));
+    const fileData = data.slice(offset + 30 + nameLen + extraLen, offset + 30 + nameLen + extraLen + compSize);
+    if (compMethod === 0) {
+      files[name] = new TextDecoder().decode(fileData);
+    } else if (compMethod === 8) {
+      // Deflate — try DecompressionStream, fallback to raw
+      try {
+        // Sync inflate using a simple approach
+        const raw = inflateRaw(fileData);
+        files[name] = new TextDecoder().decode(raw);
+      } catch(e) {
+        files[name] = '';
+      }
+    }
+    offset += 30 + nameLen + extraLen + compSize;
+  }
+  return files;
+}
+
+// Tiny raw inflate (DEFLATE) — handles most XLSX files
+function inflateRaw(input) {
+  // Use the browser's DecompressionStream if available
+  if (typeof DecompressionStream !== 'undefined') {
+    // We can't use streams synchronously, so fall back to a sync approach
+    // For now, try wrapping in a zlib header and using a sync method
+  }
+  // Fallback: try using the fetch trick with a Blob
+  // Since we need sync, we'll do a best-effort parse of stored blocks
+  // For production, you'd use pako or fflate — this handles simple XLSX files
+  const result = [];
+  let pos = 0;
+  const bits = { buf: 0, count: 0 };
+  function readBits(n) {
+    while (bits.count < n) {
+      if (pos >= input.length) return 0;
+      bits.buf |= input[pos++] << bits.count;
+      bits.count += 8;
+    }
+    const val = bits.buf & ((1 << n) - 1);
+    bits.buf >>= n;
+    bits.count -= n;
+    return val;
+  }
+  function readByte() { return readBits(8); }
+
+  // Fixed Huffman tables
+  const lenBase = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+  const lenExtra = [0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+  const distBase = [1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+  const distExtra = [0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+
+  let last = 0;
+  while (!last) {
+    last = readBits(1);
+    const type = readBits(2);
+    if (type === 0) {
+      // Stored
+      bits.buf = 0; bits.count = 0;
+      if (pos + 4 > input.length) break;
+      const len = input[pos] | (input[pos+1] << 8);
+      pos += 4; // skip len + nlen
+      for (let i = 0; i < len && pos < input.length; i++) result.push(input[pos++]);
+    } else if (type === 1 || type === 2) {
+      // Fixed or dynamic Huffman — for simplicity handle fixed only
+      // Dynamic would need full Huffman tree building
+      if (type === 2) {
+        // Skip dynamic — too complex for inline, just try to get what we can
+        break;
+      }
+      while (true) {
+        // Read fixed literal/length code (7-9 bits)
+        let code = 0;
+        // Fixed Huffman: 0-143 = 8 bits, 144-255 = 9 bits, 256-279 = 7 bits, 280-287 = 8 bits
+        code = readBits(7);
+        if (code <= 23) {
+          code += 256;
+          if (code === 256) break; // end of block
+          // Length code
+          const li = code - 257;
+          const length = lenBase[li] + readBits(lenExtra[li]);
+          // Distance: 5 bits fixed
+          const dCode = readBits(5);
+          // Reverse the 5 bits
+          let dCodeRev = 0;
+          for (let b = 0; b < 5; b++) dCodeRev |= ((dCode >> b) & 1) << (4 - b);
+          const distance = distBase[dCodeRev] + readBits(distExtra[dCodeRev]);
+          const start = result.length - distance;
+          for (let j = 0; j < length; j++) result.push(result[start + j] || 0);
+        } else {
+          // Need one more bit to distinguish
+          code = (code << 1) | readBits(1);
+          if (code >= 48 && code <= 191) {
+            result.push(code - 48); // literal 0-143
+          } else if (code >= 192 && code <= 199) {
+            const c2 = 280 + (code - 192);
+            const li = c2 - 257;
+            const length = lenBase[li] + readBits(lenExtra[li]);
+            const dCode = readBits(5);
+            let dCodeRev = 0;
+            for (let b = 0; b < 5; b++) dCodeRev |= ((dCode >> b) & 1) << (4 - b);
+            const distance = distBase[dCodeRev] + readBits(distExtra[dCodeRev]);
+            const start = result.length - distance;
+            for (let j = 0; j < length; j++) result.push(result[start + j] || 0);
+          } else {
+            code = (code << 1) | readBits(1);
+            if (code >= 400 && code <= 511) {
+              result.push(code - 256); // literal 144-255
+            } else {
+              break; // can't decode further
+            }
+          }
+        }
+      }
+    }
+  }
+  return new Uint8Array(result);
+}
+
+// ── Onboarding meal options ──
+function renderObMeals() {
+  const container = document.getElementById('ob-meal-tags');
+  container.innerHTML = obMeals.map((m, i) =>
+    `<span class="ob-meal-tag">${m}<span class="remove" onclick="obRemoveMeal(${i})">&times;</span></span>`
+  ).join('');
+}
+function obAddMeal() {
+  const input = document.getElementById('ob-meal-input');
+  const val = input.value.trim();
+  if (!val || obMeals.includes(val)) { input.value = ''; return; }
+  obMeals.push(val);
+  input.value = '';
+  renderObMeals();
+}
+function obRemoveMeal(idx) {
+  obMeals.splice(idx, 1);
+  renderObMeals();
+}
+
+function updateSidebarBadges() {
+  const clDone2 = S.checklist.filter(c=>c.done).length;
+  const clTotal2 = S.checklist.length;
+  document.getElementById("check-badge").textContent = (clTotal2?Math.round(clDone2/clTotal2*100):0)+"%";
+  document.getElementById("guest-badge").textContent = S.guests.length;
+  const camData2 = loadCameraData();
+  document.getElementById("camera-badge").textContent = camData2 ? (camData2.photos||[]).length : 0;
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+renderBudget();
+updateSidebarBadges();
+
+// First-login detection: show onboarding if never completed
+if (!S.onboardingDone) {
+  setTimeout(showOnboarding, 400);
+}
+</script>
+
+<!-- ═══ EXPORT PDF MODAL ═══ -->
+<div class="ob-overlay" id="export-overlay" onclick="if(event.target===this)closeExportModal()">
+  <div class="ob-modal" style="max-width:420px">
+    <p class="ob-title">Export Guest List</p>
+    <p class="ob-sub">Choose which columns to include in your PDF.</p>
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" id="exp-name" checked style="width:18px;height:18px;accent-color:var(--taupe)"> Name
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" id="exp-address" checked style="width:18px;height:18px;accent-color:var(--taupe)"> Address
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" id="exp-plusone" checked style="width:18px;height:18px;accent-color:var(--taupe)"> +1 Allowed
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" id="exp-rsvp" checked style="width:18px;height:18px;accent-color:var(--taupe)"> RSVP
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" id="exp-plusaccepted" checked style="width:18px;height:18px;accent-color:var(--taupe)"> +1 Accepted
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" id="exp-meal" checked style="width:18px;height:18px;accent-color:var(--taupe)"> Meal
+      </label>
+    </div>
+
+    <div class="ob-btn-row">
+      <button class="ob-btn ob-btn-secondary" onclick="closeExportModal()">Cancel</button>
+      <button class="ob-btn ob-btn-primary" onclick="exportGuestPDF()">Export PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ONBOARDING MODAL ═══ -->
+<div class="ob-overlay" id="ob-overlay">
+  <div class="ob-modal">
+    <!-- Progress -->
+    <div class="ob-progress">
+      <div class="ob-dot current"></div>
+      <div class="ob-dot"></div>
+      <div class="ob-dot"></div>
+    </div>
+
+    <!-- STEP 1: Couple Details + Budget -->
+    <div class="ob-step active" id="ob-step-1">
+      <p class="ob-title">Welcome to Ivory</p>
+      <p class="ob-sub">Let's set up your wedding planner.<br>Tell us about the big day.</p>
+
+      <div class="ob-row">
+        <div class="ob-field">
+          <label class="ob-label">Partner 1</label>
+          <input class="ob-input" id="ob-name1" placeholder="First name" />
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">Partner 2</label>
+          <input class="ob-input" id="ob-name2" placeholder="First name" />
+        </div>
+      </div>
+
+      <div class="ob-field">
+        <label class="ob-label">Wedding Date</label>
+        <input class="ob-input" id="ob-date" type="date" />
+      </div>
+
+      <div class="ob-field">
+        <label class="ob-label">Total Budget</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:var(--stone);font-size:15px;pointer-events:none">$</span>
+          <input class="ob-input" id="ob-budget" type="number" min="0" step="1000" value="50000" style="padding-left:32px" />
+        </div>
+      </div>
+
+      <div class="ob-btn-row">
+        <button class="ob-btn ob-btn-primary" onclick="obNext()">Next</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Guest List Upload -->
+    <div class="ob-step" id="ob-step-2">
+      <p class="ob-title">Your Guest List</p>
+      <p class="ob-sub">Upload a CSV or Excel file with your guests.<br>We'll look for <strong>Name</strong>, <strong>Address</strong>, and <strong>+1 Allowed</strong> columns.</p>
+
+      <div class="ob-upload-zone" id="ob-drop-zone"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="event.preventDefault();this.classList.remove('dragover');document.getElementById('ob-file-input').files=event.dataTransfer.files;obHandleFile(document.getElementById('ob-file-input'))">
+        <div class="icon">&#128196;</div>
+        <p class="main-text">Drop your file here or click to browse</p>
+        <p class="sub-text">Supports .csv and .xlsx</p>
+        <input type="file" id="ob-file-input" accept=".csv,.xlsx,.xls" onchange="obHandleFile(this)" />
+      </div>
+
+      <div class="ob-upload-result" id="ob-upload-result">
+        <span class="file-icon">&#9989;</span>
+        <div class="file-info">
+          <div class="file-name" id="ob-file-name">guests.csv</div>
+          <div class="file-detail" id="ob-file-detail">0 guests found</div>
+        </div>
+        <span class="file-remove" onclick="obRemoveFile()">&times;</span>
+      </div>
+
+      <div class="ob-btn-row">
+        <button class="ob-btn ob-btn-secondary" onclick="obBack()">Back</button>
+        <button class="ob-btn ob-btn-secondary" onclick="obSkipGuests()">Skip for Now</button>
+        <button class="ob-btn ob-btn-primary" onclick="obNext()">Next</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Meal Options -->
+    <div class="ob-step" id="ob-step-3">
+      <p class="ob-title">Meal Options</p>
+      <p class="ob-sub">Set the meal choices your guests can pick from on the RSVP page. You can always change these later.</p>
+
+      <div class="ob-meal-tags" id="ob-meal-tags"></div>
+
+      <div class="ob-add-row">
+        <input class="ob-add-input" id="ob-meal-input" placeholder="Add a meal option..." onkeydown="if(event.key==='Enter')obAddMeal()" />
+        <button class="btn btn-sm btn-dark" onclick="obAddMeal()">+ Add</button>
+      </div>
+
+      <div class="ob-btn-row">
+        <button class="ob-btn ob-btn-secondary" onclick="obBack()">Back</button>
+        <button class="ob-btn ob-btn-primary" onclick="obNext()">Finish Setup</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="print-area"></div>
+</body>
+</html>

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Ivory — Disposable Camera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ivory:#FAFAF7;--cream:#EDE8E0;--charcoal:#1C1917;--taupe:#9C8B7A;
+  --stone:#6B6560;--border:#D6D0C8;--border-light:#E8E4DE;--green:#4A7A5B;--red:#B85450;
+  --font-serif:"Playfair Display",Georgia,serif;
+  --font-sans:"Inter",system-ui,sans-serif;
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+html{-webkit-font-smoothing:antialiased}
+body{font-family:var(--font-sans);color:var(--charcoal);background:var(--charcoal);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+::selection{background:var(--taupe);color:var(--ivory)}
+button{cursor:pointer;border:none;font-family:inherit;background:none}
+input{font-family:inherit}
+
+/* ─── Camera shell ─── */
+.camera-shell{width:100%;max-width:420px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--charcoal)}
+
+/* ─── Header ─── */
+.cam-header{padding:20px 20px 12px;text-align:center;position:relative;z-index:10}
+.cam-logo{font-family:var(--font-serif);font-size:18px;color:var(--ivory);opacity:0.9}
+.cam-couple{font-family:var(--font-serif);font-size:24px;color:var(--ivory);margin-top:2px}
+.cam-date{font-size:11px;color:rgba(250,250,247,0.4);letter-spacing:0.08em;margin-top:4px}
+
+/* ─── Viewfinder ─── */
+.viewfinder{flex:1;position:relative;margin:12px 16px;border-radius:16px;overflow:hidden;background:#000;min-height:320px}
+.viewfinder video{width:100%;height:100%;object-fit:cover;display:block}
+.viewfinder canvas{display:none}
+.viewfinder-overlay{position:absolute;inset:0;pointer-events:none}
+.corner{position:absolute;width:24px;height:24px;border-color:rgba(250,250,247,0.5);border-style:solid}
+.corner.tl{top:16px;left:16px;border-width:2px 0 0 2px;border-radius:4px 0 0 0}
+.corner.tr{top:16px;right:16px;border-width:2px 2px 0 0;border-radius:0 4px 0 0}
+.corner.bl{bottom:16px;left:16px;border-width:0 0 2px 2px;border-radius:0 0 0 4px}
+.corner.br{bottom:16px;right:16px;border-width:0 2px 2px 0;border-radius:0 0 4px 0}
+
+/* Flash effect */
+.flash{position:absolute;inset:0;background:white;opacity:0;pointer-events:none;z-index:20;transition:opacity 0.05s}
+.flash.fire{opacity:0.85;transition:opacity 0.05s}
+
+/* ─── Shot counter ─── */
+.shot-counter{position:absolute;top:16px;right:16px;z-index:10;background:rgba(0,0,0,0.5);backdrop-filter:blur(8px);padding:6px 12px;border-radius:100px;font-size:12px;font-weight:600;color:var(--ivory);font-variant-numeric:tabular-nums}
+.shot-counter.low{color:#E8A045}
+.shot-counter.empty{color:var(--red)}
+
+/* ─── Controls ─── */
+.cam-controls{padding:16px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:16px}
+
+/* Name input */
+.name-input-wrap{width:100%;max-width:280px}
+.name-input{width:100%;padding:10px 16px;background:rgba(250,250,247,0.08);border:1px solid rgba(250,250,247,0.12);border-radius:100px;font-size:14px;color:var(--ivory);text-align:center;outline:none;transition:all 200ms}
+.name-input::placeholder{color:rgba(250,250,247,0.3)}
+.name-input:focus{border-color:var(--taupe);background:rgba(250,250,247,0.12)}
+
+/* Shutter button */
+.shutter-row{display:flex;align-items:center;justify-content:center;gap:24px;width:100%}
+.shutter-btn{width:72px;height:72px;border-radius:50%;background:var(--ivory);position:relative;transition:all 150ms;flex-shrink:0}
+.shutter-btn::after{content:"";position:absolute;inset:4px;border-radius:50%;border:2px solid var(--charcoal);transition:all 150ms}
+.shutter-btn:hover{transform:scale(1.05)}
+.shutter-btn:active{transform:scale(0.95)}
+.shutter-btn:active::after{background:rgba(28,25,23,0.1)}
+.shutter-btn:disabled{opacity:0.3;transform:none;cursor:not-allowed}
+
+/* Flip camera */
+.flip-btn{width:40px;height:40px;border-radius:50%;background:rgba(250,250,247,0.1);display:flex;align-items:center;justify-content:center;transition:all 200ms;color:var(--ivory);font-size:18px}
+.flip-btn:hover{background:rgba(250,250,247,0.2)}
+
+/* Gallery peek */
+.gallery-peek{width:44px;height:44px;border-radius:10px;border:2px solid rgba(250,250,247,0.3);overflow:hidden;cursor:pointer;transition:all 200ms;background:rgba(250,250,247,0.05)}
+.gallery-peek:hover{border-color:var(--taupe)}
+.gallery-peek img{width:100%;height:100%;object-fit:cover}
+.gallery-peek .count{position:absolute;bottom:-2px;right:-2px;background:var(--taupe);color:var(--ivory);font-size:9px;font-weight:700;padding:1px 5px;border-radius:100px}
+
+/* ─── Screens ─── */
+.screen{display:none;flex-direction:column;min-height:100vh;min-height:100dvh}
+.screen.active{display:flex}
+
+/* ─── Welcome screen ─── */
+.welcome{align-items:center;justify-content:center;padding:48px 24px;text-align:center}
+.welcome-icon{width:80px;height:80px;border-radius:50%;background:rgba(250,250,247,0.06);border:1px solid rgba(250,250,247,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:36px}
+.welcome-title{font-family:var(--font-serif);font-size:28px;color:var(--ivory);margin-bottom:8px}
+.welcome-sub{font-size:14px;color:rgba(250,250,247,0.5);line-height:1.6;max-width:300px;margin:0 auto 32px}
+.welcome-shots{font-size:13px;color:var(--taupe);margin-bottom:32px;display:flex;align-items:center;gap:8px;justify-content:center}
+.welcome-shots .num{font-family:var(--font-serif);font-size:22px;color:var(--ivory)}
+.start-btn{padding:14px 48px;background:var(--ivory);color:var(--charcoal);font-size:15px;font-weight:600;border-radius:100px;transition:all 200ms}
+.start-btn:hover{transform:scale(1.03);background:white}
+.start-btn:active{transform:scale(0.98)}
+
+/* ─── Gallery screen ─── */
+.gallery-screen{background:var(--ivory)}
+.gallery-header{position:sticky;top:0;z-index:20;background:rgba(250,250,247,0.95);backdrop-filter:blur(12px);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-light)}
+.gallery-back{font-size:13px;color:var(--stone);display:flex;align-items:center;gap:4px;font-weight:500;transition:color 200ms}
+.gallery-back:hover{color:var(--charcoal)}
+.gallery-title{font-family:var(--font-serif);font-size:18px}
+.gallery-count{font-size:12px;color:var(--stone)}
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:2px}
+.gallery-item{position:relative;aspect-ratio:1;overflow:hidden;cursor:pointer}
+.gallery-item img{width:100%;height:100%;object-fit:cover;transition:transform 300ms var(--ease)}
+.gallery-item:hover img{transform:scale(1.05)}
+.gallery-item .photo-by{position:absolute;bottom:0;left:0;right:0;padding:6px 8px;background:linear-gradient(transparent,rgba(0,0,0,0.6));font-size:10px;color:white;font-weight:500;opacity:0;transition:opacity 200ms}
+.gallery-item:hover .photo-by{opacity:1}
+.gallery-empty{padding:80px 24px;text-align:center}
+.gallery-empty-icon{font-size:48px;margin-bottom:16px;opacity:0.3}
+.gallery-empty p{font-size:14px;color:var(--stone)}
+
+/* ─── Photo view ─── */
+.photo-view{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.95);display:none;flex-direction:column;align-items:center;justify-content:center}
+.photo-view.active{display:flex}
+.photo-view-close{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);color:white;font-size:20px;display:flex;align-items:center;justify-content:center;transition:background 200ms;z-index:10}
+.photo-view-close:hover{background:rgba(255,255,255,0.2)}
+.photo-view img{max-width:90%;max-height:70vh;border-radius:8px;object-fit:contain}
+.photo-view-info{text-align:center;margin-top:16px;color:rgba(255,255,255,0.7);font-size:13px}
+.photo-view-info .by{color:white;font-weight:500}
+.photo-view-delete{margin-top:12px;padding:8px 20px;border-radius:100px;font-size:12px;font-weight:500;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.15);transition:all 200ms}
+.photo-view-delete:hover{color:var(--red);border-color:var(--red)}
+
+/* ─── Out of film ─── */
+.out-of-film{position:absolute;inset:0;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;border-radius:16px;text-align:center;padding:24px}
+.out-of-film .icon{font-size:40px;margin-bottom:12px}
+.out-of-film .msg{font-family:var(--font-serif);font-size:20px;color:var(--ivory);margin-bottom:6px}
+.out-of-film .sub{font-size:13px;color:rgba(250,250,247,0.5)}
+
+/* ─── Permission prompt ─── */
+.perm-prompt{position:absolute;inset:0;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;border-radius:16px;text-align:center;padding:24px}
+.perm-prompt .icon{font-size:40px;margin-bottom:16px}
+.perm-prompt .msg{font-size:15px;color:var(--ivory);margin-bottom:6px;font-weight:500}
+.perm-prompt .sub{font-size:13px;color:rgba(250,250,247,0.4);margin-bottom:20px}
+.perm-btn{padding:10px 32px;background:var(--ivory);color:var(--charcoal);font-size:14px;font-weight:600;border-radius:100px;transition:all 200ms}
+.perm-btn:hover{transform:scale(1.03)}
+</style>
+</head>
+<body>
+
+<div class="camera-shell">
+
+  <!-- ═══ SCREEN 1: Welcome ═══ -->
+  <div class="screen active" id="screen-welcome">
+    <div class="welcome">
+      <div class="welcome-icon">&#128247;</div>
+      <h1 class="welcome-title" id="welcome-couple">Emma & James</h1>
+      <p class="welcome-sub">Capture candid moments from our special day. Each shot is a memory we'll treasure forever.</p>
+      <div class="welcome-shots">
+        <span class="num" id="welcome-shot-count">27</span> shots available
+      </div>
+      <button class="start-btn" onclick="startCamera()">Open Camera</button>
+    </div>
+  </div>
+
+  <!-- ═══ SCREEN 2: Camera ═══ -->
+  <div class="screen" id="screen-camera">
+    <div class="cam-header">
+      <p class="cam-logo">Ivory</p>
+      <p class="cam-couple" id="cam-couple">Emma & James</p>
+      <p class="cam-date">September 14, 2026</p>
+    </div>
+
+    <div class="viewfinder" id="viewfinder">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <div class="flash" id="flash"></div>
+      <div class="shot-counter" id="shot-counter">27 left</div>
+
+      <!-- Corner marks -->
+      <div class="viewfinder-overlay">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+      </div>
+
+      <!-- Permission prompt (shown if camera not yet granted) -->
+      <div class="perm-prompt" id="perm-prompt" style="display:none">
+        <div class="icon">&#128247;</div>
+        <p class="msg">Camera access needed</p>
+        <p class="sub">We need your camera to capture moments</p>
+        <button class="perm-btn" onclick="requestCamera()">Allow Camera</button>
+      </div>
+
+      <!-- Out of film overlay -->
+      <div class="out-of-film" id="out-of-film" style="display:none">
+        <div class="icon">&#127910;</div>
+        <p class="msg">Film used up!</p>
+        <p class="sub">You've used all your shots. Thanks for the memories!</p>
+      </div>
+    </div>
+
+    <div class="cam-controls">
+      <div class="name-input-wrap">
+        <input class="name-input" id="photographer-name" placeholder="Your name" maxlength="40" />
+      </div>
+      <div class="shutter-row">
+        <div class="gallery-peek" id="gallery-peek" onclick="showGallery()" style="position:relative">
+          <img id="peek-thumb" src="" alt="" style="display:none"/>
+        </div>
+        <button class="shutter-btn" id="shutter-btn" onclick="takePhoto()"></button>
+        <button class="flip-btn" id="flip-btn" onclick="flipCamera()" title="Switch camera">&#8635;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCREEN 3: Gallery ═══ -->
+  <div class="screen gallery-screen" id="screen-gallery">
+    <div class="gallery-header">
+      <button class="gallery-back" onclick="showCamera()">&#8592; Camera</button>
+      <span class="gallery-title">Gallery</span>
+      <span class="gallery-count" id="gallery-count">0 photos</span>
+    </div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+    <div class="gallery-empty" id="gallery-empty">
+      <div class="gallery-empty-icon">&#128247;</div>
+      <p>No photos yet — start snapping!</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Photo view overlay -->
+<div class="photo-view" id="photo-view">
+  <button class="photo-view-close" onclick="closePhotoView()">&times;</button>
+  <img id="photo-view-img" src="" alt=""/>
+  <div class="photo-view-info">
+    <span class="by" id="photo-view-by"></span>
+    <span id="photo-view-time"></span>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+const CAMERA_KEY = "ivory_camera_v1";
+const PLANNER_KEY = "ivory_planner_v1";
+
+let cameraState = loadCameraState();
+let stream = null;
+let facingMode = "environment"; // back camera default
+
+function defaultCameraState() {
+  return {
+    maxShots: 27,
+    shotsUsed: 0,
+    photos: [] // {dataUrl, name, timestamp}
+  };
+}
+
+function loadCameraState() {
+  try {
+    const d = localStorage.getItem(CAMERA_KEY);
+    if (d) return JSON.parse(d);
+  } catch(e) {}
+  return defaultCameraState();
+}
+function saveCameraState() {
+  localStorage.setItem(CAMERA_KEY, JSON.stringify(cameraState));
+  // Also sync photo count to planner state
+  syncToPlanner();
+}
+
+function syncToPlanner() {
+  try {
+    const d = localStorage.getItem(PLANNER_KEY);
+    if (d) {
+      const planner = JSON.parse(d);
+      planner.cameraPhotos = cameraState.photos.length;
+      planner.cameraShotsUsed = cameraState.shotsUsed;
+      planner.cameraMaxShots = cameraState.maxShots;
+      localStorage.setItem(PLANNER_KEY, JSON.stringify(planner));
+    }
+  } catch(e) {}
+}
+
+// Check if planner has custom shot limit
+function loadSettingsFromPlanner() {
+  try {
+    const d = localStorage.getItem(PLANNER_KEY);
+    if (d) {
+      const planner = JSON.parse(d);
+      if (planner.cameraMaxShots && cameraState.photos.length === 0) {
+        cameraState.maxShots = planner.cameraMaxShots;
+      }
+    }
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════
+// SCREEN SWITCHING
+// ══════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+// ══════════════════════════════════════════════════
+// WELCOME
+// ══════════════════════════════════════════════════
+function initWelcome() {
+  const remaining = cameraState.maxShots - cameraState.shotsUsed;
+  document.getElementById('welcome-shot-count').textContent = remaining;
+}
+
+// ══════════════════════════════════════════════════
+// CAMERA
+// ══════════════════════════════════════════════════
+async function startCamera() {
+  showScreen('camera');
+  updateShotCounter();
+  updatePeek();
+
+  // Check if out of film
+  if (cameraState.shotsUsed >= cameraState.maxShots) {
+    document.getElementById('out-of-film').style.display = 'flex';
+    document.getElementById('shutter-btn').disabled = true;
+    return;
+  }
+
+  try {
+    await requestCamera();
+  } catch(e) {
+    document.getElementById('perm-prompt').style.display = 'flex';
+  }
+}
+
+async function requestCamera() {
+  document.getElementById('perm-prompt').style.display = 'none';
+  try {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+    }
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    });
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    await video.play();
+  } catch(e) {
+    document.getElementById('perm-prompt').style.display = 'flex';
+  }
+}
+
+async function flipCamera() {
+  facingMode = facingMode === "environment" ? "user" : "environment";
+  await requestCamera();
+}
+
+function takePhoto() {
+  if (cameraState.shotsUsed >= cameraState.maxShots) return;
+
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth || 1280;
+  canvas.height = video.videoHeight || 720;
+  const ctx = canvas.getContext('2d');
+
+  // If front camera, mirror the image
+  if (facingMode === 'user') {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0);
+
+  // Flash effect
+  const flash = document.getElementById('flash');
+  flash.classList.add('fire');
+  setTimeout(() => flash.classList.remove('fire'), 150);
+
+  // Compress to JPEG
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+
+  const name = document.getElementById('photographer-name').value.trim() || 'Anonymous';
+
+  cameraState.photos.push({
+    dataUrl: dataUrl,
+    name: name,
+    timestamp: Date.now()
+  });
+  cameraState.shotsUsed++;
+  saveCameraState();
+
+  updateShotCounter();
+  updatePeek();
+
+  // Check if out of film now
+  if (cameraState.shotsUsed >= cameraState.maxShots) {
+    document.getElementById('out-of-film').style.display = 'flex';
+    document.getElementById('shutter-btn').disabled = true;
+  }
+}
+
+function updateShotCounter() {
+  const remaining = cameraState.maxShots - cameraState.shotsUsed;
+  const el = document.getElementById('shot-counter');
+  el.textContent = remaining + ' left';
+  el.classList.remove('low', 'empty');
+  if (remaining === 0) el.classList.add('empty');
+  else if (remaining <= 5) el.classList.add('low');
+}
+
+function updatePeek() {
+  const img = document.getElementById('peek-thumb');
+  if (cameraState.photos.length > 0) {
+    const last = cameraState.photos[cameraState.photos.length - 1];
+    img.src = last.dataUrl;
+    img.style.display = 'block';
+  } else {
+    img.style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════════════════════
+// GALLERY
+// ══════════════════════════════════════════════════
+function showGallery() {
+  showScreen('gallery');
+  renderGallery();
+}
+
+function showCamera() {
+  showScreen('camera');
+}
+
+function renderGallery() {
+  const grid = document.getElementById('gallery-grid');
+  const empty = document.getElementById('gallery-empty');
+  const count = document.getElementById('gallery-count');
+
+  count.textContent = cameraState.photos.length + ' photo' + (cameraState.photos.length !== 1 ? 's' : '');
+
+  if (cameraState.photos.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  // Show newest first
+  grid.innerHTML = [...cameraState.photos].reverse().map((p, ri) => {
+    const i = cameraState.photos.length - 1 - ri;
+    return `<div class="gallery-item" onclick="viewPhoto(${i})">
+      <img src="${p.dataUrl}" alt="Photo by ${p.name}" loading="lazy"/>
+      <div class="photo-by">${p.name}</div>
+    </div>`;
+  }).join('');
+}
+
+function viewPhoto(idx) {
+  const photo = cameraState.photos[idx];
+  if (!photo) return;
+  document.getElementById('photo-view-img').src = photo.dataUrl;
+  document.getElementById('photo-view-by').textContent = photo.name;
+  const time = new Date(photo.timestamp);
+  document.getElementById('photo-view-time').textContent = ' · ' + time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('photo-view').classList.add('active');
+  document.getElementById('photo-view').dataset.idx = idx;
+}
+
+function closePhotoView() {
+  document.getElementById('photo-view').classList.remove('active');
+}
+
+// Close on escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePhotoView();
+});
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+loadSettingsFromPlanner();
+initWelcome();
+</script>
+</body>
+</html>

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Ivory — RSVP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ivory:#FAFAF7;--cream:#EDE8E0;--charcoal:#1C1917;--taupe:#9C8B7A;
+  --stone:#6B6560;--border:#D6D0C8;--border-light:#E8E4DE;--green:#4A7A5B;--red:#B85450;
+  --font-serif:"Playfair Display",Georgia,serif;
+  --font-sans:"Inter",system-ui,sans-serif;
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{font-family:var(--font-sans);color:var(--charcoal);background:var(--ivory);min-height:100vh;display:flex;align-items:center;justify-content:center}
+::selection{background:var(--taupe);color:var(--ivory)}
+button{cursor:pointer;border:none;font-family:inherit}
+input,select,textarea{font-family:inherit}
+
+/* ─── Decorative lines ─── */
+.flourish{width:200px;height:1px;margin:0 auto 32px;background:linear-gradient(to right,transparent,rgba(156,139,122,0.35),transparent)}
+
+/* ─── Page ─── */
+.rsvp-page{width:100%;max-width:500px;padding:48px 24px;text-align:center}
+.logo{font-family:var(--font-serif);font-size:24px;margin-bottom:4px}
+.couple-names{font-family:var(--font-serif);font-size:clamp(36px,7vw,52px);line-height:1.1;letter-spacing:-0.02em;margin-bottom:6px}
+.wedding-date{font-size:13px;color:var(--stone);letter-spacing:0.06em;margin-bottom:32px}
+
+/* ─── Steps ─── */
+.step{display:none}
+.step.active{display:block;animation:fadeUp .4s var(--ease) both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── Search ─── */
+.search-wrap{position:relative;margin-bottom:16px}
+.search-input{width:100%;padding:14px 20px;border:1px solid var(--border);border-radius:12px;font-size:15px;background:white;color:var(--charcoal);outline:none;transition:all 200ms}
+.search-input:focus{border-color:var(--taupe);box-shadow:0 0 0 3px rgba(156,139,122,0.12)}
+.search-input::placeholder{color:rgba(107,101,96,0.4)}
+.search-hint{font-size:12px;color:var(--stone);margin-top:8px}
+
+/* ─── Results list ─── */
+.results{text-align:left;margin-top:16px}
+.result-item{padding:14px 16px;border:1px solid var(--border-light);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all 200ms;background:white;display:flex;align-items:center;justify-content:space-between}
+.result-item:hover{border-color:var(--taupe);background:rgba(156,139,122,0.04)}
+.result-item .name{font-size:15px;font-weight:500}
+.result-item .arrow{color:var(--taupe);font-size:14px}
+.no-results{font-size:14px;color:var(--stone);padding:24px 0}
+
+/* ─── RSVP Form ─── */
+.rsvp-card{background:white;border:1px solid var(--border-light);border-radius:16px;padding:32px;text-align:left;margin-top:8px}
+.guest-greeting{font-family:var(--font-serif);font-size:22px;margin-bottom:4px;text-align:center}
+.guest-sub{font-size:13px;color:var(--stone);text-align:center;margin-bottom:28px}
+
+.form-group{margin-bottom:20px}
+.form-label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--stone);margin-bottom:8px}
+
+/* Radio buttons */
+.radio-group{display:flex;gap:10px}
+.radio-opt{flex:1;position:relative}
+.radio-opt input{position:absolute;opacity:0;pointer-events:none}
+.radio-opt label{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;transition:all 200ms;text-align:center;background:var(--ivory)}
+.radio-opt input:checked+label{border-color:var(--taupe);background:rgba(156,139,122,0.08);color:var(--charcoal)}
+.radio-opt label:hover{border-color:var(--taupe)}
+.radio-opt .dot{width:8px;height:8px;border-radius:50%;border:2px solid var(--border);transition:all 200ms;flex-shrink:0}
+.radio-opt input:checked+label .dot{border-color:var(--taupe);background:var(--taupe)}
+
+/* Select & input */
+.form-select,.form-input{width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--charcoal);background:white;outline:none;transition:all 200ms}
+.form-select:focus,.form-input:focus{border-color:var(--taupe);box-shadow:0 0 0 3px rgba(156,139,122,0.12)}
+.form-textarea{width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--charcoal);background:white;outline:none;transition:all 200ms;resize:vertical;min-height:80px}
+.form-textarea:focus{border-color:var(--taupe);box-shadow:0 0 0 3px rgba(156,139,122,0.12)}
+
+/* Plus-one guest entries */
+.plus-guest-entry{padding:16px;background:var(--ivory);border-radius:10px;border:1px solid var(--border-light);margin-bottom:10px;position:relative}
+.plus-guest-entry .form-group{margin-bottom:12px}
+.plus-guest-entry .form-group:last-child{margin-bottom:0}
+.plus-guest-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.plus-guest-label{font-size:12px;font-weight:600;color:var(--taupe)}
+.plus-guest-remove{font-size:11px;color:var(--stone);background:none;padding:4px 10px;border-radius:100px;border:1px solid var(--border-light);transition:all 200ms}
+.plus-guest-remove:hover{color:var(--red);border-color:var(--red);background:rgba(184,84,80,0.04)}
+.add-guest-btn{width:100%;padding:12px;border:1px dashed var(--border);border-radius:10px;font-size:13px;font-weight:500;color:var(--taupe);background:transparent;transition:all 200ms;margin-top:4px}
+.add-guest-btn:hover{border-color:var(--taupe);background:rgba(156,139,122,0.04);color:var(--charcoal)}
+.plus-limit-note{font-size:11px;color:var(--stone);margin-top:6px;text-align:center}
+
+/* Buttons */
+.btn-primary{width:100%;padding:14px;background:var(--charcoal);color:var(--ivory);font-size:15px;font-weight:500;border-radius:100px;transition:all 200ms;margin-top:8px}
+.btn-primary:hover{background:#2C2924;transform:scale(1.01)}
+.btn-primary:active{transform:scale(0.99)}
+.btn-back{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--stone);padding:8px 0;transition:color 200ms;background:none;margin-bottom:16px}
+.btn-back:hover{color:var(--charcoal)}
+
+/* ─── Confirmation ─── */
+.confirm-icon{width:56px;height:56px;border-radius:50%;background:rgba(74,122,91,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:24px}
+.confirm-title{font-family:var(--font-serif);font-size:26px;margin-bottom:8px}
+.confirm-sub{font-size:14px;color:var(--stone);line-height:1.6;margin-bottom:24px}
+.confirm-details{text-align:left;background:var(--ivory);border-radius:12px;padding:20px;margin-bottom:20px}
+.confirm-row{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}
+.confirm-row:not(:last-child){border-bottom:1px solid var(--border-light)}
+.confirm-row .label{color:var(--stone)}
+.confirm-row .value{font-weight:500;text-align:right;max-width:60%}
+.confirm-guest-card{background:white;border:1px solid var(--border-light);border-radius:8px;padding:10px 14px;margin-top:8px}
+.confirm-guest-card .cg-name{font-size:13px;font-weight:500}
+.confirm-guest-card .cg-meal{font-size:11px;color:var(--stone)}
+
+.decline-icon{width:56px;height:56px;border-radius:50%;background:rgba(184,84,80,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:24px}
+</style>
+</head>
+<body>
+
+<div class="rsvp-page">
+  <p class="logo">Ivory</p>
+
+  <!-- ═══ STEP 1: Search ═══ -->
+  <div class="step active" id="step-search">
+    <h1 class="couple-names" id="couple-names">Emma & James</h1>
+    <p class="wedding-date">September 14, 2026</p>
+    <div class="flourish"></div>
+    <p style="font-size:15px;color:var(--stone);margin-bottom:24px;">We'd love to celebrate with you.<br>Please find your name below to RSVP.</p>
+    <div class="search-wrap">
+      <input class="search-input" id="guest-search" placeholder="Type your name..." oninput="searchGuests()" autofocus />
+    </div>
+    <p class="search-hint">Search by first or last name</p>
+    <div class="results" id="search-results"></div>
+  </div>
+
+  <!-- ═══ STEP 2: RSVP Form ═══ -->
+  <div class="step" id="step-rsvp">
+    <button class="btn-back" onclick="goToStep('search')">&larr; Back to search</button>
+    <div class="rsvp-card">
+      <p class="guest-greeting" id="rsvp-greeting">Hi, Sarah!</p>
+      <p class="guest-sub">We're so glad you're here. Let us know if you can make it.</p>
+
+      <div class="form-group">
+        <span class="form-label">Will you be attending?</span>
+        <div class="radio-group">
+          <div class="radio-opt">
+            <input type="radio" name="rsvp" id="rsvp-yes" value="Attending" onchange="updateRsvpForm()"/>
+            <label for="rsvp-yes"><span class="dot"></span>Joyfully Accept</label>
+          </div>
+          <div class="radio-opt">
+            <input type="radio" name="rsvp" id="rsvp-no" value="Declined" onchange="updateRsvpForm()"/>
+            <label for="rsvp-no"><span class="dot"></span>Regretfully Decline</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="attending-fields" style="display:none">
+        <div class="form-group">
+          <span class="form-label">Meal Preference</span>
+          <select class="form-select" id="rsvp-meal"></select>
+        </div>
+
+        <!-- Additional Guests section (dynamic) -->
+        <div class="form-group" id="plus-one-section" style="display:none">
+          <span class="form-label">Additional Guests <span id="plus-limit-label" style="font-weight:400;text-transform:none;letter-spacing:0"></span></span>
+          <div id="plus-guests-container"></div>
+          <button class="add-guest-btn" id="add-guest-btn" onclick="addPlusGuest()">+ Add a Guest</button>
+          <p class="plus-limit-note" id="plus-limit-note"></p>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">Dietary Restrictions or Allergies</span>
+          <textarea class="form-textarea" id="rsvp-dietary" placeholder="Let us know about any dietary needs..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">Song Request (optional)</span>
+          <input class="form-input" id="rsvp-song" placeholder="What song gets you on the dance floor?" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <span class="form-label">Message for the Couple (optional)</span>
+        <textarea class="form-textarea" id="rsvp-message" placeholder="Share your well wishes..."></textarea>
+      </div>
+
+      <button class="btn-primary" id="rsvp-submit" onclick="submitRsvp()" disabled>Select your response above</button>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 3a: Confirmation (Attending) ═══ -->
+  <div class="step" id="step-confirmed" style="text-align:center">
+    <div class="confirm-icon">&#10003;</div>
+    <h2 class="confirm-title">We can't wait to see you!</h2>
+    <p class="confirm-sub">Your RSVP has been recorded. Here's a summary of your response.</p>
+    <div class="confirm-details" id="confirm-details"></div>
+    <p style="font-size:13px;color:var(--stone);">Need to make changes? <a href="#" onclick="event.preventDefault();goToStep('rsvp')" style="color:var(--taupe);font-weight:500;">Edit your RSVP</a></p>
+  </div>
+
+  <!-- ═══ STEP 3b: Confirmation (Declined) ═══ -->
+  <div class="step" id="step-declined" style="text-align:center">
+    <div class="decline-icon">&#9825;</div>
+    <h2 class="confirm-title">We'll miss you!</h2>
+    <p class="confirm-sub">We understand and appreciate you letting us know. You'll be in our hearts on the big day.</p>
+    <p style="font-size:13px;color:var(--stone);">Changed your mind? <a href="#" onclick="event.preventDefault();goToStep('rsvp')" style="color:var(--taupe);font-weight:500;">Update your RSVP</a></p>
+  </div>
+</div>
+
+<script>
+const STATE_KEY = "ivory_planner_v1";
+let plannerState = null;
+let selectedGuestIdx = -1;
+let plusGuestsList = []; // [{name, meal}]
+let currentPlusLimit = 0;
+
+function loadPlanner() {
+  try {
+    const d = localStorage.getItem(STATE_KEY);
+    if (d) { plannerState = JSON.parse(d); return true; }
+  } catch(e) {}
+  return false;
+}
+function savePlanner() { localStorage.setItem(STATE_KEY, JSON.stringify(plannerState)); }
+
+// ─── Step navigation ───
+function goToStep(step) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + step).classList.add('active');
+  if (step === 'search') document.getElementById('guest-search').focus();
+}
+
+// ─── Search ───
+function searchGuests() {
+  const q = document.getElementById('guest-search').value.trim().toLowerCase();
+  const container = document.getElementById('search-results');
+
+  if (!plannerState || !plannerState.guests || plannerState.guests.length === 0) {
+    container.innerHTML = '<p class="no-results">No guest list found. The couple hasn\'t added guests yet.</p>';
+    return;
+  }
+  if (q.length < 2) { container.innerHTML = ''; return; }
+
+  const matches = plannerState.guests
+    .map((g, i) => ({ ...g, idx: i }))
+    .filter(g => g.name && g.name.toLowerCase().includes(q));
+
+  if (matches.length === 0) {
+    container.innerHTML = '<p class="no-results">No matching name found. Please try again or contact the couple.</p>';
+    return;
+  }
+
+  container.innerHTML = matches.map(g => {
+    const status = g.rsvp === 'Attending' ? ' &middot; <span style="color:var(--green)">Attending</span>' :
+                   g.rsvp === 'Declined' ? ' &middot; <span style="color:var(--red)">Declined</span>' : '';
+    return `<div class="result-item" onclick="selectGuest(${g.idx})">
+      <span class="name">${g.name}${status}</span>
+      <span class="arrow">&rarr;</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── Meal options from planner state ───
+function getMealChoices() {
+  if (plannerState && plannerState.mealOptions && plannerState.mealOptions.length > 0) {
+    return plannerState.mealOptions;
+  }
+  return ['Chicken','Fish','Beef','Vegetarian','Vegan','Kids Meal'];
+}
+
+function mealOptionsHTML(selected) {
+  const meals = getMealChoices();
+  return '<option value="">Select meal...</option>' + meals.map(m => `<option${m===selected?' selected':''}>${m}</option>`).join('');
+}
+
+// ─── Select guest & show form ───
+function selectGuest(idx) {
+  selectedGuestIdx = idx;
+  const guest = plannerState.guests[idx];
+  const firstName = guest.name.split(' ')[0] || guest.name;
+
+  document.getElementById('rsvp-greeting').textContent = 'Hi, ' + firstName + '!';
+
+  // Determine plus-one limit
+  currentPlusLimit = (typeof guest.allowPlusOne === 'number') ? guest.allowPlusOne : (guest.allowPlusOne === 'No' ? 0 : 1);
+
+  // Show/hide plus-one section
+  document.getElementById('plus-one-section').style.display = currentPlusLimit > 0 ? '' : 'none';
+
+  if (currentPlusLimit > 0) {
+    document.getElementById('plus-limit-label').textContent = '(up to ' + currentPlusLimit + ')';
+  }
+
+  // Load existing plus guests data
+  // Support both new plusGuests array and legacy single plusOne fields
+  if (guest.plusGuests && Array.isArray(guest.plusGuests)) {
+    plusGuestsList = guest.plusGuests.map(g => ({name: g.name || '', meal: g.meal || ''}));
+  } else if (guest.plusOne === 'Yes' && guest.plusOneName) {
+    // Migrate legacy single plus-one
+    plusGuestsList = [{name: guest.plusOneName, meal: guest.plusOneMeal || ''}];
+  } else {
+    plusGuestsList = [];
+  }
+
+  renderPlusGuests();
+
+  // Populate meal dropdown dynamically from planner state
+  document.getElementById('rsvp-meal').innerHTML = mealOptionsHTML(guest.meal || '');
+
+  // Reset form fields
+  document.getElementById('rsvp-yes').checked = guest.rsvp === 'Attending';
+  document.getElementById('rsvp-no').checked = guest.rsvp === 'Declined';
+  document.getElementById('rsvp-dietary').value = guest.dietary || '';
+  document.getElementById('rsvp-song').value = guest.song || '';
+  document.getElementById('rsvp-message').value = guest.message || '';
+
+  updateRsvpForm();
+  goToStep('rsvp');
+}
+
+// ─── Plus guests management ───
+function addPlusGuest() {
+  if (plusGuestsList.length >= currentPlusLimit) return;
+  plusGuestsList.push({name: '', meal: ''});
+  renderPlusGuests();
+}
+
+function removePlusGuest(idx) {
+  plusGuestsList.splice(idx, 1);
+  renderPlusGuests();
+}
+
+function updatePlusGuestName(idx, val) {
+  plusGuestsList[idx].name = val;
+}
+
+function updatePlusGuestMeal(idx, val) {
+  plusGuestsList[idx].meal = val;
+}
+
+function renderPlusGuests() {
+  const container = document.getElementById('plus-guests-container');
+  const addBtn = document.getElementById('add-guest-btn');
+  const note = document.getElementById('plus-limit-note');
+
+  container.innerHTML = plusGuestsList.map((g, i) => `
+    <div class="plus-guest-entry">
+      <div class="plus-guest-header">
+        <span class="plus-guest-label">Guest ${i + 1}</span>
+        <button class="plus-guest-remove" onclick="removePlusGuest(${i})">Remove</button>
+      </div>
+      <div class="form-group">
+        <span class="form-label">Full Name</span>
+        <input class="form-input" value="${(g.name||'').replace(/"/g,'&quot;')}" placeholder="Their full name" onblur="updatePlusGuestName(${i}, this.value)" />
+      </div>
+      <div class="form-group">
+        <span class="form-label">Meal Preference</span>
+        <select class="form-select" onchange="updatePlusGuestMeal(${i}, this.value)">
+          ${mealOptionsHTML(g.meal)}
+        </select>
+      </div>
+    </div>
+  `).join('');
+
+  // Show/hide add button
+  if (plusGuestsList.length >= currentPlusLimit) {
+    addBtn.style.display = 'none';
+    note.textContent = 'Maximum of ' + currentPlusLimit + ' additional guest' + (currentPlusLimit > 1 ? 's' : '') + ' reached';
+  } else {
+    addBtn.style.display = '';
+    const remaining = currentPlusLimit - plusGuestsList.length;
+    note.textContent = remaining + ' more guest' + (remaining > 1 ? 's' : '') + ' allowed';
+  }
+}
+
+// ─── Toggle attending fields ───
+function updateRsvpForm() {
+  const attending = document.getElementById('rsvp-yes').checked;
+  const declined = document.getElementById('rsvp-no').checked;
+  document.getElementById('attending-fields').style.display = attending ? 'block' : 'none';
+
+  const btn = document.getElementById('rsvp-submit');
+  if (attending || declined) {
+    btn.disabled = false;
+    btn.textContent = attending ? 'Confirm RSVP' : 'Send Response';
+    btn.style.opacity = '1';
+  } else {
+    btn.disabled = true;
+    btn.textContent = 'Select your response above';
+    btn.style.opacity = '0.5';
+  }
+}
+
+// ─── Submit ───
+function submitRsvp() {
+  if (selectedGuestIdx < 0) return;
+  const guest = plannerState.guests[selectedGuestIdx];
+  const attending = document.getElementById('rsvp-yes').checked;
+
+  guest.rsvp = attending ? 'Attending' : 'Declined';
+
+  if (attending) {
+    guest.meal = document.getElementById('rsvp-meal').value;
+
+    if (currentPlusLimit > 0) {
+      // Filter out entries with no name
+      const validGuests = plusGuestsList.filter(g => g.name.trim());
+      guest.plusGuests = validGuests;
+      // Keep legacy fields in sync for backward compat with planner
+      guest.plusOne = validGuests.length > 0 ? 'Yes' : 'No';
+      guest.plusOneName = validGuests.length > 0 ? validGuests[0].name : '';
+      guest.plusOneMeal = validGuests.length > 0 ? validGuests[0].meal : '';
+    } else {
+      guest.plusGuests = [];
+      guest.plusOne = 'No';
+      guest.plusOneName = '';
+      guest.plusOneMeal = '';
+    }
+
+    guest.dietary = document.getElementById('rsvp-dietary').value.trim();
+    guest.song = document.getElementById('rsvp-song').value.trim();
+  }
+  guest.message = document.getElementById('rsvp-message').value.trim();
+  guest.rsvpDate = new Date().toLocaleDateString();
+
+  savePlanner();
+
+  if (attending) {
+    // Build confirmation summary
+    let rows = `<div class="confirm-row"><span class="label">Name</span><span class="value">${guest.name}</span></div>`;
+    rows += `<div class="confirm-row"><span class="label">Response</span><span class="value" style="color:var(--green)">Attending</span></div>`;
+    if (guest.meal) rows += `<div class="confirm-row"><span class="label">Meal</span><span class="value">${guest.meal}</span></div>`;
+
+    // Show all plus guests
+    const validGuests = (guest.plusGuests || []).filter(g => g.name);
+    if (validGuests.length > 0) {
+      rows += `<div class="confirm-row"><span class="label">Additional Guests</span><span class="value">${validGuests.length}</span></div>`;
+      validGuests.forEach((g, i) => {
+        rows += `<div class="confirm-guest-card"><span class="cg-name">${g.name}</span>${g.meal ? '<span class="cg-meal"> · ' + g.meal + '</span>' : ''}</div>`;
+      });
+    }
+
+    if (guest.dietary) rows += `<div class="confirm-row"><span class="label">Dietary Notes</span><span class="value">${guest.dietary}</span></div>`;
+    if (guest.song) rows += `<div class="confirm-row"><span class="label">Song Request</span><span class="value">${guest.song}</span></div>`;
+    document.getElementById('confirm-details').innerHTML = rows;
+    goToStep('confirmed');
+  } else {
+    goToStep('declined');
+  }
+}
+
+// ─── Init ───
+loadPlanner();
+
+// Update couple names & date from planner state
+if (plannerState) {
+  const n1 = plannerState.coupleName1 || '';
+  const n2 = plannerState.coupleName2 || '';
+  if (n1 && n2) {
+    document.getElementById('couple-names').textContent = n1 + ' & ' + n2;
+  }
+  if (plannerState.weddingDate) {
+    const d = new Date(plannerState.weddingDate + 'T00:00:00');
+    if (!isNaN(d)) {
+      document.querySelector('.wedding-date').textContent = d.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+    }
+  }
+}
+
+// If no planner data or no guests, seed demo data
+if (!plannerState || !plannerState.guests || plannerState.guests.length === 0) {
+  if (!plannerState) plannerState = { guests: [] };
+  if (!plannerState.guests) plannerState.guests = [];
+  if (plannerState.guests.length === 0) {
+    plannerState.guests = [
+      {name:"Sarah Chen",address:"123 Park Ave, Brooklyn, NY",rsvp:"Pending",allowPlusOne:2,plusOne:"No",meal:"",gift:"No",thanks:"No",plusGuests:[]},
+      {name:"David Okafor",address:"456 Oak St, Austin, TX",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No",plusGuests:[]},
+      {name:"Priya Sharma",address:"789 Elm Dr, London, UK",rsvp:"Pending",allowPlusOne:0,plusOne:"No",meal:"",gift:"No",thanks:"No",plusGuests:[]},
+      {name:"Tom Williams",address:"321 Maple Ct, Chicago, IL",rsvp:"Pending",allowPlusOne:3,plusOne:"No",meal:"",gift:"No",thanks:"No",plusGuests:[]},
+      {name:"Claire Dubois",address:"654 Pine Ln, Montreal, QC",rsvp:"Pending",allowPlusOne:0,plusOne:"No",meal:"",gift:"No",thanks:"No",plusGuests:[]},
+    ];
+    savePlanner();
+  }
+}
+</script>
+</body>
+</html>

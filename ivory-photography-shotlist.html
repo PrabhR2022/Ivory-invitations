@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ivory — Photography Must-Have Shot List</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --ivory: #FAFAF7; --cream: #EDE8E0; --charcoal: #1C1917;
+      --taupe: #9C8B7A; --stone: #6B6560; --border: #D6D0C8;
+      --border-light: #E8E4DE; --font-serif: "Playfair Display", Georgia, serif;
+      --font-sans: "Inter", system-ui, sans-serif;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    html { -webkit-font-smoothing: antialiased; }
+    body { font-family: var(--font-sans); color: var(--charcoal); background: var(--ivory); min-height: 100vh; }
+    ::selection { background: var(--taupe); color: var(--ivory); }
+    button { cursor: pointer; border: none; font-family: inherit; }
+    input, textarea { font-family: inherit; }
+
+    .page { max-width: 900px; margin: 0 auto; padding: 48px 24px 96px; }
+    .page-header { text-align: center; margin-bottom: 48px; }
+    .page-header .eyebrow { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--stone); margin-bottom: 12px; }
+    .page-header h1 { font-family: var(--font-serif); font-size: clamp(32px, 5vw, 48px); line-height: 1.1; letter-spacing: -0.02em; }
+    .page-header p { margin-top: 12px; color: var(--stone); font-size: 15px; max-width: 520px; margin-left: auto; margin-right: auto; }
+
+    /* Progress bar */
+    .progress-wrapper { margin-bottom: 32px; }
+    .progress-stats { display: flex; justify-content: space-between; font-size: 13px; color: var(--stone); margin-bottom: 8px; }
+    .progress-track { height: 4px; background: var(--border-light); border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--taupe); border-radius: 2px; transition: width 400ms var(--ease); }
+
+    /* Section */
+    .shot-section { margin-bottom: 40px; }
+    .shot-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 0; border-bottom: 1px solid var(--border-light); margin-bottom: 16px; cursor: pointer;
+    }
+    .shot-section-header h2 { font-family: var(--font-serif); font-size: 24px; font-weight: 400; }
+    .shot-section-header .count { font-size: 13px; color: var(--stone); }
+    .shot-section-header .toggle { font-size: 18px; color: var(--stone); transition: transform 200ms; }
+    .shot-section-header.collapsed .toggle { transform: rotate(-90deg); }
+
+    /* Shot row */
+    .shot-row {
+      display: flex; align-items: flex-start; gap: 16px; padding: 14px 0;
+      border-bottom: 1px solid rgba(214,208,200,0.4); transition: background 200ms;
+    }
+    .shot-row:hover { background: rgba(237,232,224,0.3); margin: 0 -12px; padding-left: 12px; padding-right: 12px; border-radius: 8px; }
+    .shot-check {
+      width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border);
+      flex-shrink: 0; margin-top: 2px; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: all 200ms; background: white;
+    }
+    .shot-check.checked { background: var(--taupe); border-color: var(--taupe); }
+    .shot-check.checked::after { content: ""; display: block; width: 6px; height: 6px; background: white; border-radius: 50%; }
+    .shot-row.done .shot-name { text-decoration: line-through; color: var(--stone); }
+    .shot-info { flex: 1; }
+    .shot-name { font-size: 14px; font-weight: 500; }
+    .shot-note { font-size: 12px; color: var(--stone); margin-top: 2px; }
+    .shot-priority {
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 100px; flex-shrink: 0; margin-top: 4px;
+    }
+    .priority-essential { background: rgba(156,139,122,0.15); color: var(--taupe); }
+    .priority-important { background: rgba(237,232,224,0.6); color: var(--stone); }
+    .priority-nice { background: rgba(237,232,224,0.3); color: rgba(107,101,96,0.6); }
+
+    /* Inspiration images */
+    .inspiration-section { margin-top: 12px; padding: 16px; background: rgba(237,232,224,0.3); border-radius: 12px; }
+    .inspiration-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--stone); margin-bottom: 12px; }
+    .inspiration-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .inspo-thumb {
+      width: 80px; height: 80px; border-radius: 8px; overflow: hidden; position: relative;
+      border: 1px solid var(--border-light); cursor: pointer; background: var(--cream);
+    }
+    .inspo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .inspo-thumb .remove {
+      position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(28,25,23,0.7); color: white; font-size: 10px; display: flex;
+      align-items: center; justify-content: center; opacity: 0; transition: opacity 200ms; cursor: pointer;
+    }
+    .inspo-thumb:hover .remove { opacity: 1; }
+    .inspo-add {
+      width: 80px; height: 80px; border-radius: 8px; border: 2px dashed var(--border);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 200ms; background: transparent; color: var(--stone); font-size: 20px;
+    }
+    .inspo-add:hover { border-color: var(--taupe); background: rgba(156,139,122,0.05); }
+    .inspo-add span { font-size: 10px; margin-top: 2px; }
+
+    /* Add custom shot */
+    .add-shot-form {
+      display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-light);
+    }
+    .add-shot-form input {
+      flex: 1; padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 13px; background: white; outline: none; transition: all 200ms;
+    }
+    .add-shot-form input:focus { border-color: var(--taupe); box-shadow: 0 0 0 2px rgba(156,139,122,0.1); }
+    .add-shot-form button {
+      padding: 8px 16px; border-radius: 8px; background: var(--charcoal); color: var(--ivory);
+      font-size: 13px; font-weight: 500; transition: all 200ms; white-space: nowrap;
+    }
+    .add-shot-form button:hover { background: #2C2924; }
+
+    /* Print styles */
+    .print-btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 10px 24px;
+      border-radius: 100px; background: white; border: 1px solid var(--border);
+      font-size: 13px; font-weight: 500; color: var(--stone); transition: all 200ms; margin-bottom: 32px;
+    }
+    .print-btn:hover { background: var(--cream); }
+
+    @media print {
+      .print-btn, .add-shot-form, .inspo-add, .inspo-thumb .remove, .page-header p { display: none !important; }
+      body { background: white; }
+      .shot-section-header { cursor: default; }
+    }
+
+    @media (max-width: 640px) {
+      .inspo-thumb, .inspo-add { width: 64px; height: 64px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <div class="page-header">
+    <p class="eyebrow">Ivory Invitations</p>
+    <h1>Photography Shot List</h1>
+    <p>Check off your must-have shots and add inspiration images. Share this list with your photographer before the big day.</p>
+  </div>
+
+  <button class="print-btn" onclick="window.print()">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+    Print for Photographer
+  </button>
+
+  <div class="progress-wrapper">
+    <div class="progress-stats">
+      <span id="progress-text">0 of 0 shots planned</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-bar" style="width:0%"></div></div>
+  </div>
+
+  <div id="sections-container"></div>
+</div>
+
+<input type="file" id="file-input" accept="image/*" style="display:none" multiple />
+
+<script>
+const data = {
+  "Getting Ready": [
+    { name: "Dress hanging / on display", note: "With natural light, against clean background", priority: "essential" },
+    { name: "Dress details (lace, buttons, train)", note: "", priority: "essential" },
+    { name: "Shoes", note: "Bride's and groom's", priority: "important" },
+    { name: "Jewelry & accessories", note: "Rings, earrings, cufflinks, watch", priority: "essential" },
+    { name: "Invitation suite flat lay", note: "Arrange with rings, florals, perfume", priority: "important" },
+    { name: "Perfume / cologne", note: "", priority: "nice" },
+    { name: "Bouquet detail shot", note: "", priority: "essential" },
+    { name: "Bride getting into dress", note: "Mom or MOH helping", priority: "essential" },
+    { name: "Groom putting on jacket / tie", note: "", priority: "important" },
+    { name: "First look with parent(s)", note: "Emotional reveal moment", priority: "essential" },
+    { name: "Bridesmaids' reaction to bride", note: "", priority: "important" },
+    { name: "Groom's reaction (first look)", note: "If doing a first look", priority: "essential" },
+    { name: "Gift exchange between couple", note: "If exchanging before ceremony", priority: "nice" },
+  ],
+  "The Ceremony": [
+    { name: "Venue wide shot (before guests)", note: "Capture the full setup", priority: "essential" },
+    { name: "Guests arriving", note: "", priority: "nice" },
+    { name: "Processional — flower girl / ring bearer", note: "", priority: "important" },
+    { name: "Processional — bridesmaids & groomsmen", note: "", priority: "important" },
+    { name: "Bride's entrance", note: "And guests' reactions", priority: "essential" },
+    { name: "Groom's reaction to bride", note: "THE moment", priority: "essential" },
+    { name: "Walking down the aisle", note: "Multiple angles", priority: "essential" },
+    { name: "Exchange of vows", note: "Close-up + wide", priority: "essential" },
+    { name: "Ring exchange", note: "Hands close-up", priority: "essential" },
+    { name: "The first kiss", note: "", priority: "essential" },
+    { name: "The recessional / exit", note: "Joyful walking back together", priority: "essential" },
+    { name: "Officiant", note: "", priority: "nice" },
+    { name: "Readings (family / friends)", note: "", priority: "important" },
+    { name: "Guests during ceremony", note: "Candids of emotion", priority: "important" },
+  ],
+  "The Portraits": [
+    { name: "Couple together — formal", note: "Classic posed portrait", priority: "essential" },
+    { name: "Couple together — candid / laughing", note: "Natural, unposed moment", priority: "essential" },
+    { name: "Couple with full wedding party", note: "", priority: "essential" },
+    { name: "Bride with bridesmaids", note: "", priority: "essential" },
+    { name: "Groom with groomsmen", note: "", priority: "essential" },
+    { name: "Couple with bride's family", note: "", priority: "essential" },
+    { name: "Couple with groom's family", note: "", priority: "essential" },
+    { name: "Couple with both sets of parents", note: "", priority: "essential" },
+    { name: "Couple with grandparents", note: "", priority: "important" },
+    { name: "Couple with each set of parents (separate)", note: "", priority: "important" },
+    { name: "Extended family group shots", note: "Plan the list ahead of time", priority: "nice" },
+    { name: "Ring detail on hands", note: "Both rings, natural light", priority: "essential" },
+  ],
+  "The Reception": [
+    { name: "Reception venue — full setup", note: "Before guests enter", priority: "essential" },
+    { name: "Table settings & centerpieces", note: "", priority: "important" },
+    { name: "Place cards / escort card display", note: "", priority: "nice" },
+    { name: "Cake / dessert table", note: "", priority: "essential" },
+    { name: "Grand entrance", note: "", priority: "essential" },
+    { name: "First dance", note: "Multiple angles", priority: "essential" },
+    { name: "Parent dances", note: "Father-daughter, mother-son", priority: "essential" },
+    { name: "Toasts / speeches", note: "Speaker + couple's reactions", priority: "essential" },
+    { name: "Cake cutting", note: "", priority: "important" },
+    { name: "Bouquet toss", note: "If doing", priority: "nice" },
+    { name: "Dance floor candids", note: "Guests having fun", priority: "important" },
+    { name: "Couple dancing together (later)", note: "Candid, less posed", priority: "important" },
+    { name: "Last dance", note: "", priority: "important" },
+    { name: "Grand exit / send-off", note: "Sparklers, confetti, etc.", priority: "essential" },
+  ],
+};
+
+let shots = {};
+let inspirations = {}; // sectionName -> shotName -> [dataURLs]
+let uploadTarget = null; // { section, shotName }
+
+// Init state from data
+Object.entries(data).forEach(([section, items]) => {
+  shots[section] = items.map(s => ({ ...s, checked: false, custom: false, inspo: [] }));
+});
+
+function updateProgress() {
+  const all = Object.values(shots).flat();
+  const checked = all.filter(s => s.checked).length;
+  const total = all.length;
+  const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+  document.getElementById("progress-text").textContent = `${checked} of ${total} shots planned`;
+  document.getElementById("progress-pct").textContent = pct + "%";
+  document.getElementById("progress-bar").style.width = pct + "%";
+}
+
+function toggleShot(section, idx) {
+  shots[section][idx].checked = !shots[section][idx].checked;
+  renderAll();
+}
+
+function addCustomShot(section) {
+  const input = document.getElementById("custom-input-" + section.replace(/\s/g, "-"));
+  const name = input.value.trim();
+  if (!name) return;
+  shots[section].push({ name, note: "", priority: "important", checked: false, custom: true, inspo: [] });
+  input.value = "";
+  renderAll();
+}
+
+function triggerUpload(section, shotIdx) {
+  uploadTarget = { section, shotIdx };
+  document.getElementById("file-input").click();
+}
+
+function removeInspo(section, shotIdx, inspoIdx) {
+  shots[section][shotIdx].inspo.splice(inspoIdx, 1);
+  renderAll();
+}
+
+document.getElementById("file-input").addEventListener("change", function(e) {
+  if (!uploadTarget) return;
+  const { section, shotIdx } = uploadTarget;
+  Array.from(e.target.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      shots[section][shotIdx].inspo.push(ev.target.result);
+      renderAll();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = "";
+  uploadTarget = null;
+});
+
+function renderAll() {
+  updateProgress();
+  const container = document.getElementById("sections-container");
+  container.innerHTML = "";
+
+  Object.entries(shots).forEach(([sectionName, sectionShots]) => {
+    const sectionId = sectionName.replace(/\s/g, "-");
+    const checkedCount = sectionShots.filter(s => s.checked).length;
+
+    let html = `<div class="shot-section" id="section-${sectionId}">`;
+    html += `<div class="shot-section-header" onclick="toggleSection('${sectionId}')">
+      <h2>${sectionName}</h2>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="count">${checkedCount}/${sectionShots.length}</span>
+        <span class="toggle">&#9660;</span>
+      </div>
+    </div>`;
+    html += `<div class="shot-list" id="list-${sectionId}">`;
+
+    sectionShots.forEach((shot, idx) => {
+      const priorityClass = shot.priority === "essential" ? "priority-essential" : shot.priority === "important" ? "priority-important" : "priority-nice";
+      html += `<div class="shot-row ${shot.checked ? 'done' : ''}">
+        <div class="shot-check ${shot.checked ? 'checked' : ''}" onclick="toggleShot('${sectionName}', ${idx})"></div>
+        <div class="shot-info">
+          <div class="shot-name">${shot.name}</div>
+          ${shot.note ? `<div class="shot-note">${shot.note}</div>` : ''}
+          ${shot.inspo.length > 0 || true ? `
+            <div class="inspiration-section">
+              <div class="inspiration-label">Inspiration</div>
+              <div class="inspiration-grid">
+                ${shot.inspo.map((src, iIdx) => `
+                  <div class="inspo-thumb">
+                    <img src="${src}" alt="Inspiration" />
+                    <div class="remove" onclick="removeInspo('${sectionName}', ${idx}, ${iIdx})">×</div>
+                  </div>`).join('')}
+                <button class="inspo-add" onclick="triggerUpload('${sectionName}', ${idx})">
+                  +<span>Add</span>
+                </button>
+              </div>
+            </div>` : ''}
+        </div>
+        <span class="shot-priority ${priorityClass}">${shot.priority}</span>
+      </div>`;
+    });
+
+    html += `<div class="add-shot-form">
+      <input id="custom-input-${sectionId}" placeholder="Add a custom shot..." onkeydown="if(event.key==='Enter')addCustomShot('${sectionName}')" />
+      <button onclick="addCustomShot('${sectionName}')">Add</button>
+    </div>`;
+    html += `</div></div>`;
+    container.innerHTML += html;
+  });
+}
+
+function toggleSection(sectionId) {
+  const list = document.getElementById("list-" + sectionId);
+  const header = list.previousElementSibling;
+  if (list.style.display === "none") {
+    list.style.display = "block";
+    header.classList.remove("collapsed");
+  } else {
+    list.style.display = "none";
+    header.classList.add("collapsed");
+  }
+}
+
+renderAll();
+</script>
+
+</body>
+</html>
