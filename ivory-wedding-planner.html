@@ -67,9 +67,10 @@ table{border-collapse:collapse;width:100%}
 table th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--stone);padding:8px 10px;text-align:left;border-bottom:2px solid var(--border-light);white-space:nowrap}
 table td{padding:8px 10px;border-bottom:1px solid rgba(214,208,200,0.4);font-size:13px;vertical-align:middle}
 table tr:hover td{background:rgba(237,232,224,0.25)}
-table input,table select{width:100%;padding:6px 8px;border:1px solid transparent;border-radius:6px;background:transparent;transition:all 150ms;font-size:13px}
-table input:focus,table select:focus{border-color:var(--taupe);background:white;outline:none;box-shadow:0 0 0 2px rgba(156,139,122,0.1)}
-table input:hover,table select:hover{background:rgba(237,232,224,0.3)}
+table input,table select{width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);transition:all 150ms;font-size:13px}
+table input:focus,table select:focus{border-color:var(--taupe);background:white;outline:none;box-shadow:0 0 0 2px rgba(156,139,122,0.15)}
+table input:hover,table select:hover{border-color:var(--border);background:rgba(237,232,224,0.35)}
+table input::placeholder,table select::placeholder{color:var(--taupe);opacity:0.5;font-style:italic}
 table input[type="number"]{text-align:right;width:90px}
 .currency{text-align:right;font-variant-numeric:tabular-nums}
 
@@ -99,12 +100,44 @@ table input[type="number"]{text-align:right;width:90px}
 .priority-low{background:rgba(237,232,224,0.5);color:var(--stone)}
 
 /* ─── Timeline ─── */
+.tl-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px;border-bottom:2px solid var(--border-light);padding-bottom:8px}
+.tl-tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:13px;font-weight:500;color:var(--stone);cursor:pointer;border:none;background:none;transition:all 150ms}
+.tl-tab:hover{background:rgba(237,232,224,0.3)}
+.tl-tab.active{background:var(--charcoal);color:var(--ivory);border-radius:8px}
+.tl-section{display:none}
+.tl-section.active{display:block}
+/* Visual schedule */
+.tl-visual{position:relative;margin-left:100px}
+.tl-hour-label{position:absolute;left:-100px;font-size:11px;font-weight:600;color:var(--stone);width:90px;text-align:right}
+.tl-hour-line{border-top:1px solid var(--border-light);width:100%;position:absolute}
+.tl-block{position:absolute;left:8px;right:8px;border-radius:8px;padding:8px 12px;cursor:pointer;overflow:hidden;transition:box-shadow 150ms;border-left:4px solid}
+.tl-block:hover{box-shadow:0 4px 12px rgba(0,0,0,0.1)}
+.tl-block .tl-block-time{font-size:10px;font-weight:600;opacity:0.7}
+.tl-block .tl-block-name{font-size:12px;font-weight:600;margin-top:1px}
+.tl-block .tl-block-who{font-size:10px;opacity:0.6;margin-top:1px}
+.tl-block-prep{background:rgba(156,139,122,0.1);border-color:var(--taupe);color:var(--charcoal)}
+.tl-block-ceremony{background:rgba(184,84,80,0.08);border-color:var(--red);color:var(--charcoal)}
+.tl-block-photos{background:rgba(74,122,91,0.08);border-color:var(--green);color:var(--charcoal)}
+.tl-block-reception{background:rgba(196,160,53,0.08);border-color:var(--yellow);color:var(--charcoal)}
+.tl-block-other{background:rgba(237,232,224,0.5);border-color:var(--stone);color:var(--charcoal)}
+/* Timeline list */
 .timeline-row{display:flex;gap:16px;padding:10px 0;border-bottom:1px solid rgba(214,208,200,0.3);align-items:flex-start}
-.timeline-time{width:80px;flex-shrink:0;font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
+.timeline-time{width:90px;flex-shrink:0;font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .timeline-content{flex:1}
 .timeline-activity{font-size:14px;font-weight:500}
 .timeline-who{font-size:12px;color:var(--stone);margin-top:2px}
 .timeline-note{font-size:12px;color:var(--taupe);margin-top:2px;font-style:italic}
+.timeline-cat-tag{display:inline-block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;padding:2px 6px;border-radius:100px;margin-left:8px}
+/* Vendor day-of */
+.tl-vendor-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid rgba(214,208,200,0.3);font-size:13px}
+.tl-vendor-row:last-child{border-bottom:none}
+.tl-vendor-name{font-weight:600;min-width:120px}
+.tl-vendor-cat{font-size:11px;color:var(--taupe);min-width:100px}
+/* Ceremony cards */
+.tl-ceremony-card{border:1px solid var(--border-light);border-radius:12px;padding:20px;margin-bottom:12px;background:white;transition:all 200ms}
+.tl-ceremony-card:hover{border-color:var(--taupe)}
+.tl-ceremony-title{font-family:var(--font-serif);font-size:18px;margin-bottom:4px}
+.tl-ceremony-date{font-size:12px;color:var(--stone);margin-bottom:12px}
 
 /* ─── Kit ─── */
 .kit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
@@ -116,6 +149,115 @@ table input[type="number"]{text-align:right;width:90px}
 
 /* ─── Section label ─── */
 .section-label{font-family:var(--font-serif);font-size:18px;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border-light)}
+
+/* ─── PIN Lock Screen ─── */
+.pin-screen{position:fixed;inset:0;z-index:400;background:var(--ivory);display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity 400ms var(--ease)}
+.pin-screen.hidden{opacity:0;pointer-events:none}
+.pin-card{text-align:center;max-width:360px;width:100%;padding:40px 32px}
+.pin-card .pin-logo{font-family:var(--font-serif);font-size:32px;margin-bottom:4px}
+.pin-card .pin-sub{font-size:13px;color:var(--stone);margin-bottom:32px}
+.pin-input-row{display:flex;gap:10px;justify-content:center;margin-bottom:20px}
+.pin-digit{width:48px;height:56px;text-align:center;font-size:24px;font-weight:600;border:2px solid var(--border);border-radius:10px;background:white;transition:border-color 200ms;font-family:var(--font-sans);letter-spacing:0.05em}
+.pin-digit:focus{border-color:var(--taupe);outline:none;box-shadow:0 0 0 3px rgba(156,139,122,0.15)}
+.pin-digit.error{border-color:var(--red);animation:pinShake 0.4s}
+@keyframes pinShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.pin-msg{font-size:12px;color:var(--stone);min-height:20px;margin-bottom:16px}
+.pin-msg.error{color:var(--red)}
+.pin-msg.success{color:var(--green)}
+
+/* ─── Avatars ─── */
+.ob-avatar{width:44px;height:44px;border-radius:50%;border:2px solid var(--border-light);cursor:pointer;font-size:22px;display:flex;align-items:center;justify-content:center;transition:all 150ms;background:white}
+.ob-avatar:hover{border-color:var(--taupe);transform:scale(1.08)}
+.ob-avatar.selected{border-color:var(--charcoal);background:var(--cream);box-shadow:0 0 0 2px var(--charcoal)}
+.topbar-avatar{width:28px;height:28px;border-radius:50%;background:var(--cream);border:1px solid var(--border-light);display:flex;align-items:center;justify-content:center;font-size:14px}
+
+/* ─── Vision Board ─── */
+.vb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.vb-card{position:relative;border:1px solid var(--border-light);border-radius:10px;overflow:hidden;background:white;transition:all 200ms}
+.vb-card:hover{border-color:var(--taupe);box-shadow:0 4px 16px rgba(0,0,0,0.06)}
+.vb-card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.vb-card .vb-info{padding:10px 12px}
+.vb-card .vb-caption{font-size:13px;font-weight:500;margin-bottom:2px}
+.vb-card .vb-note{font-size:12px;color:var(--stone);line-height:1.3}
+.vb-card .vb-cat-tag{display:inline-block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;padding:2px 8px;border-radius:100px;background:rgba(156,139,122,0.1);color:var(--taupe);margin-top:6px}
+.vb-card .vb-actions{position:absolute;top:6px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity 200ms}
+.vb-card:hover .vb-actions{opacity:1}
+.vb-card .vb-act-btn{width:28px;height:28px;border-radius:6px;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);color:white;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;transition:background 150ms}
+.vb-card .vb-act-btn:hover{background:rgba(0,0,0,0.8)}
+.vb-card .vb-act-btn.del:hover{background:rgba(184,84,80,0.85)}
+.vb-upload-zone{border:2px dashed var(--border);border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:all 200ms;background:rgba(250,250,247,0.5)}
+.vb-upload-zone:hover{border-color:var(--taupe);background:var(--cream)}
+.vb-upload-zone.dragover{border-color:var(--taupe);background:var(--cream)}
+.vb-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+
+/* ─── Floor Plan ─── */
+.fp-canvas-wrap{position:relative;background:white;border:1px solid var(--border-light);border-radius:12px;overflow:hidden;min-height:500px;touch-action:none}
+.fp-canvas{position:relative;width:100%;height:500px;background-image:radial-gradient(circle,rgba(214,208,200,0.3) 1px,transparent 1px);background-size:24px 24px}
+.fp-item{position:absolute;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:center;transition:box-shadow 150ms}
+.fp-item:hover{box-shadow:0 4px 16px rgba(0,0,0,0.12)}
+.fp-item.dragging{cursor:grabbing;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:10;opacity:0.9}
+.fp-item .fp-label{font-size:10px;font-weight:600;text-align:center;pointer-events:none;line-height:1.2;color:var(--charcoal)}
+.fp-item .fp-delete{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--red);color:white;font-size:11px;display:none;align-items:center;justify-content:center;cursor:pointer;border:2px solid white}
+.fp-item:hover .fp-delete{display:flex}
+.fp-table-round{width:72px;height:72px;border-radius:50%;background:rgba(156,139,122,0.15);border:2px solid var(--taupe)}
+.fp-table-rect{width:96px;height:48px;border-radius:6px;background:rgba(156,139,122,0.15);border:2px solid var(--taupe)}
+.fp-chair{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--taupe);border:2px solid rgba(250,250,247,0.9);pointer-events:none;z-index:1}
+.fp-chair.occupied{background:var(--green)}
+.fp-edit-seats{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:2px;background:white;border:1px solid var(--border);border-radius:100px;padding:2px 4px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:2}
+.fp-item:hover .fp-edit-seats{display:flex}
+.fp-rotate{position:absolute;top:-8px;left:-8px;width:22px;height:22px;border-radius:50%;background:white;border:1px solid var(--border);font-size:12px;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.1);z-index:2;transition:background 150ms}
+.fp-item:hover .fp-rotate{display:flex}
+.fp-rotate:hover{background:var(--cream)}
+.fp-edit-seats button{width:20px;height:20px;border-radius:50%;border:1px solid var(--border-light);background:white;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--stone);transition:all 150ms;padding:0;line-height:1}
+.fp-edit-seats button:hover{background:var(--cream);border-color:var(--taupe)}
+.fp-edit-seats span{font-size:10px;font-weight:600;min-width:16px;text-align:center;color:var(--charcoal)}
+.fp-stage{width:160px;height:60px;border-radius:8px;background:rgba(74,122,91,0.12);border:2px solid var(--green)}
+.fp-dj{width:64px;height:64px;border-radius:8px;background:rgba(196,160,53,0.12);border:2px solid var(--yellow)}
+.fp-dance{width:120px;height:120px;border-radius:12px;background:rgba(184,84,80,0.08);border:2px dashed var(--red)}
+.fp-bar{width:100px;height:40px;border-radius:6px;background:rgba(156,139,122,0.12);border:2px solid var(--stone)}
+.fp-custom{width:72px;height:72px;border-radius:8px;background:rgba(237,232,224,0.5);border:2px dashed var(--border)}
+.fp-toolbar{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--border-light);flex-wrap:wrap;background:rgba(250,250,247,0.5)}
+.fp-tool-btn{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:500;border:1px solid var(--border-light);color:var(--stone);background:white;cursor:pointer;transition:all 150ms;display:flex;align-items:center;gap:4px}
+.fp-tool-btn:hover{border-color:var(--taupe);background:var(--cream)}
+.fp-seat-list{margin-top:16px}
+.fp-seat-row{display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid rgba(214,208,200,0.3);font-size:13px}
+.fp-seat-row:last-child{border-bottom:none}
+.fp-seat-table{font-weight:600;width:100px;flex-shrink:0}
+.fp-seat-guests{flex:1;display:flex;flex-wrap:wrap;gap:4px}
+.fp-seat-tag{padding:2px 8px;border-radius:100px;background:rgba(156,139,122,0.1);font-size:11px;color:var(--stone)}
+
+/* ─── Notification Centre ─── */
+.notif-list{display:flex;flex-direction:column;gap:8px}
+.notif-item{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:1px solid var(--border-light);border-radius:10px;background:white;transition:all 200ms}
+.notif-item:hover{border-color:var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+.notif-item.urgent{border-left:3px solid var(--red)}
+.notif-item.warning{border-left:3px solid var(--yellow)}
+.notif-item.info{border-left:3px solid var(--taupe)}
+.notif-item.success{border-left:3px solid var(--green)}
+.notif-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.notif-icon.urgent{background:rgba(184,84,80,0.1);color:var(--red)}
+.notif-icon.warning{background:rgba(196,160,53,0.1);color:var(--yellow)}
+.notif-icon.info{background:rgba(156,139,122,0.1);color:var(--taupe)}
+.notif-icon.success{background:rgba(74,122,91,0.1);color:var(--green)}
+.notif-body{flex:1;min-width:0}
+.notif-title{font-size:13px;font-weight:600;margin-bottom:2px}
+.notif-desc{font-size:12px;color:var(--stone);line-height:1.4}
+.notif-time{font-size:10px;color:var(--taupe);margin-top:4px}
+.notif-source{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;border-radius:100px;display:inline-block;margin-top:6px}
+.notif-source.budget{background:rgba(156,139,122,0.1);color:var(--taupe)}
+.notif-source.vendor{background:rgba(74,122,91,0.1);color:var(--green)}
+.notif-source.checklist{background:rgba(196,160,53,0.1);color:var(--yellow)}
+.notif-source.guest{background:rgba(184,84,80,0.1);color:var(--red)}
+.notif-source.camera{background:rgba(156,139,122,0.1);color:var(--stone)}
+.notif-source.general{background:rgba(237,232,224,0.5);color:var(--stone)}
+.notif-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.notif-filter-btn{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:500;border:1px solid var(--border-light);color:var(--stone);background:white;cursor:pointer;transition:all 150ms}
+.notif-filter-btn:hover{border-color:var(--border);background:var(--cream)}
+.notif-filter-btn.active{background:var(--charcoal);color:var(--ivory);border-color:var(--charcoal)}
+.notif-empty{text-align:center;padding:48px 16px;color:var(--stone)}
+.notif-share-box{background:var(--charcoal);border-radius:12px;padding:20px 24px;margin-bottom:24px;color:var(--ivory)}
+.notif-share-box textarea{width:100%;min-height:120px;padding:12px;border:1px solid rgba(250,250,247,0.15);border-radius:8px;background:rgba(250,250,247,0.05);color:var(--ivory);font-size:13px;resize:vertical;margin-top:12px}
+.notif-share-box textarea::placeholder{color:rgba(250,250,247,0.4)}
 
 /* ─── Camera gallery ─── */
 .cam-thumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid var(--border-light)}
@@ -246,19 +388,46 @@ table input[type="number"]{text-align:right;width:90px}
 </head>
 <body>
 
+<!-- PIN Lock Screen -->
+<div class="pin-screen" id="pin-screen" style="display:none">
+  <div class="pin-card">
+    <div class="pin-logo">Ivory</div>
+    <p class="pin-sub">Enter your PIN to access your wedding planner</p>
+    <div class="pin-input-row">
+      <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" data-pin="0" oninput="pinInput(this,0)" onkeydown="pinKeydown(event,0)"/>
+      <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" data-pin="1" oninput="pinInput(this,1)" onkeydown="pinKeydown(event,1)"/>
+      <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" data-pin="2" oninput="pinInput(this,2)" onkeydown="pinKeydown(event,2)"/>
+      <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" data-pin="3" oninput="pinInput(this,3)" onkeydown="pinKeydown(event,3)"/>
+    </div>
+    <p class="pin-msg" id="pin-msg">Enter your 4-digit PIN</p>
+    <button class="btn btn-dark" id="pin-submit-btn" onclick="verifyPin()" style="width:100%;justify-content:center;margin-bottom:12px">Unlock</button>
+    <button class="btn btn-outline" id="pin-send-btn" onclick="sendNewPin()" style="width:100%;justify-content:center;font-size:12px">Send New PIN to My Email</button>
+    <p style="font-size:11px;color:var(--taupe);margin-top:16px" id="pin-email-hint"></p>
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border-light)">
+      <button style="font-size:12px;color:var(--stone);text-decoration:underline;background:none;border:none;cursor:pointer" onclick="disablePinAuth()">Disable PIN protection</button>
+    </div>
+  </div>
+</div>
+
 <!-- Top bar -->
 <div class="topbar">
-  <span class="topbar-logo">Ivory Planner</span>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="topbar-logo">Ivory Planner</span>
+    <div style="display:flex;gap:4px" id="topbar-avatars"></div>
+  </div>
   <div class="topbar-links">
     <a href="ivory-invitations-preview.html">Home</a>
     <a href="ivory-wedding-registry.html">Registry</a>
-    <a href="ivory-photography-shotlist.html">Shot List</a>
+    <a href="#" onclick="event.preventDefault();showPinSetup()" title="PIN Protection" style="font-size:14px">&#128274;</a>
   </div>
 </div>
 
 <div class="app">
   <!-- Sidebar -->
   <nav class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <button class="sidebar-btn" onclick="showTab('notifications')" style="font-weight:600"><span class="icon">&#128276;</span>Notifications<span class="badge" id="notif-badge" style="background:rgba(184,84,80,0.15);color:var(--red)">0</span></button>
+    </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Planning</div>
       <button class="sidebar-btn active" onclick="showTab('budget')"><span class="icon">$</span>Budget Tracker</button>
@@ -270,6 +439,7 @@ table input[type="number"]{text-align:right;width:90px}
       <div class="sidebar-label">Events</div>
       <button class="sidebar-btn" onclick="showTab('ceremony')"><span class="icon">&#9829;</span>Ceremony & Reception</button>
       <button class="sidebar-btn" onclick="showTab('timeline')"><span class="icon">&#9200;</span>Day-of Timeline</button>
+      <button class="sidebar-btn" onclick="showTab('floorplan')"><span class="icon">&#9638;</span>Floor Plan</button>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Details</div>
@@ -280,14 +450,67 @@ table input[type="number"]{text-align:right;width:90px}
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Tools</div>
+      <button class="sidebar-btn" onclick="showTab('notebook')"><span class="icon">&#128221;</span>Notebook</button>
       <button class="sidebar-btn" onclick="showTab('camera')"><span class="icon">&#128247;</span>Disposable Camera<span class="badge" id="camera-badge">0</span></button>
       <button class="sidebar-btn" onclick="window.open('ivory-wedding-registry.html','_blank')"><span class="icon">&#127873;</span>Gift Registry</button>
-      <button class="sidebar-btn" onclick="window.open('ivory-photography-shotlist.html','_blank')"><span class="icon">&#128247;</span>Shot List</button>
+      <button class="sidebar-btn" onclick="showTab('visionboard')"><span class="icon">&#128444;</span>Vision Board</button>
     </div>
   </nav>
 
   <!-- Main content -->
   <div class="main">
+
+    <!-- ═══ NOTIFICATIONS ═══ -->
+    <div class="tab-content" id="tab-notifications">
+      <h1 class="page-title">Notification Centre</h1>
+      <p class="page-desc">Smart alerts from your planning data — never miss a deadline</p>
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat-card red"><div class="val" id="notif-urgent-count">0</div><div class="lbl">Urgent</div></div>
+        <div class="stat-card"><div class="val" id="notif-warning-count">0</div><div class="lbl">Warnings</div></div>
+        <div class="stat-card green"><div class="val" id="notif-info-count">0</div><div class="lbl">Info</div></div>
+        <div class="stat-card"><div class="val" id="notif-total-count">0</div><div class="lbl">Total</div></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="notif-filters">
+        <button class="notif-filter-btn active" onclick="filterNotifs('all')">All</button>
+        <button class="notif-filter-btn" onclick="filterNotifs('urgent')">Urgent</button>
+        <button class="notif-filter-btn" onclick="filterNotifs('warning')">Warnings</button>
+        <button class="notif-filter-btn" onclick="filterNotifs('budget')">Budget</button>
+        <button class="notif-filter-btn" onclick="filterNotifs('vendor')">Vendors</button>
+        <button class="notif-filter-btn" onclick="filterNotifs('checklist')">Checklist</button>
+        <button class="notif-filter-btn" onclick="filterNotifs('guest')">Guests</button>
+        <button class="notif-filter-btn" onclick="filterNotifs('camera')">Camera</button>
+      </div>
+
+      <!-- Notification list -->
+      <div class="card">
+        <div class="card-title">Alerts <span class="count" id="notif-visible-count">0</span></div>
+        <div class="notif-list" id="notif-list"></div>
+        <div class="notif-empty" id="notif-empty" style="display:none">
+          <p style="font-size:32px;margin-bottom:8px;opacity:0.3">&#128276;</p>
+          <p>All clear — no notifications right now!</p>
+        </div>
+      </div>
+
+      <!-- Share panel -->
+      <div class="card">
+        <div class="card-title">Share Summary</div>
+        <p style="font-size:12px;color:var(--stone);margin-bottom:12px">Copy a summary of current alerts to share with your partner or wedding planner</p>
+        <div class="notif-share-box">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <p style="font-size:14px;font-weight:500">Planning Update</p>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="generateNotifSummary()">Generate</button>
+              <button class="btn btn-sm" style="background:var(--ivory);color:var(--charcoal)" onclick="copyNotifSummary(this)">Copy</button>
+            </div>
+          </div>
+          <textarea id="notif-summary" placeholder="Click 'Generate' to create a shareable summary of your current alerts..." readonly></textarea>
+        </div>
+      </div>
+    </div>
 
     <!-- ═══ BUDGET ═══ -->
     <div class="tab-content active" id="tab-budget">
@@ -390,7 +613,7 @@ table input[type="number"]{text-align:right;width:90px}
         </div>
         <input type="file" id="guest-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="importGuestFile(this)" />
         <div class="tbl-wrap">
-          <table><thead><tr><th>#</th><th>Name</th><th>Address</th><th>+1 Allowed</th><th>RSVP</th><th>+1 Accepted</th><th>Meal</th><th>Gift Recv'd</th><th>Thank You</th><th></th></tr></thead>
+          <table><thead><tr><th>#</th><th>Name</th><th>Address</th><th>Table</th><th>+1 Allowed</th><th>RSVP</th><th>+1 Accepted</th><th>Meal</th><th>Gift Recv'd</th><th>Thank You</th><th></th></tr></thead>
           <tbody id="guest-body"></tbody></table>
         </div>
       </div>
@@ -437,12 +660,73 @@ table input[type="number"]{text-align:right;width:90px}
     <!-- ═══ TIMELINE ═══ -->
     <div class="tab-content" id="tab-timeline">
       <h1 class="page-title">Day-of Timeline</h1>
-      <p class="page-desc">Hour-by-hour schedule — share with your vendor team</p>
-      <div class="btn-row" style="margin-bottom:24px">
-        <button class="btn btn-dark" onclick="addTimelineRow()">+ Add Entry</button>
-        <button class="btn btn-outline" onclick="window.print()">Print for Vendors</button>
+      <p class="page-desc">Visual schedule, vendor coordination & ceremony management</p>
+
+      <!-- Sub-tabs -->
+      <div class="tl-tabs">
+        <button class="tl-tab active" onclick="showTimelineSub('schedule')">Schedule</button>
+        <button class="tl-tab" onclick="showTimelineSub('vendors')">Vendors</button>
+        <button class="tl-tab" onclick="showTimelineSub('ceremonies')">Ceremonies</button>
       </div>
-      <div class="card" id="timeline-container"></div>
+
+      <!-- ── Schedule sub-tab ── -->
+      <div class="tl-section active" id="tl-schedule">
+        <div class="btn-row" style="margin-bottom:16px">
+          <button class="btn btn-dark" onclick="addTlBlock()">+ Add Block</button>
+          <button class="btn btn-outline" onclick="window.print()">Print</button>
+        </div>
+        <div class="card" style="padding:16px;overflow:auto">
+          <div id="tl-visual-container" style="position:relative;min-height:600px"></div>
+        </div>
+        <!-- Edit modal for timeline blocks -->
+        <div id="tl-block-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:200;justify-content:center;align-items:center">
+          <div class="card" style="width:380px;max-width:90vw;max-height:80vh;overflow-y:auto" id="tl-block-form"></div>
+        </div>
+      </div>
+
+      <!-- ── Vendors sub-tab ── -->
+      <div class="tl-section" id="tl-vendors">
+        <p style="font-size:13px;color:var(--stone);margin-bottom:16px">Select vendors from your vendor list and add day-of details like arrival time and setup location.</p>
+        <div class="card" id="tl-vendors-container" style="padding:0;overflow:hidden"></div>
+      </div>
+
+      <!-- ── Ceremonies sub-tab ── -->
+      <div class="tl-section" id="tl-ceremonies">
+        <div class="btn-row" style="margin-bottom:16px">
+          <button class="btn btn-dark" onclick="addTlCeremony()">+ Add Ceremony</button>
+        </div>
+        <div id="tl-ceremonies-container"></div>
+      </div>
+    </div>
+
+    <!-- ═══ FLOOR PLAN ═══ -->
+    <div class="tab-content" id="tab-floorplan">
+      <h1 class="page-title">Floor Plan</h1>
+      <p class="page-desc">Drag and drop to arrange your venue — tables, stage, dance floor and more</p>
+
+      <div class="fp-canvas-wrap">
+        <div class="fp-toolbar">
+          <button class="fp-tool-btn" onclick="addFpItem('round')">&#9711; Round Table</button>
+          <button class="fp-tool-btn" onclick="addFpItem('rect')">&#9645; Long Table</button>
+          <button class="fp-tool-btn" onclick="addFpItem('stage')">&#127924; Stage</button>
+          <button class="fp-tool-btn" onclick="addFpItem('dj')">&#127911; DJ Booth</button>
+          <button class="fp-tool-btn" onclick="addFpItem('dance')">&#128131; Dance Floor</button>
+          <button class="fp-tool-btn" onclick="addFpItem('bar')">&#127864; Bar</button>
+          <button class="fp-tool-btn" onclick="addFpItem('custom')">+ Custom</button>
+          <button class="fp-tool-btn" style="margin-left:auto;color:var(--red)" onclick="clearFloorPlan()">&#128465; Clear All</button>
+        </div>
+        <div class="fp-canvas" id="fp-canvas"></div>
+      </div>
+
+      <!-- Seat assignments -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Seat Assignments <span class="count" id="fp-seated-count">0 seated</span></div>
+        <p style="font-size:12px;color:var(--stone);margin-bottom:12px">Assign guests from your guest list to tables. Click a table name to assign seats.</p>
+        <div id="fp-seat-assignments"></div>
+        <div id="fp-seat-empty" style="padding:24px 16px;text-align:center">
+          <p style="font-size:13px;color:var(--stone)">Add tables to the floor plan to start assigning seats</p>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ ATTIRE ═══ -->
@@ -502,6 +786,45 @@ table input[type="number"]{text-align:right;width:90px}
         <div class="stat-card green"><div class="val" id="kit-pct">0%</div><div class="lbl">Ready</div></div>
       </div>
       <div class="kit-grid" id="kit-grid"></div>
+    </div>
+
+    <!-- ═══ VISION BOARD ═══ -->
+    <div class="tab-content" id="tab-visionboard">
+      <h1 class="page-title">Vision Board</h1>
+      <p class="page-desc">Collect inspiration images, mood boards, and notes for your wedding aesthetic</p>
+
+      <!-- Upload zone -->
+      <div class="vb-upload-zone" id="vb-upload-zone" onclick="document.getElementById('vb-file-input').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleVbDrop(event)">
+        <p style="font-size:28px;opacity:0.3;margin-bottom:8px">&#128444;</p>
+        <p style="font-size:14px;font-weight:500;margin-bottom:4px">Drop images here or click to upload</p>
+        <p style="font-size:12px;color:var(--stone)">JPG, PNG, GIF — add captions and notes after uploading</p>
+        <input type="file" id="vb-file-input" accept="image/*" multiple style="display:none" onchange="handleVbFiles(this.files)"/>
+      </div>
+
+      <!-- Category filters -->
+      <div class="vb-filters" id="vb-filters" style="margin-top:16px"></div>
+
+      <!-- Gallery -->
+      <div class="vb-grid" id="vb-grid" style="margin-top:8px"></div>
+      <div id="vb-empty" style="padding:40px 16px;text-align:center;display:none">
+        <p style="font-size:13px;color:var(--stone)">No inspiration saved yet — upload your first image!</p>
+      </div>
+    </div>
+
+    <!-- ═══ NOTEBOOK ═══ -->
+    <div class="tab-content" id="tab-notebook">
+      <h1 class="page-title">Notebook</h1>
+      <p class="page-desc">Freeform notes for anything and everything wedding-related</p>
+
+      <div class="btn-row" style="margin-bottom:16px">
+        <button class="btn btn-dark" onclick="addNote()">+ New Note</button>
+      </div>
+
+      <div id="notebook-list"></div>
+      <div id="notebook-empty" style="padding:40px 16px;text-align:center">
+        <p style="font-size:32px;margin-bottom:8px;opacity:0.3">&#128221;</p>
+        <p style="font-size:13px;color:var(--stone)">No notes yet — click "New Note" to start writing</p>
+      </div>
     </div>
 
     <!-- ═══ DISPOSABLE CAMERA ═══ -->
@@ -582,16 +905,20 @@ table input[type="number"]{text-align:right;width:90px}
 
 <!-- Mobile nav -->
 <div class="mobile-nav" id="mobile-nav">
+  <button onclick="showTab('notifications')">&#128276;</button>
   <button class="active" onclick="showTab('budget')">Budget</button>
   <button onclick="showTab('checklist')">Checklist</button>
   <button onclick="showTab('guests')">Guests</button>
   <button onclick="showTab('vendors')">Vendors</button>
   <button onclick="showTab('ceremony')">Ceremony</button>
   <button onclick="showTab('timeline')">Timeline</button>
+  <button onclick="showTab('floorplan')">Floor Plan</button>
   <button onclick="showTab('attire')">Attire</button>
   <button onclick="showTab('stationery')">Stationery</button>
   <button onclick="showTab('honeymoon')">Honeymoon</button>
   <button onclick="showTab('kit')">Kit</button>
+  <button onclick="showTab('visionboard')">Vision</button>
+  <button onclick="showTab('notebook')">Notes</button>
 </div>
 
 <script>
@@ -625,12 +952,17 @@ function defaultState() {
     ceremony: buildCeremony(),
     reception: buildReception(),
     timeline: buildTimeline(),
+    timelineVendors: [],
+    ceremonies: [{name:"Main Ceremony",date:"",timeline:[]}],
     attire: buildAttire(),
     beauty: buildBeauty(),
     stationery: buildStationery(),
     honeymoon: {destination:"",dates:"",passport1:"",passport2:"",airline:"",flightOut:"",flightReturn:"",confirm:"",hotel:"",hotelConfirm:"",car:"",insurance:""},
     packing: buildPacking(),
     kit: buildKit(),
+    floorPlan: [],
+    seatAssignments: {},
+    notebook: [],
     mealOptions: ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal"],
   };
 }
@@ -667,7 +999,29 @@ function buildReception() {
   return [["","Cocktail hour","Background jazz","Bar opens"],["","Guests seated","","MC directs"],["","Grand entrance","Upbeat song",""],["","Welcome toast","","Best man / MOH"],["","Dinner served","Soft music",""],["","Parent dances","",""],["","Cake cutting","",""],["","Open dancing","DJ takes over",""],["","Last dance","",""],["","Grand exit","","Sparklers / confetti"]].map(([t,e,m,n])=>({time:t,event:e,music:m,notes:n}));
 }
 function buildTimeline() {
-  return [["7:00 AM","Wake up, light breakfast","Couple",""],["8:00 AM","Hair & makeup begins","Bride's party, stylist","Getting-ready suite"],["8:30 AM","Groom's party gets ready","Groom, groomsmen",""],["9:30 AM","Photographer arrives — details","Photographer","Dress, rings, shoes"],["10:30 AM","Bride gets into dress","Bride, MOH, mother",""],["11:00 AM","First look","Couple, photographer","Private location"],["11:30 AM","Wedding party portraits","Full party",""],["12:00 PM","Family formal photos","Families",""],["2:00 PM","Vendors arrive for setup","Caterer, DJ, rentals",""],["3:30 PM","Guests begin arriving","Ushers",""],["4:00 PM","Ceremony begins","Everyone",""],["4:45 PM","Couple photos (golden hour)","Couple, photographer",""],["5:00 PM","Cocktail hour","Guests",""],["6:00 PM","Guests seated for dinner","",""],["6:15 PM","First dance","Couple, DJ",""],["6:30 PM","Toasts","",""],["7:30 PM","Parent dances","",""],["7:45 PM","Cake cutting","",""],["8:00 PM","Open dancing","",""],["10:30 PM","Last dance","Couple",""],["10:45 PM","Grand exit","Everyone",""]].map(([t,a,w,n])=>({time:t,activity:a,who:w,notes:n}));
+  return [
+    {time:"7:00 AM",end:"8:00 AM",activity:"Wake up & light breakfast",who:"Couple",notes:"",cat:"prep"},
+    {time:"8:00 AM",end:"10:30 AM",activity:"Hair & makeup",who:"Bride's party, stylist",notes:"Getting-ready suite",cat:"prep"},
+    {time:"8:30 AM",end:"10:00 AM",activity:"Groom's party gets ready",who:"Groom, groomsmen",notes:"",cat:"prep"},
+    {time:"9:30 AM",end:"10:30 AM",activity:"Photographer — detail shots",who:"Photographer",notes:"Dress, rings, shoes",cat:"photos"},
+    {time:"10:30 AM",end:"11:00 AM",activity:"Bride gets into dress",who:"Bride, MOH, mother",notes:"",cat:"prep"},
+    {time:"11:00 AM",end:"11:30 AM",activity:"First look",who:"Couple, photographer",notes:"Private location",cat:"photos"},
+    {time:"11:30 AM",end:"12:00 PM",activity:"Wedding party portraits",who:"Full party",notes:"",cat:"photos"},
+    {time:"12:00 PM",end:"1:00 PM",activity:"Family formal photos",who:"Families",notes:"",cat:"photos"},
+    {time:"2:00 PM",end:"3:30 PM",activity:"Vendors arrive for setup",who:"Caterer, DJ, rentals",notes:"",cat:"other"},
+    {time:"3:30 PM",end:"4:00 PM",activity:"Guests begin arriving",who:"Ushers",notes:"",cat:"other"},
+    {time:"4:00 PM",end:"4:45 PM",activity:"Ceremony",who:"Everyone",notes:"",cat:"ceremony"},
+    {time:"4:45 PM",end:"5:00 PM",activity:"Couple photos (golden hour)",who:"Couple, photographer",notes:"",cat:"photos"},
+    {time:"5:00 PM",end:"6:00 PM",activity:"Cocktail hour",who:"Guests",notes:"",cat:"reception"},
+    {time:"6:00 PM",end:"6:15 PM",activity:"Guests seated for dinner",who:"",notes:"",cat:"reception"},
+    {time:"6:15 PM",end:"6:30 PM",activity:"First dance",who:"Couple, DJ",notes:"",cat:"reception"},
+    {time:"6:30 PM",end:"7:30 PM",activity:"Toasts & dinner",who:"",notes:"",cat:"reception"},
+    {time:"7:30 PM",end:"7:45 PM",activity:"Parent dances",who:"",notes:"",cat:"reception"},
+    {time:"7:45 PM",end:"8:00 PM",activity:"Cake cutting",who:"",notes:"",cat:"reception"},
+    {time:"8:00 PM",end:"10:30 PM",activity:"Open dancing",who:"",notes:"",cat:"reception"},
+    {time:"10:30 PM",end:"10:45 PM",activity:"Last dance",who:"Couple",notes:"",cat:"reception"},
+    {time:"10:45 PM",end:"11:00 PM",activity:"Grand exit",who:"Everyone",notes:"",cat:"other"}
+  ];
 }
 function buildAttire() {
   return ["Bride — Dress","Bride — Veil / Headpiece","Bride — Shoes","Bride — Jewelry","Groom — Suit / Tux","Groom — Shoes","Groom — Accessories","Bridesmaid 1","Bridesmaid 2","Groomsman 1","Groomsman 2","Flower Girl","Ring Bearer"].map(p=>({person:p,item:"",store:"",fitting:"",status:"",notes:""}));
@@ -700,16 +1054,20 @@ function showTab(id) {
 
 function renderTab(id) {
   switch(id) {
+    case "notifications": renderNotifications(); break;
     case "budget": renderBudget(); break;
     case "checklist": renderChecklist(); break;
     case "guests": renderGuests(); break;
     case "vendors": renderVendors(); break;
     case "ceremony": renderCeremony(); break;
     case "timeline": renderTimeline(); break;
+    case "floorplan": renderFloorPlan(); break;
     case "attire": renderAttire(); break;
     case "stationery": renderStationery(); break;
     case "honeymoon": renderHoneymoon(); break;
     case "kit": renderKit(); break;
+    case "visionboard": renderVisionBoard(); break;
+    case "notebook": renderNotebook(); break;
     case "camera": renderCamera(); break;
   }
 }
@@ -720,9 +1078,11 @@ function eCell(val, onBlur, type="text", opts) {
     return `<select onchange="${onBlur.replace('this.value','this.value')}">${opts.map(o=>`<option${o===val?" selected":""}>${o}</option>`).join("")}</select>`;
   }
   const t = type === "number" ? 'type="number" step="0.01"' : type === "date" ? 'type="date"' : '';
-  return `<input ${t} value="${(val||'').toString().replace(/"/g,'&quot;')}" onblur="${onBlur}" />`;
+  const ph = type === "number" ? '0.00' : type === "date" ? '' : 'Enter...';
+  return `<input ${t} value="${(val||'').toString().replace(/"/g,'&quot;')}" placeholder="${ph}" onblur="${onBlur}" />`;
 }
 function delBtn(onclick) { return `<button class="btn btn-sm btn-outline btn-danger" onclick="${onclick}" title="Remove">&times;</button>`; }
+function esc(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function money(n) { return "$" + (n||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}); }
 
 // ══════════════════════════════════════════════════
@@ -949,6 +1309,10 @@ function renderGuests() {
   document.getElementById("g-pending").textContent=pendingCount;
   document.getElementById("guest-badge").textContent=t;
 
+  // Build table options from floor plan
+  const fpTables = (S.floorPlan||[]).filter(f => {const d=FP_TYPES[f.type];return d&&d.isTable;});
+  const tableOptions = ['','...fpTables.map(t=>t.label)'];
+
   document.getElementById("guest-body").innerHTML = S.guests.map((g,i)=>{
     // Ensure allowPlusOne field exists for legacy guests (migrate old Yes/No to number)
     if(g.allowPlusOne===undefined||g.allowPlusOne==="Yes") g.allowPlusOne=1;
@@ -972,10 +1336,17 @@ function renderGuests() {
       plusAccepted = 'Pending'; plusAcceptedColor = 'var(--stone)';
     }
 
+    // Table assignment dropdown
+    const tableSelect = `<select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:rgba(250,250,247,0.6)" onchange="assignGuestTable(${i},this.value)">
+      <option value="">—</option>
+      ${fpTables.map(t=>`<option value="${t.label.replace(/"/g,'&quot;')}"${g.table===t.label?' selected':''}>${t.label}</option>`).join('')}
+    </select>`;
+
     let row = `<tr>
     <td style="width:36px;text-align:center;color:var(--stone)">${i+1}</td>
     <td>${eCell(g.name,`S.guests[${i}].name=this.value;saveState()`)}</td>
     <td>${eCell(g.address,`S.guests[${i}].address=this.value;saveState()`)}</td>
+    <td style="min-width:100px">${fpTables.length > 0 ? tableSelect : '<span style="font-size:11px;color:var(--stone)">Add tables in Floor Plan</span>'}</td>
     <td><input type="number" min="0" max="10" value="${g.allowPlusOne}" style="width:60px;text-align:center" onchange="S.guests[${i}].allowPlusOne=+this.value;saveState()" /></td>
     <td><div>${eCell(g.rsvp,`S.guests[${i}].rsvp=this.value;saveState();renderGuests()`,"select",["Pending","Attending","Declined"])}</div>${rsvpInfo}</td>
     <td><div style="font-size:13px;font-weight:500;color:${plusAcceptedColor}">${plusAccepted}</div></td>
@@ -990,6 +1361,7 @@ function renderGuests() {
         <td></td>
         <td style="padding-left:28px;font-size:12px;color:var(--stone)"><span style="color:var(--taupe);margin-right:6px">+${pi+1}</span>${pg.name}</td>
         <td style="font-size:11px;color:var(--stone);font-style:italic">Guest of ${g.name.split(' ')[0]}</td>
+        <td></td>
         <td></td>
         <td></td>
         <td style="font-size:12px;font-weight:500;color:var(--green)">Accepted</td>
@@ -1068,7 +1440,38 @@ function renderMealCounts() {
   }
 }
 
-function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No"}); saveState(); renderGuests(); }
+function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No",table:""}); saveState(); renderGuests(); }
+
+function assignGuestTable(guestIdx, tableName) {
+  const guest = S.guests[guestIdx];
+  if (!guest) return;
+  const oldTable = guest.table || '';
+  guest.table = tableName;
+
+  // Sync with floor plan seat assignments
+  if (!S.seatAssignments) S.seatAssignments = {};
+
+  // Remove from old table
+  if (oldTable) {
+    const oldFpItem = (S.floorPlan||[]).find(f => f.label === oldTable);
+    if (oldFpItem && S.seatAssignments[oldFpItem.id]) {
+      S.seatAssignments[oldFpItem.id] = S.seatAssignments[oldFpItem.id].filter(n => n !== guest.name);
+    }
+  }
+
+  // Add to new table
+  if (tableName && guest.name) {
+    const newFpItem = (S.floorPlan||[]).find(f => f.label === tableName);
+    if (newFpItem) {
+      if (!S.seatAssignments[newFpItem.id]) S.seatAssignments[newFpItem.id] = [];
+      if (!S.seatAssignments[newFpItem.id].includes(guest.name)) {
+        S.seatAssignments[newFpItem.id].push(guest.name);
+      }
+    }
+  }
+
+  saveState();
+}
 function copyRsvpLink(btn) { const url = window.location.href.replace(/[^/]*$/,'') + 'ivory-rsvp.html'; navigator.clipboard.writeText(url).then(()=>{ btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy Link',2000); }); }
 
 function importGuestFile(input) {
@@ -1289,21 +1692,308 @@ function renderCeremony() {
 function addCeremonyRow(key) { S[key].push({time:"",event:"",music:"",notes:""}); saveState(); renderCeremony(); }
 
 // ══════════════════════════════════════════════════
-// TIMELINE
+// TIMELINE (Visual Schedule + Vendor Day-of + Ceremonies)
 // ══════════════════════════════════════════════════
-function renderTimeline() {
-  document.getElementById("timeline-container").innerHTML = S.timeline.map((r,i)=>`
-    <div class="timeline-row">
-      <div class="timeline-time"><input value="${r.time}" style="font-weight:600;width:90px" onblur="S.timeline[${i}].time=this.value;saveState()"/></div>
-      <div class="timeline-content">
-        <div class="timeline-activity"><input value="${r.activity.replace(/"/g,'&quot;')}" style="font-weight:500;font-size:14px" onblur="S.timeline[${i}].activity=this.value;saveState()"/></div>
-        <div class="timeline-who"><input value="${r.who.replace(/"/g,'&quot;')}" placeholder="Who's involved" style="font-size:12px;color:var(--stone)" onblur="S.timeline[${i}].who=this.value;saveState()"/></div>
-        <div class="timeline-note"><input value="${r.notes.replace(/"/g,'&quot;')}" placeholder="Notes" style="font-size:12px;font-style:italic;color:var(--taupe)" onblur="S.timeline[${i}].notes=this.value;saveState()"/></div>
-      </div>
-      <div>${delBtn(`S.timeline.splice(${i},1);saveState();renderTimeline()`)}</div>
-    </div>`).join("");
+let tlActiveSub = 'schedule';
+
+function showTimelineSub(sub) {
+  tlActiveSub = sub;
+  document.querySelectorAll('.tl-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tl-section').forEach(s => s.classList.remove('active'));
+  const tabs = document.querySelectorAll('.tl-tab');
+  const subs = {schedule:0, vendors:1, ceremonies:2};
+  if (tabs[subs[sub]]) tabs[subs[sub]].classList.add('active');
+  const el = document.getElementById('tl-' + sub);
+  if (el) el.classList.add('active');
+  if (sub === 'schedule') renderTlSchedule();
+  else if (sub === 'vendors') renderTlVendors();
+  else if (sub === 'ceremonies') renderTlCeremonies();
 }
-function addTimelineRow() { S.timeline.push({time:"",activity:"",who:"",notes:""}); saveState(); renderTimeline(); }
+
+function renderTimeline() {
+  showTimelineSub(tlActiveSub);
+}
+
+// ── Helper: parse time string to minutes from midnight ──
+function tlParseTime(str) {
+  if (!str) return null;
+  const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!m) return null;
+  let h = parseInt(m[1]), min = parseInt(m[2]);
+  const ampm = m[3].toUpperCase();
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return h * 60 + min;
+}
+function tlFormatTime(mins) {
+  let h = Math.floor(mins / 60);
+  const m = mins % 60;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  if (h > 12) h -= 12;
+  if (h === 0) h = 12;
+  return h + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+}
+
+const tlCatColors = {prep:'prep',ceremony:'ceremony',photos:'photos',reception:'reception',other:'other'};
+const tlCatLabels = {prep:'Prep',ceremony:'Ceremony',photos:'Photos',reception:'Reception',other:'Other'};
+
+// ── VISUAL SCHEDULE ──
+function renderTlSchedule() {
+  const con = document.getElementById('tl-visual-container');
+  if (!con) return;
+  // Ensure all blocks have end times and cats
+  S.timeline.forEach(b => {
+    if (!b.end) b.end = '';
+    if (!b.cat) b.cat = 'other';
+  });
+
+  // Find time range
+  let minT = Infinity, maxT = -Infinity;
+  S.timeline.forEach(b => {
+    const s = tlParseTime(b.time), e = tlParseTime(b.end);
+    if (s !== null && s < minT) minT = s;
+    if (e !== null && e > maxT) maxT = e;
+  });
+  if (minT === Infinity) { minT = 7 * 60; maxT = 23 * 60; }
+  // Round to hours
+  const startHour = Math.floor(minT / 60);
+  const endHour = Math.ceil(maxT / 60);
+  const totalHours = endHour - startHour;
+  const pxPerHour = 80;
+  const totalHeight = totalHours * pxPerHour;
+  con.style.minHeight = (totalHeight + 40) + 'px';
+  con.style.marginLeft = '100px';
+  con.style.position = 'relative';
+
+  let html = '';
+  // Hour lines
+  for (let h = startHour; h <= endHour; h++) {
+    const y = (h - startHour) * pxPerHour;
+    html += `<div style="position:absolute;left:-100px;top:${y - 7}px;font-size:11px;font-weight:600;color:var(--stone);width:90px;text-align:right">${tlFormatTime(h * 60)}</div>`;
+    html += `<div style="border-top:1px solid var(--border-light);width:100%;position:absolute;top:${y}px"></div>`;
+  }
+
+  // Legend
+  html += `<div style="position:absolute;top:-32px;right:0;display:flex;gap:12px;font-size:10px;color:var(--stone)">`;
+  for (const cat of ['prep','ceremony','photos','reception','other']) {
+    html += `<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:3px" class="tl-block-${cat}"></span>${tlCatLabels[cat]}</span>`;
+  }
+  html += '</div>';
+
+  // Blocks
+  S.timeline.forEach((b, i) => {
+    const s = tlParseTime(b.time), e = tlParseTime(b.end);
+    if (s === null) return;
+    const eTime = e !== null ? e : s + 30;
+    const top = ((s - startHour * 60) / 60) * pxPerHour;
+    const height = Math.max(((eTime - s) / 60) * pxPerHour, 24);
+    const cat = b.cat || 'other';
+    html += `<div class="tl-block tl-block-${cat}" style="top:${top}px;height:${height}px;left:8px;right:8px;position:absolute" onclick="editTlBlock(${i})">
+      <div class="tl-block-time">${esc(b.time)}${b.end ? ' – ' + esc(b.end) : ''}</div>
+      <div class="tl-block-name">${esc(b.activity)}</div>
+      ${b.who ? '<div class="tl-block-who">' + esc(b.who) + '</div>' : ''}
+    </div>`;
+  });
+
+  con.innerHTML = html;
+}
+
+function addTlBlock() {
+  // Guess next time
+  const last = S.timeline[S.timeline.length - 1];
+  let nextStart = '12:00 PM', nextEnd = '12:30 PM';
+  if (last && last.end) {
+    nextStart = last.end;
+    const m = tlParseTime(last.end);
+    if (m !== null) nextEnd = tlFormatTime(m + 30);
+  }
+  S.timeline.push({time:nextStart, end:nextEnd, activity:'New event', who:'', notes:'', cat:'other'});
+  saveState();
+  editTlBlock(S.timeline.length - 1);
+  renderTlSchedule();
+}
+
+function editTlBlock(idx) {
+  const b = S.timeline[idx];
+  if (!b) return;
+  const modal = document.getElementById('tl-block-modal');
+  modal.style.display = 'flex';
+  const cats = ['prep','ceremony','photos','reception','other'];
+  document.getElementById('tl-block-form').innerHTML = `
+    <h3 style="font-family:var(--font-serif);margin-bottom:16px">Edit Block</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Start Time</label>
+        <input id="tl-ed-start" value="${esc(b.time)}" placeholder="e.g. 4:00 PM" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">End Time</label>
+        <input id="tl-ed-end" value="${esc(b.end||'')}" placeholder="e.g. 5:00 PM" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
+    </div>
+    <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Activity</label>
+      <input id="tl-ed-activity" value="${esc(b.activity)}" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
+    <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Who</label>
+      <input id="tl-ed-who" value="${esc(b.who)}" placeholder="Who's involved" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
+    <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Notes</label>
+      <input id="tl-ed-notes" value="${esc(b.notes)}" placeholder="Optional notes" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
+    <div style="margin-bottom:16px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Category</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${cats.map(c => `<button onclick="document.querySelectorAll('.tl-cat-btn').forEach(b=>b.style.opacity='0.4');this.style.opacity='1';this.dataset.selected='1'" data-cat="${c}" class="tl-cat-btn tl-block-${c}" style="padding:4px 12px;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;opacity:${b.cat===c?'1':'0.4'}">${tlCatLabels[c]}</button>`).join('')}</div></div>
+    <div style="display:flex;gap:8px;justify-content:space-between">
+      <button onclick="deleteTlBlock(${idx})" class="btn" style="color:var(--red);font-size:12px">Delete</button>
+      <div style="display:flex;gap:8px">
+        <button onclick="closeTlModal()" class="btn btn-outline" style="font-size:12px">Cancel</button>
+        <button onclick="saveTlBlock(${idx})" class="btn btn-dark" style="font-size:12px">Save</button>
+      </div>
+    </div>`;
+}
+
+function saveTlBlock(idx) {
+  const b = S.timeline[idx];
+  b.time = document.getElementById('tl-ed-start').value.trim();
+  b.end = document.getElementById('tl-ed-end').value.trim();
+  b.activity = document.getElementById('tl-ed-activity').value.trim();
+  b.who = document.getElementById('tl-ed-who').value.trim();
+  b.notes = document.getElementById('tl-ed-notes').value.trim();
+  const selCat = document.querySelector('.tl-cat-btn[style*="opacity: 1"], .tl-cat-btn[style*="opacity:1"]');
+  if (selCat) b.cat = selCat.dataset.cat;
+  // Sort timeline by start time
+  S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
+  saveState();
+  closeTlModal();
+  renderTlSchedule();
+}
+
+function deleteTlBlock(idx) {
+  S.timeline.splice(idx, 1);
+  saveState();
+  closeTlModal();
+  renderTlSchedule();
+}
+
+function closeTlModal() {
+  document.getElementById('tl-block-modal').style.display = 'none';
+}
+
+// ── VENDOR DAY-OF ──
+function renderTlVendors() {
+  const con = document.getElementById('tl-vendors-container');
+  if (!con) return;
+  if (!S.timelineVendors) S.timelineVendors = [];
+
+  // Build list of vendors from vendor tab that have a company name
+  const availableVendors = (S.vendors || []).filter(v => v.company && v.company.trim());
+  // Already added vendor categories
+  const addedCats = S.timelineVendors.map(v => v.cat);
+
+  let html = '';
+
+  // Header row
+  html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:2px solid var(--border-light);font-size:11px;font-weight:600;color:var(--stone);text-transform:uppercase;letter-spacing:0.05em">
+    <div style="min-width:120px">Vendor</div>
+    <div style="min-width:100px">Company</div>
+    <div style="flex:1">Arrival Time</div>
+    <div style="flex:1">Setup Location</div>
+    <div style="flex:1">Day-of Notes</div>
+    <div style="width:40px"></div>
+  </div>`;
+
+  if (S.timelineVendors.length === 0) {
+    html += `<div style="padding:24px;text-align:center;color:var(--stone);font-size:13px">No vendors added yet. Add vendors from the dropdown below.</div>`;
+  }
+
+  S.timelineVendors.forEach((v, i) => {
+    html += `<div class="tl-vendor-row">
+      <div class="tl-vendor-cat">${esc(v.cat)}</div>
+      <div class="tl-vendor-name">${esc(v.company)}</div>
+      <div style="flex:1"><input value="${esc(v.arrival||'')}" placeholder="e.g. 2:00 PM" style="width:100%;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px" onblur="S.timelineVendors[${i}].arrival=this.value;saveState()"/></div>
+      <div style="flex:1"><input value="${esc(v.setupLocation||'')}" placeholder="e.g. Main Hall" style="width:100%;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px" onblur="S.timelineVendors[${i}].setupLocation=this.value;saveState()"/></div>
+      <div style="flex:1"><input value="${esc(v.dayNotes||'')}" placeholder="Notes" style="width:100%;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px" onblur="S.timelineVendors[${i}].dayNotes=this.value;saveState()"/></div>
+      <div style="width:40px;text-align:center">${delBtn(`S.timelineVendors.splice(${i},1);saveState();renderTlVendors()`)}</div>
+    </div>`;
+  });
+
+  // Add vendor dropdown
+  const notAdded = availableVendors.filter(v => !addedCats.includes(v.cat));
+  if (notAdded.length > 0) {
+    html += `<div style="padding:12px;border-top:1px solid var(--border-light)">
+      <select id="tl-add-vendor-select" style="padding:6px 10px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;margin-right:8px">
+        <option value="">Select a vendor...</option>
+        ${notAdded.map(v => `<option value="${esc(v.cat)}">${esc(v.cat)} — ${esc(v.company)}</option>`).join('')}
+      </select>
+      <button class="btn btn-dark" style="font-size:12px;padding:6px 14px" onclick="addTlVendor()">Add</button>
+    </div>`;
+  } else if (availableVendors.length === 0) {
+    html += `<div style="padding:12px;font-size:12px;color:var(--stone);border-top:1px solid var(--border-light)">Add vendors with company names in the <b>Vendors</b> tab first.</div>`;
+  }
+
+  con.innerHTML = html;
+}
+
+function addTlVendor() {
+  const sel = document.getElementById('tl-add-vendor-select');
+  if (!sel || !sel.value) return;
+  const vendorCat = sel.value;
+  const vendor = (S.vendors || []).find(v => v.cat === vendorCat);
+  if (!vendor) return;
+  if (!S.timelineVendors) S.timelineVendors = [];
+  S.timelineVendors.push({cat: vendor.cat, company: vendor.company, arrival: vendor.arrival || '', setupLocation: '', dayNotes: ''});
+  saveState();
+  renderTlVendors();
+}
+
+// ── CEREMONIES ──
+function renderTlCeremonies() {
+  const con = document.getElementById('tl-ceremonies-container');
+  if (!con) return;
+  if (!S.ceremonies) S.ceremonies = [{name:"Main Ceremony", date:"", timeline:[]}];
+
+  let html = '';
+  S.ceremonies.forEach((cer, ci) => {
+    const timelineRows = (cer.timeline || []).map((r, ri) => `
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <input value="${esc(r.time)}" placeholder="Time" style="width:80px;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px" onblur="S.ceremonies[${ci}].timeline[${ri}].time=this.value;saveState()"/>
+        <input value="${esc(r.event)}" placeholder="Event" style="flex:1;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px" onblur="S.ceremonies[${ci}].timeline[${ri}].event=this.value;saveState()"/>
+        <input value="${esc(r.music||'')}" placeholder="Music" style="width:120px;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px" onblur="S.ceremonies[${ci}].timeline[${ri}].music=this.value;saveState()"/>
+        <input value="${esc(r.notes||'')}" placeholder="Notes" style="width:120px;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px" onblur="S.ceremonies[${ci}].timeline[${ri}].notes=this.value;saveState()"/>
+        ${delBtn(`S.ceremonies[${ci}].timeline.splice(${ri},1);saveState();renderTlCeremonies()`)}
+      </div>`).join('');
+
+    html += `<div class="tl-ceremony-card">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
+        <div>
+          <input value="${esc(cer.name)}" class="tl-ceremony-title" style="border:none;background:none;font-family:var(--font-serif);font-size:18px;font-weight:600;width:250px" onblur="S.ceremonies[${ci}].name=this.value;saveState()"/>
+          <div><input type="date" value="${esc(cer.date||'')}" style="border:1px solid var(--border-light);border-radius:6px;padding:4px 8px;font-size:12px;color:var(--stone)" onchange="S.ceremonies[${ci}].date=this.value;saveState()"/></div>
+        </div>
+        ${S.ceremonies.length > 1 ? `<button onclick="S.ceremonies.splice(${ci},1);saveState();renderTlCeremonies()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px" title="Remove ceremony">&times;</button>` : ''}
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:11px;font-weight:600;color:var(--stone);text-transform:uppercase;letter-spacing:0.05em">
+          <div style="width:80px">Time</div><div style="flex:1">Event</div><div style="width:120px">Music</div><div style="width:120px">Notes</div><div style="width:28px"></div>
+        </div>
+        ${timelineRows}
+      </div>
+      <button class="btn btn-outline" style="font-size:12px" onclick="S.ceremonies[${ci}].timeline.push({time:'',event:'',music:'',notes:''});saveState();renderTlCeremonies()">+ Add Row</button>
+    </div>`;
+  });
+
+  con.innerHTML = html;
+}
+
+function addTlCeremony() {
+  if (!S.ceremonies) S.ceremonies = [];
+  const defaultRows = [
+    {time:'',event:'Prelude music begins',music:'Instrumental',notes:'Guests seated'},
+    {time:'',event:'Seating of parents',music:'',notes:'Ushers escort'},
+    {time:'',event:'Bridal party processional',music:'',notes:''},
+    {time:'',event:"Bride's entrance",music:'',notes:'All rise'},
+    {time:'',event:'Welcome & opening words',music:'',notes:'Officiant'},
+    {time:'',event:'Readings',music:'',notes:''},
+    {time:'',event:'Exchange of vows',music:'',notes:''},
+    {time:'',event:'Ring exchange',music:'',notes:''},
+    {time:'',event:'The first kiss',music:'',notes:''},
+    {time:'',event:'Recessional',music:'',notes:'Couple exits'}
+  ];
+  S.ceremonies.push({name:'Ceremony ' + (S.ceremonies.length + 1), date:'', timeline: defaultRows});
+  saveState();
+  renderTlCeremonies();
+}
 
 // ══════════════════════════════════════════════════
 // ATTIRE & BEAUTY
@@ -1394,6 +2084,663 @@ function renderKit() {
         <div class="why">${k.why}</div>
       </div>
     </div>`).join("");
+}
+
+// ══════════════════════════════════════════════════
+// VISION BOARD
+// ══════════════════════════════════════════════════
+const VB_KEY = 'ivory_visionboard_v1';
+let vbFilter = 'all';
+const VB_CATS = ['Decor','Flowers','Cake','Dress','Hair & Makeup','Table Setting','Venue','Colour Palette','Photography','Other'];
+
+function loadVb() { try { const d = localStorage.getItem(VB_KEY); return d ? JSON.parse(d) : []; } catch(e) { return []; } }
+function saveVb(items) { localStorage.setItem(VB_KEY, JSON.stringify(items)); }
+
+function handleVbFiles(files) {
+  Array.from(files).forEach(f => {
+    if (!f.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const items = loadVb();
+      items.push({id:'vb-'+Date.now()+'-'+Math.random().toString(36).substr(2,4), dataUrl:e.target.result, caption:'', note:'', category:'Other', timestamp:Date.now()});
+      saveVb(items);
+      renderVisionBoard();
+    };
+    reader.readAsDataURL(f);
+  });
+  document.getElementById('vb-file-input').value = '';
+}
+
+function handleVbDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleVbFiles(e.dataTransfer.files);
+}
+
+function renderVisionBoard() {
+  const items = loadVb();
+  const filtered = vbFilter === 'all' ? items : items.filter(i => i.category === vbFilter);
+  const grid = document.getElementById('vb-grid');
+  const empty = document.getElementById('vb-empty');
+
+  // Filters
+  const cats = ['all', ...new Set(items.map(i => i.category))];
+  document.getElementById('vb-filters').innerHTML = cats.map(c =>
+    `<button class="notif-filter-btn ${c===vbFilter?'active':''}" onclick="vbFilter='${c}';renderVisionBoard()">${c === 'all' ? 'All ('+items.length+')' : c}</button>`
+  ).join('');
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = items.length === 0 ? 'block' : 'none';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = [...filtered].reverse().map((item, ri) => {
+    const idx = items.indexOf(item);
+    return `<div class="vb-card">
+      <img src="${item.dataUrl}" alt="${item.caption || 'Inspiration'}" loading="lazy"/>
+      <div class="vb-actions">
+        <button class="vb-act-btn" title="Edit" onclick="editVbItem(${idx})">&#9998;</button>
+        <button class="vb-act-btn del" title="Delete" onclick="deleteVbItem(${idx})">&#128465;</button>
+      </div>
+      <div class="vb-info">
+        <div class="vb-caption">${item.caption || 'Untitled'}</div>
+        ${item.note ? '<div class="vb-note">'+item.note+'</div>' : ''}
+        <span class="vb-cat-tag">${item.category}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function editVbItem(idx) {
+  const items = loadVb();
+  const item = items[idx];
+  if (!item) return;
+  const caption = prompt('Caption:', item.caption || '');
+  if (caption === null) return;
+  const note = prompt('Note:', item.note || '');
+  if (note === null) return;
+  const catList = VB_CATS.map((c,i) => (i+1)+'. '+c).join('\n');
+  const catChoice = prompt('Category (enter number):\n'+catList, (VB_CATS.indexOf(item.category)+1) || VB_CATS.length);
+  const catIdx = parseInt(catChoice) - 1;
+  item.caption = caption;
+  item.note = note;
+  item.category = VB_CATS[catIdx] || item.category;
+  items[idx] = item;
+  saveVb(items);
+  renderVisionBoard();
+}
+
+function deleteVbItem(idx) {
+  if (!confirm('Delete this inspiration image?')) return;
+  const items = loadVb();
+  items.splice(idx, 1);
+  saveVb(items);
+  renderVisionBoard();
+}
+
+// ══════════════════════════════════════════════════
+// NOTEBOOK
+// ══════════════════════════════════════════════════
+function addNote() {
+  if (!S.notebook) S.notebook = [];
+  S.notebook.unshift({id:'note-'+Date.now(), title:'Untitled Note', content:'', created:Date.now(), updated:Date.now()});
+  saveState();
+  renderNotebook();
+}
+
+function renderNotebook() {
+  if (!S.notebook) S.notebook = [];
+  const list = document.getElementById('notebook-list');
+  const empty = document.getElementById('notebook-empty');
+
+  if (S.notebook.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  list.innerHTML = S.notebook.map((note, i) => {
+    const date = new Date(note.updated).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+    return `<div class="card">
+      <div class="card-title" style="margin-bottom:8px">
+        <input value="${(note.title||'').replace(/"/g,'&quot;')}" placeholder="Note title..." style="font-size:14px;font-weight:600;border:none;background:transparent;padding:0;flex:1" onblur="S.notebook[${i}].title=this.value;S.notebook[${i}].updated=Date.now();saveState()"/>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--stone)">${date}</span>
+          <button class="btn btn-sm btn-outline btn-danger" onclick="deleteNote(${i})">&times;</button>
+        </div>
+      </div>
+      <textarea style="width:100%;min-height:120px;padding:12px;border:1px solid var(--border-light);border-radius:8px;font-size:13px;line-height:1.6;resize:vertical;background:rgba(250,250,247,0.5)" placeholder="Start writing..." onblur="S.notebook[${i}].content=this.value;S.notebook[${i}].updated=Date.now();saveState()">${(note.content||'').replace(/</g,'&lt;')}</textarea>
+    </div>`;
+  }).join('');
+}
+
+function deleteNote(idx) {
+  if (!confirm('Delete this note?')) return;
+  S.notebook.splice(idx, 1);
+  saveState();
+  renderNotebook();
+}
+
+// ══════════════════════════════════════════════════
+// FLOOR PLAN
+// ══════════════════════════════════════════════════
+let fpDragging = null;
+let fpOffset = {x:0, y:0};
+let fpCounter = 0;
+
+const FP_TYPES = {
+  round:  {cls:'fp-table-round', label:'Table', w:72, h:72, isTable:true},
+  rect:   {cls:'fp-table-rect',  label:'Table', w:96, h:48, isTable:true},
+  stage:  {cls:'fp-stage',       label:'Stage', w:160, h:60},
+  dj:     {cls:'fp-dj',          label:'DJ', w:64, h:64},
+  dance:  {cls:'fp-dance',       label:'Dance Floor', w:120, h:120},
+  bar:    {cls:'fp-bar',         label:'Bar', w:100, h:40},
+  custom: {cls:'fp-custom',      label:'Custom', w:72, h:72},
+};
+
+function addFpItem(type) {
+  if (!S.floorPlan) S.floorPlan = [];
+  fpCounter++;
+  const def = FP_TYPES[type];
+  const tableNum = def.isTable ? S.floorPlan.filter(f => FP_TYPES[f.type]?.isTable).length + 1 : 0;
+  const item = {
+    id: 'fp-' + Date.now() + '-' + fpCounter,
+    type: type,
+    label: def.isTable ? def.label + ' ' + tableNum : def.label,
+    x: 40 + Math.random() * 200,
+    y: 40 + Math.random() * 200,
+    seats: def.isTable ? (type === 'rect' ? 8 : 6) : 0,
+  };
+  S.floorPlan.push(item);
+  saveState();
+  renderFloorPlan();
+}
+
+function renderFloorPlan() {
+  if (!S.floorPlan) S.floorPlan = [];
+  if (!S.seatAssignments) S.seatAssignments = {};
+  const canvas = document.getElementById('fp-canvas');
+  canvas.innerHTML = '';
+
+  S.floorPlan.forEach((item, idx) => {
+    const def = FP_TYPES[item.type] || FP_TYPES.custom;
+    const isTable = def.isTable;
+    const seats = item.seats || 0;
+    const assigned = S.seatAssignments[item.id] ? S.seatAssignments[item.id].length : 0;
+
+    // Create wrapper for table + chairs
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'absolute';
+    wrapper.style.left = item.x + 'px';
+    wrapper.style.top = item.y + 'px';
+
+    const el = document.createElement('div');
+    el.className = 'fp-item ' + def.cls;
+    el.style.position = 'relative';
+    el.style.left = '0';
+    el.style.top = '0';
+    el.dataset.idx = idx;
+
+    // Apply rotation
+    const rotation = item.rotation || 0;
+    wrapper.style.transform = rotation ? `rotate(${rotation}deg)` : '';
+
+    // Label shows name + seat count for tables
+    const seatInfo = isTable && seats > 0 ? `<br><span style="font-size:8px;color:var(--stone)">${assigned}/${seats}</span>` : '';
+    el.innerHTML = `<span class="fp-label">${item.label}${seatInfo}</span><div class="fp-rotate" onclick="event.stopPropagation();rotateFpItem(${idx})">&#x21BB;</div><div class="fp-delete" onclick="event.stopPropagation();deleteFpItem(${idx})">&times;</div>`;
+
+    // Draw chairs around tables
+    if (isTable && seats > 0) {
+      const isRound = item.type === 'round';
+      let w = def.w;
+      const h = def.h;
+      const chairSize = 14;
+      const chairGap = 6; // gap between chair edge and table edge
+
+      // For rectangular tables, widen based on seat count so chairs fit
+      if (!isRound) {
+        const topCount = Math.ceil(seats / 2);
+        const minWidth = topCount * (chairSize + 8) + 24;
+        w = Math.max(def.w, minWidth);
+        el.style.width = w + 'px';
+      }
+
+      for (let s = 0; s < seats; s++) {
+        const chair = document.createElement('div');
+        chair.className = 'fp-chair' + (s < assigned ? ' occupied' : '');
+        if (isRound) {
+          const angle = (s / seats) * Math.PI * 2 - Math.PI / 2;
+          const radius = w / 2 + chairSize / 2 + chairGap;
+          const cx = w / 2 + radius * Math.cos(angle) - chairSize / 2;
+          const cy = h / 2 + radius * Math.sin(angle) - chairSize / 2;
+          chair.style.left = cx + 'px';
+          chair.style.top = cy + 'px';
+        } else {
+          // Rectangular: split seats evenly between top and bottom
+          const topCount = Math.ceil(seats / 2);
+          const bottomCount = seats - topCount;
+          let cx, cy;
+          if (s < topCount) {
+            const spacing = w / (topCount + 1);
+            cx = spacing * (s + 1);
+            cy = -(chairSize + chairGap);
+          } else {
+            const bi = s - topCount;
+            const spacing = w / (bottomCount + 1);
+            cx = spacing * (bi + 1);
+            cy = h + chairGap;
+          }
+          chair.style.left = (cx - chairSize / 2) + 'px';
+          chair.style.top = cy + 'px';
+        }
+        el.appendChild(chair);
+      }
+      // +/- seat editor (shows on hover)
+      const editor = document.createElement('div');
+      editor.className = 'fp-edit-seats';
+      editor.innerHTML = `<button onclick="event.stopPropagation();changeFpSeats(${idx},-1)">−</button><span>${seats}</span><button onclick="event.stopPropagation();changeFpSeats(${idx},1)">+</button>`;
+      el.appendChild(editor);
+    }
+
+    wrapper.appendChild(el);
+
+    // Double-click to edit table properties
+    el.ondblclick = (e) => {
+      e.stopPropagation();
+      if (isTable) {
+        const name = prompt('Table name:', item.label);
+        if (name === null) return;
+        if (name.trim()) S.floorPlan[idx].label = name.trim();
+        const seatCount = prompt('Number of seats:', item.seats || 6);
+        if (seatCount !== null) S.floorPlan[idx].seats = Math.max(1, Math.min(20, parseInt(seatCount) || 6));
+        saveState();
+        renderFloorPlan();
+      } else {
+        const name = prompt('Rename this item:', item.label);
+        if (name !== null && name.trim()) {
+          S.floorPlan[idx].label = name.trim();
+          saveState();
+          renderFloorPlan();
+        }
+      }
+    };
+
+    // Drag start
+    el.onpointerdown = (e) => {
+      if (e.target.classList.contains('fp-delete')) return;
+      if (e.target.classList.contains('fp-rotate')) return;
+      if (e.target.closest('.fp-edit-seats')) return;
+      fpDragging = idx;
+      wrapper.style.zIndex = 10;
+      el.classList.add('dragging');
+      const rect = canvas.getBoundingClientRect();
+      fpOffset.x = e.clientX - item.x - rect.left;
+      fpOffset.y = e.clientY - item.y - rect.top;
+      el.setPointerCapture(e.pointerId);
+    };
+
+    el.onpointermove = (e) => {
+      if (fpDragging !== idx) return;
+      const rect = canvas.getBoundingClientRect();
+      let nx = e.clientX - fpOffset.x - rect.left;
+      let ny = e.clientY - fpOffset.y - rect.top;
+      nx = Math.max(0, Math.min(nx, rect.width - def.w));
+      ny = Math.max(0, Math.min(ny, rect.height - def.h));
+      wrapper.style.left = nx + 'px';
+      wrapper.style.top = ny + 'px';
+      S.floorPlan[idx].x = nx;
+      S.floorPlan[idx].y = ny;
+    };
+
+    el.onpointerup = () => {
+      if (fpDragging === idx) {
+        fpDragging = null;
+        wrapper.style.zIndex = '';
+        el.classList.remove('dragging');
+        saveState();
+      }
+    };
+
+    canvas.appendChild(wrapper);
+  });
+
+  renderSeatAssignments();
+}
+
+function changeFpSeats(idx, delta) {
+  const item = S.floorPlan[idx];
+  if (!item) return;
+  item.seats = Math.max(1, Math.min(20, (item.seats || 6) + delta));
+  saveState();
+  renderFloorPlan();
+}
+
+function rotateFpItem(idx) {
+  const item = S.floorPlan[idx];
+  if (!item) return;
+  item.rotation = ((item.rotation || 0) + 45) % 360;
+  saveState();
+  renderFloorPlan();
+}
+
+function deleteFpItem(idx) {
+  const item = S.floorPlan[idx];
+  if (item && S.seatAssignments[item.id]) {
+    delete S.seatAssignments[item.id];
+  }
+  S.floorPlan.splice(idx, 1);
+  saveState();
+  renderFloorPlan();
+}
+
+function clearFloorPlan() {
+  if (!S.floorPlan.length) return;
+  if (!confirm('Remove all items from the floor plan?')) return;
+  S.floorPlan = [];
+  S.seatAssignments = {};
+  saveState();
+  renderFloorPlan();
+}
+
+function renderSeatAssignments() {
+  const tables = S.floorPlan.filter(f => FP_TYPES[f.type]?.isTable);
+  const container = document.getElementById('fp-seat-assignments');
+  const empty = document.getElementById('fp-seat-empty');
+  const allSeated = Object.values(S.seatAssignments || {}).flat();
+  document.getElementById('fp-seated-count').textContent = allSeated.length + ' seated';
+
+  if (tables.length === 0) {
+    container.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  const availableGuests = S.guests.filter(g => g.rsvp === 'Attending' && !allSeated.includes(g.name)).map(g => g.name);
+
+  container.innerHTML = tables.map(t => {
+    const seated = S.seatAssignments[t.id] || [];
+    const maxSeats = t.seats || 6;
+    const isFull = seated.length >= maxSeats;
+    const capacityColor = isFull ? 'var(--red)' : seated.length > 0 ? 'var(--green)' : 'var(--stone)';
+    return `<div class="fp-seat-row">
+      <div class="fp-seat-table">
+        ${t.label}
+        <div style="font-size:10px;font-weight:400;color:${capacityColor}">${seated.length}/${maxSeats} seats</div>
+      </div>
+      <div class="fp-seat-guests">
+        ${seated.map((name, si) => `<span class="fp-seat-tag">${name} <span style="cursor:pointer;margin-left:2px;color:var(--red)" onclick="removeSeat('${t.id}',${si})">&times;</span></span>`).join('')}
+        ${isFull ? '<span style="font-size:10px;color:var(--red);font-weight:600">FULL</span>' : ''}
+      </div>
+      ${!isFull ? `<select style="width:140px;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:white" onchange="assignSeat('${t.id}',this.value);this.selectedIndex=0">
+        <option value="">+ Assign guest</option>
+        ${availableGuests.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('')}
+      </select>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function assignSeat(tableId, guestName) {
+  if (!guestName) return;
+  if (!S.seatAssignments) S.seatAssignments = {};
+  if (!S.seatAssignments[tableId]) S.seatAssignments[tableId] = [];
+  if (!S.seatAssignments[tableId].includes(guestName)) {
+    S.seatAssignments[tableId].push(guestName);
+    // Sync guest's table field
+    const fpItem = (S.floorPlan||[]).find(f => f.id === tableId);
+    if (fpItem) {
+      const guest = S.guests.find(g => g.name === guestName);
+      if (guest) guest.table = fpItem.label;
+    }
+    saveState();
+    renderFloorPlan();
+  }
+}
+
+function removeSeat(tableId, seatIdx) {
+  const guestName = S.seatAssignments[tableId][seatIdx];
+  S.seatAssignments[tableId].splice(seatIdx, 1);
+  // Sync guest's table field
+  if (guestName) {
+    const guest = S.guests.find(g => g.name === guestName);
+    if (guest) guest.table = '';
+  }
+  saveState();
+  renderFloorPlan();
+}
+
+// ══════════════════════════════════════════════════
+// NOTIFICATION CENTRE
+// ══════════════════════════════════════════════════
+let currentNotifFilter = 'all';
+let cachedNotifications = [];
+
+function generateNotifications() {
+  const notifs = [];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const weddingDate = S.weddingDate ? new Date(S.weddingDate) : null;
+  const daysUntilWedding = weddingDate ? Math.ceil((weddingDate - today) / (1000*60*60*24)) : null;
+
+  // ─── Wedding countdown ───
+  if (daysUntilWedding !== null) {
+    if (daysUntilWedding <= 0) {
+      notifs.push({type:'success', source:'general', icon:'&#127881;', title:'It\'s your wedding day!', desc:'Congratulations! Today is the big day.'});
+    } else if (daysUntilWedding <= 7) {
+      notifs.push({type:'urgent', source:'general', icon:'&#128293;', title:`${daysUntilWedding} day${daysUntilWedding!==1?'s':''} until the wedding!`, desc:'Final countdown — make sure everything is in order.'});
+    } else if (daysUntilWedding <= 30) {
+      notifs.push({type:'warning', source:'general', icon:'&#128197;', title:`${daysUntilWedding} days until the wedding`, desc:'One month away — time to finalize all details.'});
+    } else if (daysUntilWedding <= 90) {
+      notifs.push({type:'info', source:'general', icon:'&#128197;', title:`${daysUntilWedding} days until the wedding`, desc:'Stay on track with your planning checklist.'});
+    }
+  }
+
+  // ─── Budget alerts ───
+  const totalPlanned = S.budget.reduce((s,r) => s + (r.subs && r.subs.length ? r.subs.reduce((ss,sub)=>ss+(+sub.planned||0),0) : (+r.planned||0)), 0);
+  const totalActual = S.budget.reduce((s,r) => s + (r.subs && r.subs.length ? r.subs.reduce((ss,sub)=>ss+(+sub.actual||0),0) : (+r.actual||0)), 0);
+
+  if (totalActual > totalPlanned && totalPlanned > 0) {
+    const over = totalActual - totalPlanned;
+    notifs.push({type:'urgent', source:'budget', icon:'$', title:'Over budget by ' + money(over), desc:`Total spent: ${money(totalActual)} vs planned: ${money(totalPlanned)}. Review categories for savings.`});
+  } else if (totalPlanned > 0 && totalActual / totalPlanned > 0.85) {
+    notifs.push({type:'warning', source:'budget', icon:'$', title:'Approaching budget limit', desc:`You\'ve spent ${Math.round(totalActual/totalPlanned*100)}% of your planned budget.`});
+  }
+
+  S.budget.forEach(r => {
+    const planned = r.subs && r.subs.length ? r.subs.reduce((s,sub)=>s+(+sub.planned||0),0) : (+r.planned||0);
+    const actual = r.subs && r.subs.length ? r.subs.reduce((s,sub)=>s+(+sub.actual||0),0) : (+r.actual||0);
+    if (planned > 0 && actual > planned) {
+      notifs.push({type:'warning', source:'budget', icon:'$', title:`${r.cat} over budget`, desc:`Spent ${money(actual)} of ${money(planned)} planned (+${money(actual-planned)}).`});
+    }
+  });
+
+  if (totalPlanned === 0 && S.budget.length > 0) {
+    notifs.push({type:'info', source:'budget', icon:'$', title:'Budget not set up yet', desc:'Add planned amounts to your budget categories to start tracking spending.'});
+  }
+
+  // ─── Vendor alerts ───
+  S.vendors.forEach(v => {
+    if (!v.company) return;
+    if (v.due) {
+      const due = new Date(v.due);
+      due.setHours(0,0,0,0);
+      const diff = Math.ceil((due - today) / (1000*60*60*24));
+      if (diff < 0) {
+        notifs.push({type:'urgent', source:'vendor', icon:'&#9742;', title:`${v.company} — payment overdue`, desc:`${v.cat} payment was due ${Math.abs(diff)} day${Math.abs(diff)!==1?'s':''} ago. Contact them to resolve.`});
+      } else if (diff <= 3) {
+        notifs.push({type:'urgent', source:'vendor', icon:'&#9742;', title:`${v.company} — payment due ${diff === 0 ? 'today' : 'in ' + diff + ' day' + (diff!==1?'s':'')}`, desc:`${v.cat} deposit/payment is coming up.`});
+      } else if (diff <= 14) {
+        notifs.push({type:'warning', source:'vendor', icon:'&#9742;', title:`${v.company} — payment due in ${diff} days`, desc:`${v.cat} payment on ${due.toLocaleDateString()}.`});
+      }
+    }
+    if (v.status === 'Researching' || v.status === 'Contacted') {
+      notifs.push({type:'info', source:'vendor', icon:'&#9742;', title:`${v.company} — awaiting confirmation`, desc:`${v.cat} status is "${v.status}". Follow up to secure your booking.`});
+    }
+    if (v.status === 'Contract Sent') {
+      notifs.push({type:'warning', source:'vendor', icon:'&#9742;', title:`${v.company} — contract pending`, desc:`${v.cat} contract was sent but not yet signed. Follow up soon.`});
+    }
+    if (!v.status && v.company) {
+      notifs.push({type:'info', source:'vendor', icon:'&#9742;', title:`${v.company} — no status set`, desc:`Update the status for your ${v.cat} vendor.`});
+    }
+  });
+
+  const emptyVendors = S.vendors.filter(v => !v.company && v.cat).map(v => v.cat);
+  if (emptyVendors.length > 0 && emptyVendors.length <= 5) {
+    notifs.push({type:'info', source:'vendor', icon:'&#9742;', title:`${emptyVendors.length} vendor${emptyVendors.length!==1?'s':''} still needed`, desc:`No vendor booked for: ${emptyVendors.join(', ')}.`});
+  }
+
+  // ─── Checklist alerts ───
+  const doneCount = S.checklist.filter(c => c.done).length;
+  const totalTasks = S.checklist.length;
+  const overdueTasks = S.checklist.filter(c => !c.done && c.priority === 'High');
+  const pct = totalTasks > 0 ? Math.round(doneCount / totalTasks * 100) : 0;
+
+  if (overdueTasks.length > 0) {
+    notifs.push({type:'urgent', source:'checklist', icon:'&#10003;', title:`${overdueTasks.length} high-priority task${overdueTasks.length!==1?'s':''} incomplete`, desc:`Don\'t forget: ${overdueTasks.slice(0,3).map(t=>t.task).join(', ')}${overdueTasks.length>3 ? ' and more...' : ''}`});
+  }
+
+  if (totalTasks > 0 && pct < 25) {
+    notifs.push({type:'info', source:'checklist', icon:'&#10003;', title:`Checklist ${pct}% complete`, desc:`${doneCount} of ${totalTasks} tasks done. Keep going!`});
+  } else if (pct >= 75 && pct < 100) {
+    notifs.push({type:'success', source:'checklist', icon:'&#10003;', title:`Checklist ${pct}% complete!`, desc:`Almost there — ${totalTasks - doneCount} tasks remaining.`});
+  } else if (pct === 100 && totalTasks > 0) {
+    notifs.push({type:'success', source:'checklist', icon:'&#10003;', title:'All tasks complete!', desc:'Your checklist is 100% done. Amazing work!'});
+  }
+
+  // ─── Guest alerts ───
+  const totalGuests = S.guests.length;
+  const pending = S.guests.filter(g => g.rsvp === 'Pending').length;
+  const attending = S.guests.filter(g => g.rsvp === 'Attending').length;
+  const declined = S.guests.filter(g => g.rsvp === 'Declined').length;
+
+  if (pending > 0) {
+    const pctPending = Math.round(pending / totalGuests * 100);
+    if (pctPending > 50) {
+      notifs.push({type:'warning', source:'guest', icon:'&#9825;', title:`${pending} guests haven\'t RSVP\'d`, desc:`${pctPending}% of invites still pending. Consider sending reminders.`});
+    } else if (pending > 0) {
+      notifs.push({type:'info', source:'guest', icon:'&#9825;', title:`${pending} RSVP${pending!==1?'s':''} still pending`, desc:`${attending} attending, ${declined} declined, ${pending} pending.`});
+    }
+  }
+
+  if (totalGuests === 0) {
+    notifs.push({type:'info', source:'guest', icon:'&#9825;', title:'Guest list is empty', desc:'Start adding guests to track RSVPs and meal preferences.'});
+  }
+
+  const noMeal = S.guests.filter(g => g.rsvp === 'Attending' && !g.meal).length;
+  if (noMeal > 0) {
+    notifs.push({type:'info', source:'guest', icon:'&#9825;', title:`${noMeal} attending guest${noMeal!==1?'s':''} missing meal choice`, desc:'Update meal selections for your catering count.'});
+  }
+
+  // ─── Camera alerts ───
+  const cam = loadCameraData();
+  const camPhotos = cam ? (cam.photos || []).length : 0;
+  if (camPhotos > 0) {
+    const photographers = cam ? [...new Set(cam.photos.map(p => p.name))].length : 0;
+    notifs.push({type:'success', source:'camera', icon:'&#128247;', title:`${camPhotos} photo${camPhotos!==1?'s':''} captured`, desc:`${photographers} guest${photographers!==1?'s':''} have used the disposable camera.`});
+  }
+
+  return notifs;
+}
+
+function renderNotifications() {
+  cachedNotifications = generateNotifications();
+  const filtered = currentNotifFilter === 'all' ? cachedNotifications : cachedNotifications.filter(n => n.source === currentNotifFilter || n.type === currentNotifFilter);
+
+  // Stats
+  const urgent = cachedNotifications.filter(n => n.type === 'urgent').length;
+  const warning = cachedNotifications.filter(n => n.type === 'warning').length;
+  const info = cachedNotifications.filter(n => n.type === 'info' || n.type === 'success').length;
+  document.getElementById('notif-urgent-count').textContent = urgent;
+  document.getElementById('notif-warning-count').textContent = warning;
+  document.getElementById('notif-info-count').textContent = info;
+  document.getElementById('notif-total-count').textContent = cachedNotifications.length;
+  document.getElementById('notif-badge').textContent = urgent + warning;
+
+  // Filter buttons
+  document.querySelectorAll('.notif-filter-btn').forEach(b => {
+    const f = b.getAttribute('onclick').match(/'(\w+)'/)[1];
+    b.classList.toggle('active', f === currentNotifFilter);
+  });
+
+  // Render list
+  const list = document.getElementById('notif-list');
+  const empty = document.getElementById('notif-empty');
+  document.getElementById('notif-visible-count').textContent = filtered.length;
+
+  if (filtered.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  // Sort: urgent first, then warning, then info, then success
+  const order = {urgent:0, warning:1, info:2, success:3};
+  filtered.sort((a,b) => (order[a.type]||9) - (order[b.type]||9));
+
+  list.innerHTML = filtered.map(n => `
+    <div class="notif-item ${n.type}">
+      <div class="notif-icon ${n.type}">${n.icon}</div>
+      <div class="notif-body">
+        <div class="notif-title">${n.title}</div>
+        <div class="notif-desc">${n.desc}</div>
+        <span class="notif-source ${n.source}">${n.source}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterNotifs(type) {
+  currentNotifFilter = type;
+  renderNotifications();
+}
+
+function generateNotifSummary() {
+  const notifs = cachedNotifications.length ? cachedNotifications : generateNotifications();
+  const couple = S.names || 'Our';
+  const date = S.weddingDate ? new Date(S.weddingDate).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : 'TBD';
+
+  let summary = `${couple} Wedding Planning Update\n`;
+  summary += `Wedding Date: ${date}\n`;
+  summary += `Generated: ${new Date().toLocaleDateString()}\n`;
+  summary += `${'─'.repeat(36)}\n\n`;
+
+  const urgent = notifs.filter(n => n.type === 'urgent');
+  const warnings = notifs.filter(n => n.type === 'warning');
+  const infos = notifs.filter(n => n.type === 'info' || n.type === 'success');
+
+  if (urgent.length) {
+    summary += `URGENT (${urgent.length}):\n`;
+    urgent.forEach(n => summary += `  ! ${n.title} — ${n.desc}\n`);
+    summary += '\n';
+  }
+  if (warnings.length) {
+    summary += `WARNINGS (${warnings.length}):\n`;
+    warnings.forEach(n => summary += `  ~ ${n.title} — ${n.desc}\n`);
+    summary += '\n';
+  }
+  if (infos.length) {
+    summary += `INFO (${infos.length}):\n`;
+    infos.forEach(n => summary += `  - ${n.title}\n`);
+    summary += '\n';
+  }
+
+  if (notifs.length === 0) summary += 'All clear — no alerts at this time!\n';
+
+  summary += `${'─'.repeat(36)}\nSent via Ivory Wedding Planner`;
+  document.getElementById('notif-summary').value = summary;
+}
+
+function copyNotifSummary(btn) {
+  const text = document.getElementById('notif-summary').value;
+  if (!text) { generateNotifSummary(); }
+  navigator.clipboard.writeText(document.getElementById('notif-summary').value).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
 }
 
 // ══════════════════════════════════════════════════
@@ -1637,6 +2984,7 @@ let obParsedGuests = [];
 function showOnboarding() {
   document.getElementById('ob-overlay').classList.add('active');
   updateObStep(1);
+  renderAvatarGrids();
 }
 
 function closeOnboarding() {
@@ -1655,11 +3003,33 @@ function updateObStep(step) {
   });
 }
 
+// ── Avatars ──
+const AVATARS = ['👤','👩','👨','👩‍🦰','👨‍🦱','👩‍🦳','👨‍🦳','👱‍♀️','👱','🧑‍🦰','🧔','💁‍♀️','💁','🙋‍♀️','🙋','🤵‍♀️','🤵'];
+let obAvatar1 = '';
+let obAvatar2 = '';
+
+function renderAvatarGrids() {
+  const g1 = document.getElementById('ob-avatar1-grid');
+  const g2 = document.getElementById('ob-avatar2-grid');
+  if (!g1 || !g2) return;
+  obAvatar1 = S.avatar1 || '';
+  obAvatar2 = S.avatar2 || '';
+  g1.innerHTML = AVATARS.map(a => `<div class="ob-avatar ${a===obAvatar1?'selected':''}" onclick="selectAvatar(1,'${a}')">${a}</div>`).join('');
+  g2.innerHTML = AVATARS.map(a => `<div class="ob-avatar ${a===obAvatar2?'selected':''}" onclick="selectAvatar(2,'${a}')">${a}</div>`).join('');
+}
+
+function selectAvatar(partner, emoji) {
+  if (partner === 1) obAvatar1 = emoji; else obAvatar2 = emoji;
+  renderAvatarGrids();
+}
+
 function obNext() {
   if (obStep === 1) {
-    // Save couple info + budget
+    // Save couple info + budget + avatars
     S.coupleName1 = document.getElementById('ob-name1').value.trim() || '';
     S.coupleName2 = document.getElementById('ob-name2').value.trim() || '';
+    S.avatar1 = obAvatar1;
+    S.avatar2 = obAvatar2;
     S.weddingDate = document.getElementById('ob-date').value || '';
     const budgetVal = parseFloat(document.getElementById('ob-budget').value) || 50000;
     S.totalBudget = budgetVal;
@@ -1692,6 +3062,7 @@ function obNext() {
     // Refresh dashboard
     renderBudget();
     updateSidebarBadges();
+    updateTopbarAvatars();
   }
 }
 
@@ -2019,10 +3390,144 @@ function updateSidebarBadges() {
 }
 
 // ══════════════════════════════════════════════════
+// PIN AUTHENTICATION
+// ══════════════════════════════════════════════════
+const PIN_KEY = 'ivory_pin_v1';
+
+function generatePin() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+function getPinData() {
+  try { const d = localStorage.getItem(PIN_KEY); return d ? JSON.parse(d) : null; } catch(e) { return null; }
+}
+
+function savePinData(data) {
+  localStorage.setItem(PIN_KEY, JSON.stringify(data));
+}
+
+function checkPinOnLoad() {
+  const pinData = getPinData();
+  if (pinData && pinData.enabled) {
+    document.getElementById('pin-screen').style.display = 'flex';
+    // Mask the email
+    const email = pinData.email || '';
+    const masked = email.replace(/(.{2})(.*)(@.*)/, (m,a,b,c) => a + '*'.repeat(b.length) + c);
+    document.getElementById('pin-email-hint').textContent = 'PIN will be sent to: ' + masked;
+    setTimeout(() => document.querySelector('.pin-digit').focus(), 100);
+  }
+}
+
+function pinInput(el, idx) {
+  el.value = el.value.replace(/\D/g, '').slice(0, 1);
+  if (el.value && idx < 3) {
+    document.querySelectorAll('.pin-digit')[idx + 1].focus();
+  }
+}
+
+function pinKeydown(e, idx) {
+  if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+    document.querySelectorAll('.pin-digit')[idx - 1].focus();
+  }
+  if (e.key === 'Enter') verifyPin();
+}
+
+function verifyPin() {
+  const digits = Array.from(document.querySelectorAll('.pin-digit')).map(d => d.value).join('');
+  const pinData = getPinData();
+  const msg = document.getElementById('pin-msg');
+
+  if (digits.length < 4) {
+    msg.textContent = 'Please enter all 4 digits';
+    msg.className = 'pin-msg error';
+    return;
+  }
+
+  if (pinData && digits === pinData.currentPin) {
+    msg.textContent = 'Welcome back!';
+    msg.className = 'pin-msg success';
+    document.getElementById('pin-screen').classList.add('hidden');
+    setTimeout(() => document.getElementById('pin-screen').style.display = 'none', 500);
+  } else {
+    msg.textContent = 'Incorrect PIN — try again or send a new one';
+    msg.className = 'pin-msg error';
+    document.querySelectorAll('.pin-digit').forEach(d => { d.value = ''; d.classList.add('error'); });
+    setTimeout(() => document.querySelectorAll('.pin-digit').forEach(d => d.classList.remove('error')), 500);
+    document.querySelector('.pin-digit').focus();
+  }
+}
+
+function sendNewPin() {
+  const pinData = getPinData();
+  if (!pinData || !pinData.email) {
+    alert('No email configured. Please set up PIN protection first via the lock icon in the top bar.');
+    return;
+  }
+  const newPin = generatePin();
+  pinData.currentPin = newPin;
+  savePinData(pinData);
+
+  // Simulate sending email (in a real app, this would hit a backend)
+  const msg = document.getElementById('pin-msg');
+  msg.textContent = 'New PIN sent! (Demo: your PIN is ' + newPin + ')';
+  msg.className = 'pin-msg success';
+  document.querySelectorAll('.pin-digit').forEach(d => d.value = '');
+  document.querySelector('.pin-digit').focus();
+}
+
+function showPinSetup() {
+  const pinData = getPinData();
+  const isEnabled = pinData && pinData.enabled;
+
+  if (isEnabled) {
+    const choice = confirm('PIN protection is currently ON.\n\nClick OK to disable it, or Cancel to keep it.');
+    if (choice) {
+      pinData.enabled = false;
+      savePinData(pinData);
+      alert('PIN protection disabled.');
+    }
+    return;
+  }
+
+  const email = prompt('Set up PIN protection.\n\nEnter the email address where PINs should be sent:', S.coupleName1 ? '' : '');
+  if (!email || !email.includes('@')) {
+    if (email !== null) alert('Please enter a valid email address.');
+    return;
+  }
+
+  const newPin = generatePin();
+  savePinData({enabled: true, email: email, currentPin: newPin});
+  alert('PIN protection enabled!\n\nYour first PIN is: ' + newPin + '\n\n(In production, this would be emailed to ' + email + ')');
+}
+
+function disablePinAuth() {
+  if (confirm('Disable PIN protection? Anyone will be able to access your planner.')) {
+    const pinData = getPinData();
+    if (pinData) {
+      pinData.enabled = false;
+      savePinData(pinData);
+    }
+    document.getElementById('pin-screen').classList.add('hidden');
+    setTimeout(() => document.getElementById('pin-screen').style.display = 'none', 500);
+  }
+}
+
+function updateTopbarAvatars() {
+  const el = document.getElementById('topbar-avatars');
+  if (!el) return;
+  let html = '';
+  if (S.avatar1) html += `<span class="topbar-avatar">${S.avatar1}</span>`;
+  if (S.avatar2) html += `<span class="topbar-avatar">${S.avatar2}</span>`;
+  el.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════
 renderBudget();
 updateSidebarBadges();
+updateTopbarAvatars();
+checkPinOnLoad();
 
 // First-login detection: show onboarding if never completed
 if (!S.onboardingDone) {
@@ -2100,6 +3605,21 @@ if (!S.onboardingDone) {
         <div style="position:relative">
           <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:var(--stone);font-size:15px;pointer-events:none">$</span>
           <input class="ob-input" id="ob-budget" type="number" min="0" step="1000" value="50000" style="padding-left:32px" />
+        </div>
+      </div>
+
+      <!-- Avatar selection -->
+      <div class="ob-field">
+        <label class="ob-label">Choose Your Avatars</label>
+        <div style="display:flex;gap:24px;justify-content:center;margin-top:8px">
+          <div style="text-align:center">
+            <p style="font-size:11px;color:var(--stone);margin-bottom:6px">Partner 1</p>
+            <div id="ob-avatar1-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div>
+          </div>
+          <div style="text-align:center">
+            <p style="font-size:11px;color:var(--stone);margin-bottom:6px">Partner 2</p>
+            <div id="ob-avatar2-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div>
+          </div>
         </div>
       </div>
 
