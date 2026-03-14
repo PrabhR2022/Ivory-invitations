@@ -252,6 +252,22 @@ table input[type="number"]{text-align:right;width:90px}
 .notif-source.guest{background:rgba(184,84,80,0.1);color:var(--red)}
 .notif-source.camera{background:rgba(156,139,122,0.1);color:var(--stone)}
 .notif-source.general{background:rgba(237,232,224,0.5);color:var(--stone)}
+
+.upcoming-item{display:flex;align-items:center;gap:14px;padding:12px 14px;background:rgba(250,250,247,0.6);border:1px solid var(--border-light);border-radius:10px;transition:background 150ms}
+.upcoming-item:hover{background:var(--cream)}
+.upcoming-item .up-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.upcoming-item .up-icon.overdue{background:rgba(184,84,80,0.12);color:var(--red)}
+.upcoming-item .up-icon.soon{background:rgba(196,160,53,0.12);color:var(--yellow)}
+.upcoming-item .up-icon.upcoming{background:rgba(74,122,91,0.08);color:var(--green)}
+.upcoming-item .up-body{flex:1;min-width:0}
+.upcoming-item .up-title{font-size:13px;font-weight:600;color:var(--charcoal)}
+.upcoming-item .up-desc{font-size:11px;color:var(--stone);margin-top:2px}
+.upcoming-item .up-date{text-align:right;flex-shrink:0}
+.upcoming-item .up-date-main{font-size:12px;font-weight:600}
+.upcoming-item .up-date-main.overdue{color:var(--red)}
+.upcoming-item .up-date-main.soon{color:var(--yellow)}
+.upcoming-item .up-date-main.upcoming{color:var(--green)}
+.upcoming-item .up-date-sub{font-size:10px;color:var(--stone);margin-top:1px}
 .notif-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
 .notif-filter-btn{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:500;border:1px solid var(--border-light);color:var(--stone);background:white;cursor:pointer;transition:all 150ms}
 .notif-filter-btn:hover{border-color:var(--border);background:var(--cream)}
@@ -492,6 +508,16 @@ table input[type="number"]{text-align:right;width:90px}
             <canvas id="notif-guest-ring" width="140" height="140" style="flex-shrink:0"></canvas>
             <div id="notif-guest-legend" style="font-size:12px;line-height:1.8"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Up & Coming -->
+      <div class="card" id="notif-upcoming-card">
+        <div class="card-title">Up & Coming <span class="count" id="notif-upcoming-count">0</span></div>
+        <div id="notif-upcoming-list" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div id="notif-upcoming-empty" style="display:none;text-align:center;padding:20px;color:var(--stone);font-size:13px">
+          <p style="font-size:28px;margin-bottom:6px;opacity:0.3">&#128197;</p>
+          <p>No upcoming deadlines — add dates to your vendors, stationery, or checklist to see what's due next.</p>
         </div>
       </div>
 
@@ -1903,7 +1929,7 @@ function renderTlSchedule() {
     const height = Math.max(((eTime - s) / 60) * pxPerHour, 32);
     const cat = b.cat || 'other';
     const vendorHtml = b.who ? `<div class="tl-block-vendor">${esc(b.who)}</div>` : '';
-    html += `<div class="tl-block tl-block-${cat}" data-block-idx="${i}" style="top:${top}px;height:${height}px;position:absolute" onclick="editTlBlock(${i})">
+    html += `<div class="tl-block tl-block-${cat}" data-block-idx="${i}" style="top:${top}px;height:${height}px;position:absolute">
       <div class="tl-block-time">${esc(b.time)}${b.end ? ' – ' + esc(b.end) : ''}</div>
       <div class="tl-block-name">${esc(b.activity)}</div>
       ${vendorHtml}
@@ -1921,29 +1947,44 @@ function renderTlSchedule() {
 }
 
 // Drag handling for timeline blocks using pointer capture
+// Differentiates click (open edit) from drag (move block)
 function setupBlockDrag(blockEl) {
   const pxPerHour = 100;
-  let dragStartY, dragStartTop, blockIdx;
+  const DRAG_THRESHOLD = 5; // px movement before considered a drag
+  let dragStartY, dragStartTop, blockIdx, isDragging, hasMoved;
 
   blockEl.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('[onclick]')) return;
     dragStartY = e.clientY;
     dragStartTop = parseInt(blockEl.style.top) || 0;
     blockIdx = parseInt(blockEl.dataset.blockIdx);
-    blockEl.classList.add('dragging');
-    blockEl.style.zIndex = '10';
+    isDragging = true;
+    hasMoved = false;
     blockEl.setPointerCapture(e.pointerId);
     e.preventDefault();
   });
 
   blockEl.addEventListener('pointermove', (e) => {
-    if (!blockEl.classList.contains('dragging')) return;
+    if (!isDragging) return;
     const deltaY = e.clientY - dragStartY;
+    if (!hasMoved && Math.abs(deltaY) < DRAG_THRESHOLD) return;
+    if (!hasMoved) {
+      hasMoved = true;
+      blockEl.classList.add('dragging');
+      blockEl.style.zIndex = '10';
+    }
     blockEl.style.top = (dragStartTop + deltaY) + 'px';
   });
 
   blockEl.addEventListener('pointerup', (e) => {
-    if (!blockEl.classList.contains('dragging')) return;
+    if (!isDragging) return;
+    isDragging = false;
+
+    if (!hasMoved) {
+      // It was a click, not a drag — open the edit modal
+      editTlBlock(blockIdx);
+      return;
+    }
+
     blockEl.classList.remove('dragging');
     blockEl.style.zIndex = 'auto';
 
@@ -1975,6 +2016,13 @@ function setupBlockDrag(blockEl) {
     S.timeline.sort((a, c) => (tlParseTime(a.time) || 0) - (tlParseTime(c.time) || 0));
     saveState();
     renderTlSchedule();
+  });
+
+  blockEl.addEventListener('pointercancel', () => {
+    isDragging = false;
+    hasMoved = false;
+    blockEl.classList.remove('dragging');
+    blockEl.style.zIndex = 'auto';
   });
 }
 
@@ -2856,6 +2904,7 @@ function renderNotifications() {
   // Render dashboard widgets
   renderNotifBudgetPie();
   renderNotifGuestRing();
+  renderNotifUpcoming();
 }
 
 function renderNotifBudgetPie() {
@@ -2952,6 +3001,97 @@ function renderNotifGuestRing() {
   ctx.fillText('guests', cx, cy + 8);
 
   legend.innerHTML = slices.map(sl => `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:${sl.color};flex-shrink:0"></span>${sl.name}: ${sl.val}</div>`).join('');
+}
+
+function renderNotifUpcoming() {
+  const list = document.getElementById('notif-upcoming-list');
+  const empty = document.getElementById('notif-upcoming-empty');
+  const countEl = document.getElementById('notif-upcoming-count');
+  if (!list) return;
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const items = [];
+
+  // Vendor payment due dates
+  S.vendors.forEach(v => {
+    if (!v.due || !v.company) return;
+    const due = new Date(v.due);
+    due.setHours(0,0,0,0);
+    const diff = Math.ceil((due - today) / (1000*60*60*24));
+    if (diff < -90) return; // Skip very old
+    items.push({date: due, diff, title: v.company, desc: `${v.cat} — payment due`, icon: '&#128176;', tab: 'vendors', source: 'vendor'});
+  });
+
+  // Stationery send/order dates
+  (S.stationery || []).forEach(st => {
+    if (st.orderDate) {
+      const d = new Date(st.orderDate); d.setHours(0,0,0,0);
+      const diff = Math.ceil((d - today) / (1000*60*60*24));
+      if (diff > -90) items.push({date: d, diff, title: st.item, desc: 'Order date', icon: '&#9993;', tab: 'stationery', source: 'stationery'});
+    }
+    if (st.sendDate) {
+      const d = new Date(st.sendDate); d.setHours(0,0,0,0);
+      const diff = Math.ceil((d - today) / (1000*60*60*24));
+      if (diff > -90) items.push({date: d, diff, title: st.item, desc: 'Send date', icon: '&#9993;', tab: 'stationery', source: 'stationery'});
+    }
+  });
+
+  // Ceremony dates
+  (S.ceremonies || []).forEach(cer => {
+    if (!cer.date) return;
+    const d = new Date(cer.date); d.setHours(0,0,0,0);
+    const diff = Math.ceil((d - today) / (1000*60*60*24));
+    if (diff > -90) items.push({date: d, diff, title: cer.name, desc: 'Ceremony date', icon: '&#9829;', tab: 'ceremony', source: 'ceremony'});
+  });
+
+  // Wedding date
+  if (S.weddingDate) {
+    const d = new Date(S.weddingDate); d.setHours(0,0,0,0);
+    const diff = Math.ceil((d - today) / (1000*60*60*24));
+    if (diff >= 0) items.push({date: d, diff, title: 'Wedding Day', desc: 'The big day!', icon: '&#128141;', tab: 'notifications', source: 'wedding'});
+  }
+
+  // Sort by date (soonest first), overdue items at top
+  items.sort((a, b) => a.date - b.date);
+
+  // Show max 8 items: overdue + next upcoming
+  const overdue = items.filter(i => i.diff < 0);
+  const upcoming = items.filter(i => i.diff >= 0);
+  const shown = [...overdue.slice(-3), ...upcoming.slice(0, 8 - Math.min(overdue.length, 3))].slice(0, 8);
+
+  if (countEl) countEl.textContent = shown.length;
+
+  if (shown.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = shown.map(item => {
+    const urgency = item.diff < 0 ? 'overdue' : item.diff <= 7 ? 'soon' : 'upcoming';
+    const dateStr = item.date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+    let relStr = '';
+    if (item.diff < 0) relStr = Math.abs(item.diff) + ' day' + (Math.abs(item.diff)!==1?'s':'') + ' ago';
+    else if (item.diff === 0) relStr = 'Today';
+    else if (item.diff === 1) relStr = 'Tomorrow';
+    else if (item.diff <= 7) relStr = 'In ' + item.diff + ' days';
+    else if (item.diff <= 30) relStr = 'In ' + Math.ceil(item.diff / 7) + ' week' + (Math.ceil(item.diff/7)!==1?'s':'');
+    else relStr = 'In ' + Math.ceil(item.diff / 30) + ' month' + (Math.ceil(item.diff/30)!==1?'s':'');
+
+    return `<div class="upcoming-item" style="cursor:pointer" onclick="showTab('${item.tab}')">
+      <div class="up-icon ${urgency}">${item.icon}</div>
+      <div class="up-body">
+        <div class="up-title">${esc(item.title)}</div>
+        <div class="up-desc">${esc(item.desc)}</div>
+      </div>
+      <div class="up-date">
+        <div class="up-date-main ${urgency}">${dateStr}</div>
+        <div class="up-date-sub">${relStr}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function filterNotifs(type) {
