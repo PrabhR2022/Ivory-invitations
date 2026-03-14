@@ -435,6 +435,7 @@ table input[type="number"]{text-align:right;width:90px}
       <button class="sidebar-btn" onclick="showTab('budget')"><span class="icon">$</span>Budget Tracker</button>
       <button class="sidebar-btn" onclick="showTab('checklist')"><span class="icon">&#10003;</span>Checklist<span class="badge" id="check-badge">0%</span></button>
       <button class="sidebar-btn" onclick="showTab('guests')"><span class="icon">&#9825;</span>Guest List<span class="badge" id="guest-badge">0</span></button>
+      <button class="sidebar-btn" onclick="showTab('guests');setTimeout(()=>showGuestSub('floorplan'),0)" style="padding-left:40px;font-size:12px"><span class="icon">&#9638;</span>Floor Plan</button>
       <button class="sidebar-btn" onclick="showTab('vendors')"><span class="icon">&#9742;</span>Vendors</button>
     </div>
     <div class="sidebar-section">
@@ -697,6 +698,10 @@ table input[type="number"]{text-align:right;width:90px}
     <div class="tab-content" id="tab-ceremony">
       <h1 class="page-title">Ceremony & Reception</h1>
       <p class="page-desc">Order of events, music cues, and readings</p>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <label style="font-size:12px;font-weight:600;color:var(--stone)">Viewing:</label>
+        <select id="ceremony-selector" onchange="switchCeremonyView(this.value)" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:500;min-width:180px"></select>
+      </div>
       <div class="card">
         <div class="card-title">Ceremony <button class="btn btn-sm btn-dark" onclick="addCeremonyRow('ceremony')">+ Add</button></div>
         <div class="tbl-wrap">
@@ -719,10 +724,10 @@ table input[type="number"]{text-align:right;width:90px}
       <p class="page-desc">Visual schedule, vendor coordination & ceremony management</p>
 
       <!-- Sub-tabs -->
-      <div class="tl-tabs">
+      <div class="tl-tabs" id="timeline-subtabs">
         <button class="tl-tab active" onclick="showTimelineSub('schedule')">Schedule</button>
-        <button class="tl-tab" onclick="showTimelineSub('vendors')">Vendors</button>
         <button class="tl-tab" onclick="showTimelineSub('ceremonies')">Ceremonies</button>
+        <button class="tl-tab" onclick="showTimelineSub('vendors')">Vendors</button>
       </div>
 
       <!-- ── Schedule sub-tab ── -->
@@ -745,8 +750,8 @@ table input[type="number"]{text-align:right;width:90px}
         <p style="font-size:13px;color:var(--stone);margin-bottom:16px">All your vendors with day-of details. Contact info is hidden — edit in the Vendors tab.</p>
         <div class="card" style="padding:0;overflow:hidden">
           <div class="tbl-wrap" style="margin:0;padding:0">
-            <table style="min-width:700px">
-              <thead><tr><th>Category</th><th>Company</th><th>Status</th><th>Payment Due</th><th>Arrival</th><th>Setup Location</th><th>Day-of Notes</th></tr></thead>
+            <table style="min-width:650px">
+              <thead><tr><th>Category</th><th>Company</th><th>Status</th><th>Arrival Time</th><th>Setup Location</th><th>Day-of Notes</th></tr></thead>
               <tbody id="tl-vendors-body"></tbody>
             </table>
           </div>
@@ -1768,16 +1773,26 @@ function addVendor() { S.vendors.push({cat:"",company:"",contact:"",email:"",pho
 // CEREMONY & RECEPTION
 // ══════════════════════════════════════════════════
 function renderCeremony() {
+  // Populate ceremony selector dropdown
+  const sel = document.getElementById('ceremony-selector');
+  if (sel && S.ceremonies) {
+    sel.innerHTML = S.ceremonies.map((c, i) => `<option value="${i}" ${i===selectedCeremonyIdx?'selected':''}>${esc(c.name)}</option>`).join('');
+  }
+
   ["ceremony","reception"].forEach(key => {
     const arr = S[key];
     document.getElementById(key+"-body").innerHTML = arr.map((r,i)=>`<tr>
-      <td>${eCell(r.time,`S.${key}[${i}].time=this.value;saveState()`)}</td>
+      <td><input type="time" value="${esc(r.time||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);font-size:13px" onchange="S.${key}[${i}].time=this.value;saveState()"/></td>
       <td>${eCell(r.event,`S.${key}[${i}].event=this.value;saveState()`)}</td>
       <td>${eCell(r.music,`S.${key}[${i}].music=this.value;saveState()`)}</td>
       <td>${eCell(r.notes,`S.${key}[${i}].notes=this.value;saveState()`)}</td>
       <td>${delBtn(`S.${key}.splice(${i},1);saveState();renderCeremony()`)}</td>
     </tr>`).join("");
   });
+}
+function switchCeremonyView(idx) {
+  selectedCeremonyIdx = parseInt(idx) || 0;
+  // Future: load ceremony-specific data when multiple ceremonies have separate ceremony/reception flows
 }
 function addCeremonyRow(key) { S[key].push({time:"",event:"",music:"",notes:""}); saveState(); renderCeremony(); }
 
@@ -1788,13 +1803,16 @@ let tlActiveSub = 'schedule';
 
 function showTimelineSub(sub) {
   tlActiveSub = sub;
-  document.querySelectorAll('.tl-tab').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tl-section').forEach(s => s.classList.remove('active'));
-  const tabs = document.querySelectorAll('.tl-tab');
-  const subs = {schedule:0, vendors:1, ceremonies:2};
+  // Update timeline sub-tabs
+  document.querySelectorAll('#timeline-subtabs .tl-tab').forEach(b => b.classList.remove('active'));
+  const tabs = document.querySelectorAll('#timeline-subtabs .tl-tab');
+  const subs = {schedule:0, ceremonies:1, vendors:2};
   if (tabs[subs[sub]]) tabs[subs[sub]].classList.add('active');
-  const el = document.getElementById('tl-' + sub);
-  if (el) el.classList.add('active');
+  // Show/hide sections
+  ['tl-schedule','tl-ceremonies','tl-vendors'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', id === 'tl-' + sub);
+  });
   if (sub === 'schedule') renderTlSchedule();
   else if (sub === 'vendors') renderTlVendors();
   else if (sub === 'ceremonies') renderTlCeremonies();
@@ -1902,38 +1920,33 @@ function renderTlSchedule() {
   }, 0);
 }
 
-// Drag handling for timeline blocks
+// Drag handling for timeline blocks using pointer capture
 function setupBlockDrag(blockEl) {
-  let isDragging = false, dragStartY, dragStartTop, blockIdx;
   const pxPerHour = 100;
-  const con = document.getElementById('tl-visual-container');
+  let dragStartY, dragStartTop, blockIdx;
 
   blockEl.addEventListener('pointerdown', (e) => {
-    // Ignore if clicking on interactive area
     if (e.target.closest('[onclick]')) return;
-    isDragging = true;
     dragStartY = e.clientY;
     dragStartTop = parseInt(blockEl.style.top) || 0;
     blockIdx = parseInt(blockEl.dataset.blockIdx);
     blockEl.classList.add('dragging');
     blockEl.style.zIndex = '10';
+    blockEl.setPointerCapture(e.pointerId);
     e.preventDefault();
   });
 
-  document.addEventListener('pointermove', (e) => {
-    if (!isDragging) return;
+  blockEl.addEventListener('pointermove', (e) => {
+    if (!blockEl.classList.contains('dragging')) return;
     const deltaY = e.clientY - dragStartY;
-    const newTop = dragStartTop + deltaY;
-    blockEl.style.top = newTop + 'px';
+    blockEl.style.top = (dragStartTop + deltaY) + 'px';
   });
 
-  document.addEventListener('pointerup', (e) => {
-    if (!isDragging) return;
-    isDragging = false;
+  blockEl.addEventListener('pointerup', (e) => {
+    if (!blockEl.classList.contains('dragging')) return;
     blockEl.classList.remove('dragging');
     blockEl.style.zIndex = 'auto';
 
-    // Calculate new time
     const b = S.timeline[blockIdx];
     if (!b) return;
 
@@ -1946,25 +1959,19 @@ function setupBlockDrag(blockEl) {
     if (minT === Infinity) minT = 7 * 60;
     const startHour = Math.floor(minT / 60);
 
-    // Calculate new time based on position
+    // Calculate new time from pixel position
     const newTopPx = parseInt(blockEl.style.top) || 0;
     const newMinutes = startHour * 60 + Math.round((newTopPx / pxPerHour) * 60);
-    const newStartTime = tlFormatTime(newMinutes);
 
-    // Calculate end time (preserve duration)
+    // Preserve duration
     const originalStart = tlParseTime(b.time);
     const originalEnd = tlParseTime(b.end);
-    let durationMinutes = 30;
-    if (originalStart !== null && originalEnd !== null) {
-      durationMinutes = originalEnd - originalStart;
-    }
-    const newEndTime = tlFormatTime(newMinutes + durationMinutes);
+    let duration = 30;
+    if (originalStart !== null && originalEnd !== null) duration = originalEnd - originalStart;
 
-    // Update block
-    b.time = newStartTime;
-    b.end = newEndTime;
+    b.time = tlFormatTime(Math.max(0, newMinutes));
+    b.end = tlFormatTime(Math.max(0, newMinutes) + duration);
 
-    // Re-sort and save
     S.timeline.sort((a, c) => (tlParseTime(a.time) || 0) - (tlParseTime(c.time) || 0));
     saveState();
     renderTlSchedule();
@@ -2055,8 +2062,7 @@ function renderTlVendors() {
     <td style="font-weight:500;white-space:nowrap">${esc(v.cat)}</td>
     <td>${esc(v.company) || '<span style="color:var(--taupe);font-style:italic">Not set</span>'}</td>
     <td>${eCell(v.status,`S.vendors[${i}].status=this.value;saveState()`,"select",statuses)}</td>
-    <td style="font-size:12px;color:var(--stone)">${v.due || '—'}</td>
-    <td>${eCell(v.arrival,`S.vendors[${i}].arrival=this.value;saveState()`)}</td>
+    <td><input type="time" value="${esc(v.arrival||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);font-size:13px" onchange="S.vendors[${i}].arrival=this.value;saveState()"/></td>
     <td>${eCell(v.setupLocation||'',`S.vendors[${i}].setupLocation=this.value;saveState()`)}</td>
     <td>${eCell(v.dayNotes||'',`S.vendors[${i}].dayNotes=this.value;saveState()`)}</td>
   </tr>`).join('');
