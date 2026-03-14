@@ -106,30 +106,126 @@ table input[type="number"]{text-align:right;width:90px}
 .tl-tab.active{background:var(--charcoal);color:var(--ivory);border-radius:8px}
 .tl-section{display:none}
 .tl-section.active{display:block}
-/* Visual schedule */
-.tl-visual{position:relative;margin-left:100px}
-.tl-hour-label{position:absolute;left:-100px;font-size:11px;font-weight:600;color:var(--stone);width:90px;text-align:right}
-.tl-hour-line{border-top:1.5px solid var(--border-light);width:100%;position:absolute}
-.tl-block{position:absolute;left:8px;right:120px;border-radius:8px;padding:8px 12px;cursor:grab;overflow:hidden;transition:box-shadow 150ms;border-left:4px solid;user-select:none}
-.tl-block.dragging{cursor:grabbing;box-shadow:0 6px 16px rgba(0,0,0,0.15);opacity:0.95}
-.tl-block:hover{box-shadow:0 4px 12px rgba(0,0,0,0.1)}
-.tl-block .tl-block-time{font-size:10px;font-weight:600;opacity:0.7}
-.tl-block .tl-block-name{font-size:12px;font-weight:600;margin-top:1px}
-.tl-block .tl-block-who{font-size:10px;opacity:0.6;margin-top:1px}
-.tl-block .tl-block-vendor{position:absolute;right:8px;top:8px;font-size:9px;font-weight:600;color:var(--stone);text-align:right;max-width:100px;white-space:normal}
-.tl-block-prep{background:rgba(156,139,122,0.1);border-color:var(--taupe);color:var(--charcoal)}
-.tl-block-ceremony{background:rgba(184,84,80,0.08);border-color:var(--red);color:var(--charcoal)}
-.tl-block-photos{background:rgba(74,122,91,0.08);border-color:var(--green);color:var(--charcoal)}
-.tl-block-reception{background:rgba(196,160,53,0.08);border-color:var(--yellow);color:var(--charcoal)}
-.tl-block-other{background:rgba(237,232,224,0.5);border-color:var(--stone);color:var(--charcoal)}
-/* Timeline list */
-.timeline-row{display:flex;gap:16px;padding:10px 0;border-bottom:1px solid rgba(214,208,200,0.3);align-items:flex-start}
-.timeline-time{width:90px;flex-shrink:0;font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
-.timeline-content{flex:1}
-.timeline-activity{font-size:14px;font-weight:500}
-.timeline-who{font-size:12px;color:var(--stone);margin-top:2px}
-.timeline-note{font-size:12px;color:var(--taupe);margin-top:2px;font-style:italic}
-.timeline-cat-tag{display:inline-block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;padding:2px 6px;border-radius:100px;margin-left:8px}
+
+/* Schedule view toggle */
+.sch-view-toggle{display:flex;background:white;border:1px solid var(--border-light);border-radius:8px;overflow:hidden;margin-left:auto}
+.sch-view-toggle button{padding:6px 14px;font-size:11px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--stone);transition:all 150ms}
+.sch-view-toggle button:hover{background:rgba(237,232,224,0.5)}
+.sch-view-toggle button.active{background:var(--charcoal);color:var(--ivory)}
+.sch-view-panel{display:none}
+.sch-view-panel.active{display:block}
+
+/* Split layout */
+.sch-split{display:grid;grid-template-columns:1fr 280px;gap:16px}
+
+/* ── Calendar view ── */
+.sch-cal{background:white;border:1px solid var(--border-light);border-radius:12px;overflow:hidden}
+.sch-cal-header{display:grid;grid-template-columns:54px 1fr;border-bottom:1px solid var(--border-light)}
+.sch-cal-header .corner{padding:8px;border-right:1px solid var(--border-light)}
+.sch-cal-header .day-label{padding:10px 16px;font-size:12px;font-weight:700;text-align:center}
+.sch-cal-header .day-date{font-size:20px;font-family:var(--font-serif);display:block;margin-top:2px}
+.sch-cal-body{position:relative;display:grid;grid-template-columns:54px 1fr}
+.sch-cal-times{border-right:1px solid var(--border-light)}
+.sch-cal-slot{height:60px;padding:4px 6px;text-align:right;font-size:10px;font-weight:500;color:var(--stone);border-bottom:1px solid rgba(214,208,200,0.2)}
+.sch-cal-events{position:relative}
+.sch-cal-hline{position:absolute;left:0;right:0;height:1px;background:rgba(214,208,200,0.25)}
+.sch-cal-ev{position:absolute;left:4px;right:4px;border-radius:8px;padding:8px 10px;overflow:hidden;cursor:pointer;transition:all 200ms;border-left:3px solid;user-select:none}
+.sch-cal-ev:hover{box-shadow:0 2px 12px rgba(0,0,0,0.1);transform:scale(1.01)}
+.sch-cal-ev.dragging{cursor:grabbing;box-shadow:0 6px 16px rgba(0,0,0,0.15);opacity:0.95;z-index:10}
+.sch-cal-ev .ce-name{font-size:11px;font-weight:600;line-height:1.3}
+.sch-cal-ev .ce-time{font-size:9px;opacity:0.6;margin-top:1px}
+.sch-cal-ev .ce-vendor{font-size:9px;color:var(--stone);margin-top:2px}
+.sch-cal-ev.cat-prep{background:rgba(196,160,53,0.1);border-color:var(--yellow)}
+.sch-cal-ev.cat-ceremony{background:rgba(184,84,80,0.08);border-color:var(--red)}
+.sch-cal-ev.cat-photos{background:rgba(74,122,91,0.08);border-color:var(--green)}
+.sch-cal-ev.cat-reception{background:rgba(156,139,122,0.08);border-color:var(--taupe)}
+.sch-cal-ev.cat-other{background:rgba(237,232,224,0.5);border-color:var(--stone)}
+.sch-cal-now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:5}
+.sch-cal-now::before{content:'';position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red)}
+
+/* ── Agenda view ── */
+.sch-agenda{background:white;border:1px solid var(--border-light);border-radius:12px;overflow:hidden}
+.sch-phase-hdr{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border-light);background:rgba(250,250,247,0.5)}
+.sch-phase-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.sch-phase-icon.prep{background:rgba(196,160,53,0.12);color:var(--yellow)}
+.sch-phase-icon.ceremony{background:rgba(184,84,80,0.08);color:var(--red)}
+.sch-phase-icon.photos{background:rgba(74,122,91,0.08);color:var(--green)}
+.sch-phase-icon.reception{background:rgba(156,139,122,0.08);color:var(--taupe)}
+.sch-phase-icon.other{background:rgba(237,232,224,0.5);color:var(--stone)}
+.sch-phase-name{font-size:14px;font-weight:700;flex:1}
+.sch-phase-count{font-size:10px;background:rgba(156,139,122,0.12);color:var(--taupe);padding:2px 8px;border-radius:100px;font-weight:600}
+.sch-phase-range{font-size:11px;color:var(--stone);font-weight:500}
+.sch-ag-item{display:flex;align-items:stretch;border-bottom:1px solid rgba(214,208,200,0.25);transition:background 150ms;cursor:pointer}
+.sch-ag-item:hover{background:rgba(237,232,224,0.25)}
+.sch-ag-item:last-child{border-bottom:none}
+.sch-ag-time{width:95px;flex-shrink:0;padding:12px 14px 12px 20px;position:relative}
+.sch-ag-time .start{font-size:13px;font-weight:600}
+.sch-ag-time .end{font-size:11px;color:var(--stone);margin-top:1px}
+.sch-ag-time::after{content:'';position:absolute;right:0;top:12px;bottom:12px;width:3px;border-radius:2px}
+.sch-ag-time.prep::after{background:var(--yellow)}
+.sch-ag-time.ceremony::after{background:var(--red)}
+.sch-ag-time.photos::after{background:var(--green)}
+.sch-ag-time.reception::after{background:var(--taupe)}
+.sch-ag-time.other::after{background:var(--stone)}
+.sch-ag-body{flex:1;padding:10px 14px;min-width:0}
+.sch-ag-title{font-size:13px;font-weight:600}
+.sch-ag-meta{display:flex;gap:14px;margin-top:3px;font-size:11px;color:var(--stone)}
+.sch-ag-meta .vendor::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--taupe);display:inline-block;margin-right:4px;vertical-align:1px}
+.sch-ag-notes{font-size:11px;color:var(--stone);margin-top:2px;font-style:italic}
+.sch-ag-drag{width:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--border);font-size:11px;cursor:grab;user-select:none;opacity:0;transition:opacity 150ms}
+.sch-ag-item:hover .sch-ag-drag{opacity:1}
+
+/* ── Compact view ── */
+.sch-compact{background:white;border:1px solid var(--border-light);border-radius:12px;overflow:hidden}
+.sch-progress{display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid var(--border-light);background:rgba(250,250,247,0.5)}
+.sch-progress .pb-label{font-size:11px;font-weight:600;color:var(--stone);white-space:nowrap}
+.sch-progress .pb-bar{flex:1;height:6px;background:var(--border-light);border-radius:100px;overflow:hidden}
+.sch-progress .pb-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--green),var(--taupe));transition:width 300ms}
+.sch-progress .pb-pct{font-size:12px;font-weight:700;min-width:36px;text-align:right}
+.sch-compact table{width:100%;border-collapse:collapse}
+.sch-compact thead th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--stone);padding:10px 14px;text-align:left;border-bottom:2px solid var(--border-light);white-space:nowrap}
+.sch-compact tbody tr{transition:background 150ms;cursor:pointer}
+.sch-compact tbody tr:hover{background:rgba(237,232,224,0.25)}
+.sch-compact td{padding:9px 14px;border-bottom:1px solid rgba(214,208,200,0.25);font-size:12px;vertical-align:middle}
+.sch-compact .ct-cat{display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.sch-compact .ct-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.ct-dot.prep{background:var(--yellow)}.ct-dot.ceremony{background:var(--red)}.ct-dot.photos{background:var(--green)}.ct-dot.reception{background:var(--taupe)}.ct-dot.other{background:var(--stone)}
+.sch-compact .ct-time{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sch-compact .ct-dur{color:var(--stone);font-size:11px;white-space:nowrap}
+.sch-compact .ct-vendor{color:var(--taupe);font-size:11px}
+.sch-compact .ct-notes{color:var(--stone);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sch-compact .compact-passed{opacity:0.45}
+.sch-compact .compact-now{background:rgba(184,84,80,0.04)}
+.sch-compact .compact-now td{border-bottom:2px solid var(--red)}
+
+/* ── Sidebar cards ── */
+.sch-next{background:white;border:1px solid var(--border-light);border-radius:12px;padding:16px}
+.sch-next .nc-label{font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.sch-next .nc-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--red);animation:schPulse 2s infinite}
+.sch-next .nc-name{font-size:16px;font-weight:700}
+.sch-next .nc-time{font-size:12px;color:var(--stone);margin-top:2px}
+.sch-next .nc-vendor{font-size:11px;color:var(--taupe);margin-top:6px;display:flex;align-items:center;gap:5px}
+.sch-next .nc-vendor::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--taupe)}
+.sch-next .nc-countdown{font-size:28px;font-family:var(--font-serif);margin-top:10px}
+.sch-next .nc-countdown span{font-size:11px;font-weight:500;color:var(--stone);font-family:var(--font-sans)}
+@keyframes schPulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.sch-summary{background:white;border:1px solid var(--border-light);border-radius:12px;padding:16px}
+.sch-summary .sc-title{font-size:12px;font-weight:600;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px}
+.sch-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sch-summary-grid .ss{text-align:center;padding:10px;background:rgba(250,250,247,0.5);border-radius:8px}
+.sch-summary-grid .ss .val{font-family:var(--font-serif);font-size:22px;line-height:1}
+.sch-summary-grid .ss .lbl{font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:var(--stone);margin-top:4px}
+.sch-summary-grid .ss.hl{background:rgba(184,84,80,0.06)}
+.sch-summary-grid .ss.hl .val{color:var(--red)}
+.sch-vs{background:white;border:1px solid var(--border-light);border-radius:12px;padding:16px}
+.sch-vs .vs-title{font-size:12px;font-weight:600;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px}
+.sch-vs-item{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(214,208,200,0.3);font-size:12px}
+.sch-vs-item:last-child{border-bottom:none}
+.sch-vs-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sch-vs-dot.arrived{background:var(--green)}.sch-vs-dot.pending{background:var(--border)}
+.sch-vs-name{flex:1;font-weight:500}
+.sch-vs-time{font-size:10px;color:var(--stone)}
+
 /* Vendor day-of */
 .tl-vendor-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid rgba(214,208,200,0.3);font-size:13px}
 .tl-vendor-row:last-child{border-bottom:none}
@@ -140,6 +236,12 @@ table input[type="number"]{text-align:right;width:90px}
 .tl-ceremony-card:hover{border-color:var(--taupe)}
 .tl-ceremony-title{font-family:var(--font-serif);font-size:18px;margin-bottom:4px}
 .tl-ceremony-date{font-size:12px;color:var(--stone);margin-bottom:12px}
+/* Category colors for edit modal */
+.tl-block-prep{background:rgba(196,160,53,0.1);border-color:var(--yellow);color:var(--charcoal)}
+.tl-block-ceremony{background:rgba(184,84,80,0.08);border-color:var(--red);color:var(--charcoal)}
+.tl-block-photos{background:rgba(74,122,91,0.08);border-color:var(--green);color:var(--charcoal)}
+.tl-block-reception{background:rgba(156,139,122,0.08);border-color:var(--taupe);color:var(--charcoal)}
+.tl-block-other{background:rgba(237,232,224,0.5);border-color:var(--stone);color:var(--charcoal)}
 
 /* ─── Kit ─── */
 .kit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
@@ -758,13 +860,46 @@ table input[type="number"]{text-align:right;width:90px}
 
       <!-- ── Schedule sub-tab ── -->
       <div class="tl-section active" id="tl-schedule">
-        <div class="btn-row" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
           <button class="btn btn-dark" onclick="addTlBlock()">+ Add Block</button>
           <button class="btn btn-outline" onclick="window.print()">Print</button>
+          <div class="sch-view-toggle" id="sch-view-toggle">
+            <button class="active" onclick="switchSchView('calendar')">Calendar</button>
+            <button onclick="switchSchView('agenda')">Agenda</button>
+            <button onclick="switchSchView('compact')">Compact</button>
+          </div>
         </div>
-        <div class="card" style="padding:16px;overflow:auto">
-          <div id="tl-visual-container" style="position:relative;min-height:600px"></div>
+
+        <!-- Calendar View -->
+        <div class="sch-view-panel active" id="sch-view-calendar">
+          <div class="sch-split">
+            <div class="sch-cal">
+              <div class="sch-cal-header"><div class="corner"></div><div class="day-label" id="sch-cal-daylabel">Your Wedding Day</div></div>
+              <div class="sch-cal-body">
+                <div class="sch-cal-times" id="sch-cal-times"></div>
+                <div class="sch-cal-events" id="sch-cal-events"></div>
+              </div>
+            </div>
+            <div class="detail-panel" id="sch-sidebar-cal"></div>
+          </div>
         </div>
+
+        <!-- Agenda View -->
+        <div class="sch-view-panel" id="sch-view-agenda">
+          <div class="sch-split">
+            <div class="sch-agenda" id="sch-agenda-list"></div>
+            <div class="detail-panel" id="sch-sidebar-agenda"></div>
+          </div>
+        </div>
+
+        <!-- Compact View -->
+        <div class="sch-view-panel" id="sch-view-compact">
+          <div class="sch-split">
+            <div class="sch-compact" id="sch-compact-wrap"></div>
+            <div class="detail-panel" id="sch-sidebar-compact"></div>
+          </div>
+        </div>
+
         <!-- Edit modal for timeline blocks -->
         <div id="tl-block-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:200;justify-content:center;align-items:center">
           <div class="card" style="width:380px;max-width:90vw;max-height:80vh;overflow-y:auto" id="tl-block-form"></div>
@@ -1870,87 +2005,157 @@ function tlFormatTime(mins) {
 
 const tlCatColors = {prep:'prep',ceremony:'ceremony',photos:'photos',reception:'reception',other:'other'};
 const tlCatLabels = {prep:'Prep',ceremony:'Ceremony',photos:'Photos',reception:'Reception',other:'Other'};
+const tlCatIcons = {prep:'&#9733;',ceremony:'&#9829;',photos:'&#128247;',reception:'&#127878;',other:'&#9670;'};
+let schActiveView = 'calendar';
 
-// ── VISUAL SCHEDULE ──
+function switchSchView(view) {
+  schActiveView = view;
+  document.querySelectorAll('.sch-view-panel').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('sch-view-' + view);
+  if (el) el.classList.add('active');
+  document.querySelectorAll('#sch-view-toggle button').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase() === view);
+  });
+  renderTlSchedule();
+}
+
+// ── Sidebar HTML (shared) ──
+function schSidebarHtml() {
+  const blocks = S.timeline.filter(b => tlParseTime(b.time) !== null);
+  const total = blocks.length;
+  let totalMin = 0;
+  blocks.forEach(b => {
+    const s = tlParseTime(b.time), e = tlParseTime(b.end);
+    if (s !== null && e !== null) totalMin += (e - s);
+  });
+  const totalHrs = Math.round(totalMin / 60);
+
+  // Up next (first block after now — for demo, show first future block)
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  let nextBlock = null;
+  for (const b of blocks) {
+    const s = tlParseTime(b.time);
+    if (s !== null && s > nowMin) { nextBlock = b; break; }
+  }
+  const passed = blocks.filter(b => { const e = tlParseTime(b.end); return e !== null && e <= nowMin; }).length;
+  const remaining = total - passed;
+
+  // Vendors with arrival times
+  const vendorHtml = S.vendors.filter(v => v.company && v.arrival).map(v => {
+    const cls = 'pending';
+    return `<div class="sch-vs-item"><div class="sch-vs-dot ${cls}"></div><div class="sch-vs-name">${esc(v.company)}</div><div class="sch-vs-time">${esc(v.arrival)}</div></div>`;
+  }).join('');
+
+  let html = '';
+  // Up Next card
+  if (nextBlock) {
+    const ns = tlParseTime(nextBlock.time);
+    const diff = ns !== null ? ns - nowMin : 0;
+    const countText = diff > 0 ? `${diff} <span>min away</span>` : `<span>Starting now</span>`;
+    html += `<div class="sch-next"><div class="nc-label">Up Next</div><div class="nc-name">${esc(nextBlock.activity)}</div><div class="nc-time">${esc(nextBlock.time)}${nextBlock.end ? ' – '+esc(nextBlock.end) : ''}</div>${nextBlock.who ? `<div class="nc-vendor">${esc(nextBlock.who)}</div>` : ''}<div class="nc-countdown">${countText}</div></div>`;
+  }
+  // Summary
+  html += `<div class="sch-summary"><div class="sc-title">Today's Summary</div><div class="sch-summary-grid"><div class="ss"><div class="val">${total}</div><div class="lbl">Events</div></div><div class="ss"><div class="val">${totalHrs}h</div><div class="lbl">Total Time</div></div><div class="ss hl"><div class="val">${remaining}</div><div class="lbl">Remaining</div></div><div class="ss"><div class="val">${S.vendors.filter(v=>v.company).length}</div><div class="lbl">Vendors</div></div></div></div>`;
+  // Vendor status
+  if (vendorHtml) {
+    html += `<div class="sch-vs"><div class="vs-title">Vendor Arrivals</div>${vendorHtml}</div>`;
+  }
+  return html;
+}
+
+// ── RENDER SCHEDULE (dispatches to active view) ──
 function renderTlSchedule() {
-  const con = document.getElementById('tl-visual-container');
-  if (!con) return;
-  // Ensure all blocks have end times and cats
-  S.timeline.forEach(b => {
-    if (!b.end) b.end = '';
-    if (!b.cat) b.cat = 'other';
+  S.timeline.forEach(b => { if (!b.end) b.end = ''; if (!b.cat) b.cat = 'other'; });
+  S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
+
+  const sidebar = schSidebarHtml();
+  ['sch-sidebar-cal','sch-sidebar-agenda','sch-sidebar-compact'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = sidebar;
   });
 
-  // Find time range
+  if (schActiveView === 'calendar') renderSchCalendar();
+  else if (schActiveView === 'agenda') renderSchAgenda();
+  else if (schActiveView === 'compact') renderSchCompact();
+}
+
+// ── CALENDAR VIEW ──
+function renderSchCalendar() {
+  const timesEl = document.getElementById('sch-cal-times');
+  const eventsEl = document.getElementById('sch-cal-events');
+  if (!timesEl || !eventsEl) return;
+
+  const pxPerHour = 60;
   let minT = Infinity, maxT = -Infinity;
   S.timeline.forEach(b => {
     const s = tlParseTime(b.time), e = tlParseTime(b.end);
     if (s !== null && s < minT) minT = s;
     if (e !== null && e > maxT) maxT = e;
   });
-  if (minT === Infinity) { minT = 7 * 60; maxT = 23 * 60; }
-  // Round to hours
+  if (minT === Infinity) { minT = 7*60; maxT = 23*60; }
   const startHour = Math.floor(minT / 60);
-  const endHour = Math.ceil(maxT / 60);
-  const totalHours = endHour - startHour;
-  const pxPerHour = 100; // More space to reduce overlapping
-  const totalHeight = totalHours * pxPerHour;
+  const endHour = Math.ceil(maxT / 60) + 1;
 
-  // Make container scrollable with fixed height
-  con.style.maxHeight = '600px';
-  con.style.overflowY = 'auto';
-  con.style.minHeight = (totalHeight + 40) + 'px';
-  con.style.marginLeft = '100px';
-  con.style.position = 'relative';
-  con.style.borderTop = '1px solid var(--border-light)';
-  con.style.paddingTop = '8px';
-
-  let html = '';
-  // Hour lines and labels
+  // Time slots
+  let timesHtml = '';
+  let linesHtml = '';
   for (let h = startHour; h <= endHour; h++) {
-    const y = (h - startHour) * pxPerHour;
-    html += `<div style="position:absolute;left:-100px;top:${y + 4}px;font-size:11px;font-weight:600;color:var(--stone);width:90px;text-align:right">${tlFormatTime(h * 60)}</div>`;
-    html += `<div class="tl-hour-line" style="top:${y}px;color:var(--border-light)"></div>`;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const dh = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+    timesHtml += `<div class="sch-cal-slot">${dh} ${ampm}</div>`;
+    linesHtml += `<div class="sch-cal-hline" style="top:${(h - startHour) * pxPerHour}px"></div>`;
   }
+  timesEl.innerHTML = timesHtml;
 
-  // Legend inside the card (top-left area)
-  html += `<div style="position:absolute;top:8px;left:12px;display:flex;gap:12px;font-size:9px;color:var(--stone);background:white;padding:4px 8px;border-radius:6px;z-index:5">`;
-  for (const cat of ['prep','ceremony','photos','reception','other']) {
-    html += `<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px" class="tl-block-${cat}"></span><span style="font-weight:500">${tlCatLabels[cat]}</span></span>`;
-  }
-  html += '</div>';
-
-  // Blocks
+  // Event blocks
+  let evHtml = linesHtml;
   S.timeline.forEach((b, i) => {
     const s = tlParseTime(b.time), e = tlParseTime(b.end);
     if (s === null) return;
     const eTime = e !== null ? e : s + 30;
     const top = ((s - startHour * 60) / 60) * pxPerHour;
-    const height = Math.max(((eTime - s) / 60) * pxPerHour, 32);
+    const height = Math.max(((eTime - s) / 60) * pxPerHour, 26);
     const cat = b.cat || 'other';
-    const vendorHtml = b.who ? `<div class="tl-block-vendor">${esc(b.who)}</div>` : '';
-    html += `<div class="tl-block tl-block-${cat}" data-block-idx="${i}" style="top:${top}px;height:${height}px;position:absolute">
-      <div class="tl-block-time">${esc(b.time)}${b.end ? ' – ' + esc(b.end) : ''}</div>
-      <div class="tl-block-name">${esc(b.activity)}</div>
-      ${vendorHtml}
+    evHtml += `<div class="sch-cal-ev cat-${cat}" data-block-idx="${i}" style="top:${top}px;height:${height}px">
+      <div class="ce-name">${esc(b.activity)}</div>
+      <div class="ce-time">${esc(b.time)}${b.end ? ' – '+esc(b.end) : ''}</div>
+      ${b.who ? `<div class="ce-vendor">${esc(b.who)}</div>` : ''}
     </div>`;
   });
 
-  con.innerHTML = html;
+  // Now line
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  if (nowMin >= startHour * 60 && nowMin <= endHour * 60) {
+    const nowTop = ((nowMin - startHour * 60) / 60) * pxPerHour;
+    evHtml += `<div class="sch-cal-now" style="top:${nowTop}px"></div>`;
+  }
 
-  // Attach drag handlers to all blocks
+  eventsEl.style.minHeight = ((endHour - startHour + 1) * pxPerHour) + 'px';
+  eventsEl.innerHTML = evHtml;
+
+  // Wedding date in header
+  const lbl = document.getElementById('sch-cal-daylabel');
+  if (lbl) {
+    if (S.weddingDate) {
+      const d = new Date(S.weddingDate);
+      const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      lbl.innerHTML = days[d.getUTCDay()] + `<span class="day-date">${months[d.getUTCMonth()]} ${d.getUTCDate()}</span>`;
+    } else {
+      lbl.innerHTML = 'Your Wedding Day';
+    }
+  }
+
+  // Attach drag handlers
   setTimeout(() => {
-    document.querySelectorAll('.tl-block').forEach(el => {
-      setupBlockDrag(el);
-    });
+    document.querySelectorAll('.sch-cal-ev').forEach(el => setupCalDrag(el));
   }, 0);
 }
 
-// Drag handling for timeline blocks using pointer capture
-// Differentiates click (open edit) from drag (move block)
-function setupBlockDrag(blockEl) {
-  const pxPerHour = 100;
-  const DRAG_THRESHOLD = 5; // px movement before considered a drag
+function setupCalDrag(blockEl) {
+  const DRAG_THRESHOLD = 5;
   let dragStartY, dragStartTop, blockIdx, isDragging, hasMoved;
 
   blockEl.addEventListener('pointerdown', (e) => {
@@ -1962,68 +2167,118 @@ function setupBlockDrag(blockEl) {
     blockEl.setPointerCapture(e.pointerId);
     e.preventDefault();
   });
-
   blockEl.addEventListener('pointermove', (e) => {
     if (!isDragging) return;
     const deltaY = e.clientY - dragStartY;
     if (!hasMoved && Math.abs(deltaY) < DRAG_THRESHOLD) return;
-    if (!hasMoved) {
-      hasMoved = true;
-      blockEl.classList.add('dragging');
-      blockEl.style.zIndex = '10';
-    }
+    if (!hasMoved) { hasMoved = true; blockEl.classList.add('dragging'); }
     blockEl.style.top = (dragStartTop + deltaY) + 'px';
   });
-
   blockEl.addEventListener('pointerup', (e) => {
     if (!isDragging) return;
     isDragging = false;
-
-    if (!hasMoved) {
-      // It was a click, not a drag — open the edit modal
-      editTlBlock(blockIdx);
-      return;
-    }
-
+    if (!hasMoved) { editTlBlock(blockIdx); return; }
     blockEl.classList.remove('dragging');
-    blockEl.style.zIndex = 'auto';
 
+    const pxPerHour = 60;
     const b = S.timeline[blockIdx];
     if (!b) return;
-
-    // Find container's start hour
     let minT = Infinity;
-    S.timeline.forEach(block => {
-      const s = tlParseTime(block.time);
-      if (s !== null && s < minT) minT = s;
-    });
-    if (minT === Infinity) minT = 7 * 60;
+    S.timeline.forEach(bl => { const s = tlParseTime(bl.time); if (s !== null && s < minT) minT = s; });
+    if (minT === Infinity) minT = 7*60;
     const startHour = Math.floor(minT / 60);
-
-    // Calculate new time from pixel position
     const newTopPx = parseInt(blockEl.style.top) || 0;
     const newMinutes = startHour * 60 + Math.round((newTopPx / pxPerHour) * 60);
-
-    // Preserve duration
-    const originalStart = tlParseTime(b.time);
-    const originalEnd = tlParseTime(b.end);
-    let duration = 30;
-    if (originalStart !== null && originalEnd !== null) duration = originalEnd - originalStart;
-
+    const origS = tlParseTime(b.time), origE = tlParseTime(b.end);
+    let dur = 30;
+    if (origS !== null && origE !== null) dur = origE - origS;
     b.time = tlFormatTime(Math.max(0, newMinutes));
-    b.end = tlFormatTime(Math.max(0, newMinutes) + duration);
+    b.end = tlFormatTime(Math.max(0, newMinutes) + dur);
+    S.timeline.sort((a,c) => (tlParseTime(a.time)||0) - (tlParseTime(c.time)||0));
+    saveState(); renderTlSchedule();
+  });
+  blockEl.addEventListener('pointercancel', () => { isDragging = false; hasMoved = false; blockEl.classList.remove('dragging'); });
+}
 
-    S.timeline.sort((a, c) => (tlParseTime(a.time) || 0) - (tlParseTime(c.time) || 0));
-    saveState();
-    renderTlSchedule();
+// ── AGENDA VIEW ──
+function renderSchAgenda() {
+  const con = document.getElementById('sch-agenda-list');
+  if (!con) return;
+
+  // Group by category
+  const phases = {};
+  const phaseOrder = ['prep','ceremony','photos','reception','other'];
+  S.timeline.forEach((b, i) => {
+    const cat = b.cat || 'other';
+    if (!phases[cat]) phases[cat] = [];
+    phases[cat].push({...b, idx: i});
   });
 
-  blockEl.addEventListener('pointercancel', () => {
-    isDragging = false;
-    hasMoved = false;
-    blockEl.classList.remove('dragging');
-    blockEl.style.zIndex = 'auto';
+  let html = '';
+  phaseOrder.forEach(cat => {
+    const items = phases[cat];
+    if (!items || items.length === 0) return;
+    const first = items[0], last = items[items.length - 1];
+    const rangeStr = (first.time || '?') + ' – ' + (last.end || last.time || '?');
+
+    html += `<div class="sch-phase-hdr"><div class="sch-phase-icon ${cat}">${tlCatIcons[cat]}</div><div class="sch-phase-name">${tlCatLabels[cat]}</div><div class="sch-phase-count">${items.length} event${items.length!==1?'s':''}</div><div class="sch-phase-range">${esc(rangeStr)}</div></div>`;
+
+    items.forEach(b => {
+      const durMin = (tlParseTime(b.end)||0) - (tlParseTime(b.time)||0);
+      const durStr = durMin >= 60 ? (durMin/60) + ' hr' : durMin + ' min';
+      html += `<div class="sch-ag-item" onclick="editTlBlock(${b.idx})">
+        <div class="sch-ag-time ${cat}"><div class="start">${esc(b.time||'')}</div><div class="end">${esc(b.end||'')}</div></div>
+        <div class="sch-ag-body"><div class="sch-ag-title">${esc(b.activity)}</div>
+          <div class="sch-ag-meta">${b.who ? `<span class="vendor">${esc(b.who)}</span>` : ''}<span>${esc(durStr)}</span></div>
+          ${b.notes ? `<div class="sch-ag-notes">${esc(b.notes)}</div>` : ''}
+        </div>
+        <div class="sch-ag-drag">&#8942;&#8942;</div>
+      </div>`;
+    });
   });
+
+  if (!html) html = '<div style="padding:40px;text-align:center;color:var(--stone)"><p style="font-size:28px;opacity:0.3;margin-bottom:8px">&#128197;</p><p>No events yet — add a block to get started</p></div>';
+  con.innerHTML = html;
+}
+
+// ── COMPACT VIEW ──
+function renderSchCompact() {
+  const con = document.getElementById('sch-compact-wrap');
+  if (!con) return;
+
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const blocks = S.timeline.filter(b => tlParseTime(b.time) !== null);
+  const passed = blocks.filter(b => { const e = tlParseTime(b.end); return e !== null && e <= nowMin; }).length;
+  const pct = blocks.length > 0 ? Math.round(passed / blocks.length * 100) : 0;
+
+  let html = `<div class="sch-progress"><div class="pb-label">Day Progress</div><div class="pb-bar"><div class="pb-fill" style="width:${pct}%"></div></div><div class="pb-pct">${pct}%</div></div>`;
+  html += `<table><thead><tr><th style="width:110px">Time</th><th>Event</th><th style="width:60px">Duration</th><th>Vendor</th><th>Notes</th></tr></thead><tbody>`;
+
+  S.timeline.forEach((b, i) => {
+    const s = tlParseTime(b.time), e = tlParseTime(b.end);
+    const isPassed = e !== null && e <= nowMin;
+    const isCurrent = s !== null && e !== null && s <= nowMin && e > nowMin;
+    const cls = isCurrent ? 'compact-now' : (isPassed ? 'compact-passed' : '');
+    const cat = b.cat || 'other';
+    const durMin = (e||0) - (s||0);
+    const durStr = durMin >= 60 ? (durMin/60) + ' hr' : durMin + ' min';
+    const timeStr = (b.time||'') + (b.end ? ' – ' + b.end.replace(/\s*(AM|PM)/i,'') : '');
+
+    html += `<tr class="${cls}" onclick="editTlBlock(${i})">
+      <td class="ct-time">${esc(timeStr)}</td>
+      <td><span class="ct-cat"><span class="ct-dot ${cat}"></span>${isCurrent ? '<strong>'+esc(b.activity)+'</strong>' : esc(b.activity)}</span></td>
+      <td class="ct-dur">${esc(durStr)}</td>
+      <td class="ct-vendor">${esc(b.who||'—')}</td>
+      <td class="ct-notes">${esc(b.notes||'')}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  if (blocks.length === 0) {
+    html += '<div style="padding:40px;text-align:center;color:var(--stone)"><p>No events yet</p></div>';
+  }
+  con.innerHTML = html;
 }
 
 function addTlBlock() {
