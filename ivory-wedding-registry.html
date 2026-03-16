@@ -24,7 +24,7 @@
     input, textarea, select { font-family: inherit; }
 
     /* Layout */
-    .page { max-width: 960px; margin: 0 auto; padding: 48px 24px 96px; }
+    .page { max-width: 960px; margin: 0 auto; padding: 24px 24px 96px; }
     .page-header { text-align: center; margin-bottom: 48px; }
     .page-header .eyebrow { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--stone); margin-bottom: 12px; }
     .page-header h1 { font-family: var(--font-serif); font-size: clamp(32px, 5vw, 48px); line-height: 1.1; letter-spacing: -0.02em; }
@@ -140,6 +140,16 @@
 </head>
 <body>
 
+<div style="position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:12px 24px;background:rgba(250,250,247,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-light);">
+  <a href="ivory-invitations-preview.html" style="font-family:var(--font-serif);font-size:18px;font-weight:500;text-decoration:none;color:var(--charcoal);">Ivory</a>
+  <div style="display:flex;gap:20px;font-size:13px;font-weight:500;">
+    <a href="ivory-wedding-planner.html" style="color:var(--stone);text-decoration:none;">Planner</a>
+    <a href="ivory-wedding-registry.html" style="color:var(--taupe);text-decoration:none;">Registry</a>
+    <a href="ivory-rsvp.html" style="color:var(--stone);text-decoration:none;">RSVP</a>
+    <a href="ivory-photography-shotlist.html" style="color:var(--stone);text-decoration:none;">Shot List</a>
+  </div>
+</div>
+
 <div class="page">
   <div class="page-header">
     <p class="eyebrow">Ivory Invitations</p>
@@ -204,8 +214,18 @@
 </div>
 
 <script>
+const REGISTRY_KEY = "ivory_registry_v1";
 let items = [];
 let activeTab = "All";
+
+function loadRegistry() {
+  try { const d = localStorage.getItem(REGISTRY_KEY); return d ? JSON.parse(d) : null; }
+  catch(e) { return null; }
+}
+function saveRegistry() {
+  try { localStorage.setItem(REGISTRY_KEY, JSON.stringify(items)); }
+  catch(e) { alert("Storage is full. Some changes may not be saved."); }
+}
 
 function addItem() {
   const name = document.getElementById("f-name").value.trim();
@@ -224,6 +244,7 @@ function addItem() {
     notes: document.getElementById("f-notes").value.trim(),
   });
   clearForm();
+  saveRegistry();
   render();
 }
 
@@ -234,12 +255,14 @@ function clearForm() {
 
 function removeItem(id) {
   items = items.filter(i => i.id !== id);
+  saveRegistry();
   render();
 }
 
 function markPurchased(id) {
   const item = items.find(i => i.id === id);
   if (item && item.purchased < item.qty) item.purchased++;
+  saveRegistry();
   render();
 }
 
@@ -310,13 +333,19 @@ function copyLink() {
   });
 }
 
-// Seed some example items
-items = [
-  { id: 1, name: "Dutch Oven — 5.5 Qt", brand: "Le Creuset", category: "Kitchen", price: 395, qty: 1, purchased: 0, priority: "Must Have", link: "", notes: "Color: Marseille Blue" },
-  { id: 2, name: "Linen Duvet Cover Set", brand: "Parachute", category: "Bedroom", price: 249, qty: 1, purchased: 1, priority: "Must Have", link: "", notes: "King size, Bone color" },
-  { id: 3, name: "Honeymoon Fund", brand: "", category: "Cash Fund", price: 50, qty: 20, purchased: 5, priority: "Nice to Have", link: "", notes: "Contribute any amount toward our trip to Amalfi" },
-  { id: 4, name: "Wine Glasses — Set of 4", brand: "Riedel", category: "Dining", price: 89, qty: 2, purchased: 0, priority: "Nice to Have", link: "", notes: "" },
-];
+// Load saved data or seed with examples
+const savedRegistry = loadRegistry();
+if (savedRegistry && savedRegistry.length > 0) {
+  items = savedRegistry;
+} else {
+  items = [
+    { id: 1, name: "Dutch Oven — 5.5 Qt", brand: "Le Creuset", category: "Kitchen", price: 395, qty: 1, purchased: 0, priority: "Must Have", link: "", notes: "Color: Marseille Blue" },
+    { id: 2, name: "Linen Duvet Cover Set", brand: "Parachute", category: "Bedroom", price: 249, qty: 1, purchased: 1, priority: "Must Have", link: "", notes: "King size, Bone color" },
+    { id: 3, name: "Honeymoon Fund", brand: "", category: "Cash Fund", price: 50, qty: 20, purchased: 5, priority: "Nice to Have", link: "", notes: "Contribute any amount toward our trip to Amalfi" },
+    { id: 4, name: "Wine Glasses — Set of 4", brand: "Riedel", category: "Dining", price: 89, qty: 2, purchased: 0, priority: "Nice to Have", link: "", notes: "" },
+  ];
+  saveRegistry();
+}
 
 render();
 </script>

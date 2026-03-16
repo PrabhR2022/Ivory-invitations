@@ -22,7 +22,7 @@
     button { cursor: pointer; border: none; font-family: inherit; }
     input, textarea { font-family: inherit; }
 
-    .page { max-width: 900px; margin: 0 auto; padding: 48px 24px 96px; }
+    .page { max-width: 900px; margin: 0 auto; padding: 24px 24px 96px; }
     .page-header { text-align: center; margin-bottom: 48px; }
     .page-header .eyebrow { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--stone); margin-bottom: 12px; }
     .page-header h1 { font-family: var(--font-serif); font-size: clamp(32px, 5vw, 48px); line-height: 1.1; letter-spacing: -0.02em; }
@@ -129,6 +129,16 @@
 </head>
 <body>
 
+<div style="position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:12px 24px;background:rgba(250,250,247,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-light);">
+  <a href="ivory-invitations-preview.html" style="font-family:var(--font-serif);font-size:18px;font-weight:500;text-decoration:none;color:var(--charcoal);">Ivory</a>
+  <div style="display:flex;gap:20px;font-size:13px;font-weight:500;">
+    <a href="ivory-wedding-planner.html" style="color:var(--stone);text-decoration:none;">Planner</a>
+    <a href="ivory-wedding-registry.html" style="color:var(--stone);text-decoration:none;">Registry</a>
+    <a href="ivory-rsvp.html" style="color:var(--stone);text-decoration:none;">RSVP</a>
+    <a href="ivory-photography-shotlist.html" style="color:var(--taupe);text-decoration:none;">Shot List</a>
+  </div>
+</div>
+
 <div class="page">
   <div class="page-header">
     <p class="eyebrow">Ivory Invitations</p>
@@ -219,14 +229,29 @@ const data = {
   ],
 };
 
+const SHOTLIST_KEY = "ivory_shotlist_v1";
 let shots = {};
 let inspirations = {}; // sectionName -> shotName -> [dataURLs]
 let uploadTarget = null; // { section, shotName }
 
-// Init state from data
-Object.entries(data).forEach(([section, items]) => {
-  shots[section] = items.map(s => ({ ...s, checked: false, custom: false, inspo: [] }));
-});
+function loadShotList() {
+  try { const d = localStorage.getItem(SHOTLIST_KEY); return d ? JSON.parse(d) : null; }
+  catch(e) { return null; }
+}
+function saveShotList() {
+  try { localStorage.setItem(SHOTLIST_KEY, JSON.stringify(shots)); }
+  catch(e) { alert("Storage is full. Inspiration images may not be saved. Try removing some images."); }
+}
+
+// Load saved data or init from defaults
+const savedShots = loadShotList();
+if (savedShots) {
+  shots = savedShots;
+} else {
+  Object.entries(data).forEach(([section, items]) => {
+    shots[section] = items.map(s => ({ ...s, checked: false, custom: false, inspo: [] }));
+  });
+}
 
 function updateProgress() {
   const all = Object.values(shots).flat();
@@ -240,6 +265,7 @@ function updateProgress() {
 
 function toggleShot(section, idx) {
   shots[section][idx].checked = !shots[section][idx].checked;
+  saveShotList();
   renderAll();
 }
 
@@ -249,6 +275,7 @@ function addCustomShot(section) {
   if (!name) return;
   shots[section].push({ name, note: "", priority: "important", checked: false, custom: true, inspo: [] });
   input.value = "";
+  saveShotList();
   renderAll();
 }
 
@@ -259,6 +286,7 @@ function triggerUpload(section, shotIdx) {
 
 function removeInspo(section, shotIdx, inspoIdx) {
   shots[section][shotIdx].inspo.splice(inspoIdx, 1);
+  saveShotList();
   renderAll();
 }
 
@@ -269,6 +297,7 @@ document.getElementById("file-input").addEventListener("change", function(e) {
     const reader = new FileReader();
     reader.onload = function(ev) {
       shots[section][shotIdx].inspo.push(ev.target.result);
+      saveShotList();
       renderAll();
     };
     reader.readAsDataURL(file);
@@ -303,7 +332,7 @@ function renderAll() {
         <div class="shot-info">
           <div class="shot-name">${shot.name}</div>
           ${shot.note ? `<div class="shot-note">${shot.note}</div>` : ''}
-          ${shot.inspo.length > 0 || true ? `
+          ${true ? `
             <div class="inspiration-section">
               <div class="inspiration-label">Inspiration</div>
               <div class="inspiration-grid">
