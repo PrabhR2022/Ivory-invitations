@@ -992,10 +992,6 @@ table input[type="number"]{text-align:right;width:90px}
           </div>
         </div>
 
-        <!-- Edit modal for timeline blocks -->
-        <div id="tl-block-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:200;justify-content:center;align-items:center">
-          <div class="card" style="width:380px;max-width:90vw;max-height:80vh;overflow-y:auto" id="tl-block-form"></div>
-        </div>
       </div>
 
       <!-- ── Vendors sub-tab ── -->
@@ -1037,6 +1033,7 @@ table input[type="number"]{text-align:right;width:90px}
           <p>No transportation booked yet. Add vehicles for the bridal party, guests, or airport transfers.</p>
         </div>
       </div>
+
     </div>
 
     <!-- ═══ ATTIRE ═══ -->
@@ -1396,27 +1393,12 @@ function buildReception() {
 }
 function buildTimeline() {
   return [
-    {time:"7:00 AM",end:"8:00 AM",activity:"Wake up & light breakfast",who:"Couple",notes:"",cat:"prep"},
-    {time:"8:00 AM",end:"10:30 AM",activity:"Hair & makeup",who:"Bride's party, stylist",notes:"Getting-ready suite",cat:"prep"},
-    {time:"8:30 AM",end:"10:00 AM",activity:"Groom's party gets ready",who:"Groom, groomsmen",notes:"",cat:"prep"},
-    {time:"9:30 AM",end:"10:30 AM",activity:"Photographer — detail shots",who:"Photographer",notes:"Dress, rings, shoes",cat:"photos"},
-    {time:"10:30 AM",end:"11:00 AM",activity:"Bride gets into dress",who:"Bride, MOH, mother",notes:"",cat:"prep"},
-    {time:"11:00 AM",end:"11:30 AM",activity:"First look",who:"Couple, photographer",notes:"Private location",cat:"photos"},
-    {time:"11:30 AM",end:"12:00 PM",activity:"Wedding party portraits",who:"Full party",notes:"",cat:"photos"},
-    {time:"12:00 PM",end:"1:00 PM",activity:"Family formal photos",who:"Families",notes:"",cat:"photos"},
-    {time:"2:00 PM",end:"3:30 PM",activity:"Vendors arrive for setup",who:"Caterer, DJ, rentals",notes:"",cat:"other"},
-    {time:"3:30 PM",end:"4:00 PM",activity:"Guests begin arriving",who:"Ushers",notes:"",cat:"other"},
-    {time:"4:00 PM",end:"4:45 PM",activity:"Ceremony",who:"Everyone",notes:"",cat:"ceremony"},
-    {time:"4:45 PM",end:"5:00 PM",activity:"Couple photos (golden hour)",who:"Couple, photographer",notes:"",cat:"photos"},
-    {time:"5:00 PM",end:"6:00 PM",activity:"Cocktail hour",who:"Guests",notes:"",cat:"reception"},
-    {time:"6:00 PM",end:"6:15 PM",activity:"Guests seated for dinner",who:"",notes:"",cat:"reception"},
-    {time:"6:15 PM",end:"6:30 PM",activity:"First dance",who:"Couple, DJ",notes:"",cat:"reception"},
-    {time:"6:30 PM",end:"7:30 PM",activity:"Toasts & dinner",who:"",notes:"",cat:"reception"},
-    {time:"7:30 PM",end:"7:45 PM",activity:"Parent dances",who:"",notes:"",cat:"reception"},
-    {time:"7:45 PM",end:"8:00 PM",activity:"Cake cutting",who:"",notes:"",cat:"reception"},
-    {time:"8:00 PM",end:"10:30 PM",activity:"Open dancing",who:"",notes:"",cat:"reception"},
-    {time:"10:30 PM",end:"10:45 PM",activity:"Last dance",who:"Couple",notes:"",cat:"reception"},
-    {time:"10:45 PM",end:"11:00 PM",activity:"Grand exit",who:"Everyone",notes:"",cat:"other"}
+    {time:"8:00 AM",end:"10:00 AM",activity:"Getting ready",who:"Couple, wedding party",notes:"Hair, makeup & dressing",cat:"prep"},
+    {time:"10:30 AM",end:"12:00 PM",activity:"First look & photos",who:"Couple, photographer",notes:"Portraits & detail shots",cat:"photos"},
+    {time:"3:00 PM",end:"4:00 PM",activity:"Ceremony",who:"Everyone",notes:"",cat:"ceremony"},
+    {time:"4:00 PM",end:"5:00 PM",activity:"Cocktail hour",who:"Guests",notes:"",cat:"reception"},
+    {time:"5:00 PM",end:"8:00 PM",activity:"Reception & dinner",who:"Everyone",notes:"Toasts, dinner, cake cutting",cat:"reception"},
+    {time:"8:00 PM",end:"11:00 PM",activity:"First dance & party",who:"Everyone",notes:"Parent dances, open dancing, grand exit",cat:"reception"}
   ];
 }
 function buildAttire() {
@@ -2564,6 +2546,7 @@ function renderSchCalendar() {
       <div class="ce-name">${esc(b.activity)}</div>
       <div class="ce-time">${esc(b.time)}${b.end ? ' – '+esc(b.end) : ''}</div>
       ${b.who ? `<div class="ce-vendor">${esc(b.who)}</div>` : ''}
+      ${b.vendorIdx !== undefined && S.vendors[b.vendorIdx] ? `<div style="font-size:9px;opacity:0.7;margin-top:1px">&#128188; ${esc(S.vendors[b.vendorIdx].company)}</div>` : ''}
     </div>`;
   });
 
@@ -2760,6 +2743,12 @@ function editTlBlock(idx) {
       <input id="tl-ed-who" value="${esc(b.who)}" placeholder="Who's involved" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
     <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Notes</label>
       <input id="tl-ed-notes" value="${esc(b.notes)}" placeholder="Optional notes" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
+    <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Linked Vendor</label>
+      <select id="tl-ed-vendor" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px;background:white">
+        <option value="">— None —</option>
+        ${S.vendors.filter(v=>v.company).map((v,i)=>{const vi=S.vendors.indexOf(v);return`<option value="${vi}"${b.vendorIdx===vi?' selected':''}>${esc(v.company)} (${esc(v.cat)})</option>`}).join('')}
+      </select></div>
+    <div id="tl-ed-error" style="display:none;color:var(--red);font-size:12px;margin-bottom:8px"></div>
     <div style="margin-bottom:16px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Category</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap">${cats.map(c => `<button onclick="document.querySelectorAll('.tl-cat-btn').forEach(b=>b.style.opacity='0.4');this.style.opacity='1';this.dataset.selected='1'" data-cat="${c}" class="tl-cat-btn tl-block-${c}" style="padding:4px 12px;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;opacity:${b.cat===c?'1':'0.4'}">${tlCatLabels[c]}</button>`).join('')}</div></div>
     <div style="display:flex;gap:8px;justify-content:space-between">
@@ -2773,11 +2762,24 @@ function editTlBlock(idx) {
 
 function saveTlBlock(idx) {
   const b = S.timeline[idx];
-  b.time = document.getElementById('tl-ed-start').value.trim();
-  b.end = document.getElementById('tl-ed-end').value.trim();
+  const startVal = document.getElementById('tl-ed-start').value.trim();
+  const endVal = document.getElementById('tl-ed-end').value.trim();
+  const errEl = document.getElementById('tl-ed-error');
+  // Validate end time is after start time
+  const sMin = tlParseTime(startVal), eMin = tlParseTime(endVal);
+  if (sMin !== null && eMin !== null && eMin <= sMin) {
+    errEl.textContent = 'End time must be after start time';
+    errEl.style.display = 'block';
+    document.getElementById('tl-ed-end').style.borderColor = 'var(--red)';
+    return;
+  }
+  b.time = startVal;
+  b.end = endVal;
   b.activity = document.getElementById('tl-ed-activity').value.trim();
   b.who = document.getElementById('tl-ed-who').value.trim();
   b.notes = document.getElementById('tl-ed-notes').value.trim();
+  const vendorVal = document.getElementById('tl-ed-vendor').value;
+  b.vendorIdx = vendorVal !== '' ? parseInt(vendorVal) : undefined;
   const selCat = document.querySelector('.tl-cat-btn[style*="opacity: 1"], .tl-cat-btn[style*="opacity:1"]');
   if (selCat) b.cat = selCat.dataset.cat;
   // Sort timeline by start time
@@ -2877,9 +2879,8 @@ function deleteTlCeremony() {
   renderTlCeremonies();
 }
 
-function addTlCeremony() {
-  if (!S.ceremonies) S.ceremonies = [];
-  const defaultRows = [
+const CEREMONY_TEMPLATES = {
+  custom: {label:'Custom',rows:[
     {time:'',event:'Prelude music begins',music:'Instrumental',notes:'Guests seated'},
     {time:'',event:'Seating of parents',music:'',notes:'Ushers escort'},
     {time:'',event:'Bridal party processional',music:'',notes:''},
@@ -2890,10 +2891,89 @@ function addTlCeremony() {
     {time:'',event:'Ring exchange',music:'',notes:''},
     {time:'',event:'The first kiss',music:'',notes:''},
     {time:'',event:'Recessional',music:'',notes:'Couple exits'}
-  ];
-  S.ceremonies.push({name:'Ceremony ' + (S.ceremonies.length + 1), date:'', timeline: defaultRows});
+  ]},
+  christian: {label:'Christian',rows:[
+    {time:'',event:'Pre-ceremony music',music:'Instrumental / hymns',notes:'15-20 min as guests arrive'},
+    {time:'',event:'Seating of honoured guests',music:'',notes:'Grandparents, parents escorted to reserved seats'},
+    {time:'',event:'Processional',music:'',notes:'Officiant, groom, groomsmen, bridesmaids, ring bearer, flower girl'},
+    {time:'',event:"Bride's entrance",music:'',notes:'Escorted by father — all rise'},
+    {time:'',event:'Welcome & opening remarks',music:'',notes:'Officiant welcomes congregation'},
+    {time:'',event:'Opening prayer / invocation',music:'',notes:'Prayer for blessing on the ceremony'},
+    {time:'',event:'Scripture readings',music:'',notes:'1-3 Bible passages (e.g. 1 Corinthians 13)'},
+    {time:'',event:'Sermon / homily',music:'',notes:'Message on marriage & love'},
+    {time:'',event:'Declaration of intent',music:'',notes:'Each partner affirms consent'},
+    {time:'',event:'Wedding vows',music:'',notes:'Traditional or personalised'},
+    {time:'',event:'Ring exchange',music:'',notes:'Rings blessed and exchanged'},
+    {time:'',event:'Unity ceremony',music:'',notes:'Optional — candle, sand, or communion'},
+    {time:'',event:'Pronouncement of marriage',music:'',notes:'Couple declared married'},
+    {time:'',event:'First kiss',music:'',notes:''},
+    {time:'',event:'Recessional',music:'Joyful music',notes:'Newlyweds exit first, then wedding party'}
+  ]},
+  hindu: {label:'Hindu',rows:[
+    {time:'',event:'Baraat (groom\'s procession)',music:'Dhol / DJ',notes:'Groom arrives with family dancing — 30-60 min'},
+    {time:'',event:'Milni (family meeting)',music:'',notes:'Corresponding relatives exchange garlands and embrace'},
+    {time:'',event:'Ganesh Puja',music:'',notes:'Pandit invokes Lord Ganesha to bless the ceremony'},
+    {time:'',event:'Groom welcomed at Mandap',music:'',notes:'Prayers performed before bride is invited'},
+    {time:'',event:'Kanya Aagman (bride\'s entry)',music:'',notes:'Bride enters under phoolon ki chaadar (floral canopy)'},
+    {time:'',event:'Jaimala (garland exchange)',music:'',notes:'Couple exchange floral garlands — mutual acceptance'},
+    {time:'',event:'Kanyadaan',music:'',notes:'Bride\'s father places her hand in groom\'s — giving away'},
+    {time:'',event:'Vivaha Homa (sacred fire)',music:'',notes:'Agni (fire) lit, offerings of ghee and grains'},
+    {time:'',event:'Mangal Phera (circling the fire)',music:'',notes:'Couple circles fire 4-7 times — Dharma, Artha, Kama, Moksha'},
+    {time:'',event:'Saptapadi (seven steps)',music:'',notes:'Seven steps together with sacred vows — legally married'},
+    {time:'',event:'Sindoor & Mangalsutra',music:'',notes:'Groom applies sindoor, ties mangalsutra'},
+    {time:'',event:'Ashirvad (blessings)',music:'',notes:'Elders and guests bless the couple'},
+    {time:'',event:'Vidaai (bride\'s farewell)',music:'',notes:'Bride says farewell, tosses rice over shoulder'}
+  ]},
+  sikh: {label:'Sikh (Anand Karaj)',rows:[
+    {time:'',event:'Milni (family meeting)',music:'',notes:'Male relatives exchange garlands outside Gurdwara'},
+    {time:'',event:'Arrival & seating in Darbar Hall',music:'Kirtan (hymns)',notes:'Everyone sits in presence of Guru Granth Sahib'},
+    {time:'',event:'Opening Ardas (prayer)',music:'',notes:'Couple and parents stand to signify consent'},
+    {time:'',event:'Hukamnama (divine command)',music:'',notes:'Random page opened — divine guidance for the couple'},
+    {time:'',event:'Keeta Lorhiye (opening hymn)',music:'Shabad',notes:'Seek Creator\'s guidance before important undertaking'},
+    {time:'',event:'Palle Di Rasam (scarf ceremony)',music:'Palle Tende Laagi',notes:'Father places palla in daughter\'s hand'},
+    {time:'',event:'Lavaan — Round 1',music:'Shabad',notes:'Commitment to righteous living'},
+    {time:'',event:'Lavaan — Round 2',music:'Shabad',notes:'Spiritual purity and devotion'},
+    {time:'',event:'Lavaan — Round 3',music:'Shabad',notes:'Detachment from worldly desire, divine love'},
+    {time:'',event:'Lavaan — Round 4',music:'Shabad',notes:'Soul merges with the Infinite — married'},
+    {time:'',event:'Anand Sahib (song of bliss)',music:'Congregation sings',notes:'Hymn of joy and spiritual fulfillment'},
+    {time:'',event:'Final Ardas (closing prayer)',music:'',notes:'Everyone stands — prayers for happiness'},
+    {time:'',event:'Hukamnama (closing)',music:'',notes:'Final divine blessing for the couple'},
+    {time:'',event:'Karah Prasad',music:'',notes:'Sacred sweet distributed to all — unity and grace'},
+    {time:'',event:'Langar (community meal)',music:'',notes:'Communal vegetarian meal in langar hall'}
+  ]}
+};
+
+function addTlCeremony() {
+  if (!S.ceremonies) S.ceremonies = [];
+  // Show template picker modal
+  const modal = document.getElementById('tl-block-modal');
+  modal.style.display = 'flex';
+  const types = Object.keys(CEREMONY_TEMPLATES);
+  document.getElementById('tl-block-form').innerHTML = `
+    <h3 style="font-family:var(--font-serif);margin-bottom:8px">Add Ceremony</h3>
+    <p style="font-size:13px;color:var(--stone);margin-bottom:20px">Choose a ceremony type to pre-populate the timeline with traditional rituals.</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${types.map(k => {
+        const t = CEREMONY_TEMPLATES[k];
+        return `<button onclick="createCeremonyFromTemplate('${k}')" class="btn btn-outline" style="text-align:left;padding:12px 16px;font-size:13px">
+          <strong>${t.label}</strong> <span style="color:var(--stone);font-size:11px;margin-left:6px">${t.rows.length} events</span>
+        </button>`;
+      }).join('')}
+    </div>
+    <div style="margin-top:16px;text-align:right">
+      <button onclick="closeTlModal()" class="btn btn-outline" style="font-size:12px">Cancel</button>
+    </div>`;
+}
+
+function createCeremonyFromTemplate(type) {
+  const tmpl = CEREMONY_TEMPLATES[type];
+  if (!tmpl) return;
+  const rows = tmpl.rows.map(r => ({...r}));
+  const name = tmpl.label === 'Custom' ? 'Ceremony ' + (S.ceremonies.length + 1) : tmpl.label + ' Ceremony';
+  S.ceremonies.push({name, date:'', timeline: rows});
   selectedCeremonyIdx = S.ceremonies.length - 1;
   saveState();
+  closeTlModal();
   renderTlCeremonies();
 }
 
@@ -4729,6 +4809,11 @@ if (!S.onboardingDone) {
       <button class="ob-btn ob-btn-primary" onclick="exportGuestPDF()">Export PDF</button>
     </div>
   </div>
+</div>
+
+<!-- ═══ TIMELINE BLOCK MODAL ═══ -->
+<div id="tl-block-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:200;justify-content:center;align-items:center">
+  <div class="card" style="width:380px;max-width:90vw;max-height:80vh;overflow-y:auto" id="tl-block-form"></div>
 </div>
 
 <!-- ═══ ONBOARDING MODAL ═══ -->
