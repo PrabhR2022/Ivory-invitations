@@ -1039,9 +1039,6 @@ table input[type="number"]{text-align:right;width:90px}
       </div>
     </div>
 
-    <!-- Floor Plan now lives inside Guest List sub-tab -->
-    <div class="tab-content" id="tab-floorplan" style="display:none!important"></div>
-
     <!-- ═══ ATTIRE ═══ -->
     <div class="tab-content" id="tab-attire">
       <h1 class="page-title">Attire & Beauty</h1>
@@ -2468,12 +2465,13 @@ function switchSchView(view) {
 function schSidebarHtml() {
   const blocks = S.timeline.filter(b => tlParseTime(b.time) !== null);
   const total = blocks.length;
-  let totalMin = 0;
+  let firstMin = Infinity, lastMin = -Infinity;
   blocks.forEach(b => {
     const s = tlParseTime(b.time), e = tlParseTime(b.end);
-    if (s !== null && e !== null) totalMin += (e - s);
+    if (s !== null && s < firstMin) firstMin = s;
+    if (e !== null && e > lastMin) lastMin = e;
   });
-  const totalHrs = Math.round(totalMin / 60);
+  const totalHrs = firstMin < Infinity ? Math.round((lastMin - firstMin) / 60) : 0;
 
   // Up next (first block after now — for demo, show first future block)
   const now = new Date();
@@ -2633,7 +2631,8 @@ function setupCalDrag(blockEl) {
     if (minT === Infinity) minT = 7*60;
     const startHour = Math.floor(minT / 60);
     const newTopPx = parseInt(blockEl.style.top) || 0;
-    const newMinutes = startHour * 60 + Math.round((newTopPx / pxPerHour) * 60);
+    const rawMinutes = startHour * 60 + Math.round((newTopPx / pxPerHour) * 60);
+    const newMinutes = Math.round(rawMinutes / 15) * 15;
     const origS = tlParseTime(b.time), origE = tlParseTime(b.end);
     let dur = 30;
     if (origS !== null && origE !== null) dur = origE - origS;
