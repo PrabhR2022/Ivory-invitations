@@ -715,6 +715,10 @@ table input[type="number"]{text-align:right;width:90px}
     <div class="tab-content" id="tab-checklist">
       <h1 class="page-title">Month-by-Month Checklist</h1>
       <p class="page-desc">Stay on track from engagement to honeymoon</p>
+      <div id="cl-countdown" style="display:none;text-align:center;padding:16px 20px;background:white;border:1px solid var(--border-light);border-radius:12px;margin-bottom:20px">
+        <span style="font-family:var(--font-serif);font-size:28px" id="cl-countdown-num"></span>
+        <span style="font-size:13px;color:var(--stone);margin-left:6px" id="cl-countdown-label"></span>
+      </div>
       <div class="stats">
         <div class="stat-card"><div class="val" id="cl-done">0</div><div class="lbl">Completed</div></div>
         <div class="stat-card"><div class="val" id="cl-total">0</div><div class="lbl">Total Tasks</div></div>
@@ -840,7 +844,7 @@ table input[type="number"]{text-align:right;width:90px}
         <div class="card">
           <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
           <div class="tbl-wrap">
-            <table style="min-width:1200px"><thead><tr><th style="min-width:120px">Category</th><th style="min-width:110px">Company</th><th style="min-width:100px">Contact</th><th style="min-width:120px">Email</th><th style="min-width:100px">Phone</th><th style="text-align:right;min-width:90px">Estimated</th><th style="text-align:right;min-width:90px">Actual</th><th style="text-align:right;min-width:80px">Deposit</th><th style="min-width:100px">Status</th><th style="min-width:120px">Payment Due</th><th style="min-width:100px">Arrival Time</th><th>Rating</th><th></th></tr></thead>
+            <table style="min-width:1200px"><thead><tr><th style="min-width:120px">Category</th><th style="min-width:110px">Company</th><th style="min-width:100px">Contact</th><th style="min-width:120px">Email</th><th style="min-width:100px">Phone</th><th style="width:50px">Ext</th><th style="text-align:right;min-width:90px">Estimated</th><th style="text-align:right;min-width:90px">Actual</th><th style="text-align:right;min-width:80px">Deposit</th><th style="min-width:100px">Status</th><th style="min-width:120px">Payment Due</th><th style="min-width:100px">Arrival Time</th><th>Rating</th><th></th></tr></thead>
             <tbody id="vendor-body"></tbody></table>
           </div>
         </div>
@@ -1478,8 +1482,8 @@ function eCell(val, onBlur, type="text", opts) {
   if(type === "select" && opts) {
     return `<select onchange="${onBlur.replace('this.value','this.value')}">${opts.map(o=>`<option${o===val?" selected":""}>${o}</option>`).join("")}</select>`;
   }
-  const t = type === "number" ? 'type="number" step="0.01"' : type === "date" ? 'type="date"' : type === "time" ? 'type="time"' : '';
-  const ph = type === "number" ? '0.00' : type === "date" || type === "time" ? '' : 'Enter...';
+  const t = type === "number" ? 'type="number" step="0.01"' : type === "date" ? 'type="date"' : type === "time" ? 'type="time"' : type === "tel" ? 'type="tel" inputmode="numeric" pattern="[0-9\\-\\+\\(\\)\\s]*"' : type === "email" ? 'type="email"' : '';
+  const ph = type === "number" ? '0.00' : type === "date" || type === "time" ? '' : type === "tel" ? '(555) 555-5555' : type === "email" ? 'email@example.com' : 'Enter...';
   return `<input ${t} value="${(val||'').toString().replace(/"/g,'&quot;')}" placeholder="${ph}" onblur="${onBlur}" />`;
 }
 function delBtn(onclick) { return `<button class="btn btn-sm btn-outline btn-danger" onclick="${onclick}" title="Remove">&times;</button>`; }
@@ -1667,6 +1671,15 @@ function renderChecklist() {
   document.getElementById("cl-pct").textContent = pct + "%";
   document.getElementById("check-badge").textContent = pct + "%";
 
+  // Countdown
+  const cdEl = document.getElementById("cl-countdown");
+  if (S.weddingDate) {
+    const diff = Math.ceil((new Date(S.weddingDate) - new Date()) / (1000*60*60*24));
+    document.getElementById("cl-countdown-num").textContent = diff > 0 ? diff : 0;
+    document.getElementById("cl-countdown-label").textContent = diff > 0 ? 'days until the wedding' : diff === 0 ? "It's today!" : 'days since the wedding';
+    cdEl.style.display = 'block';
+  } else { cdEl.style.display = 'none'; }
+
   const phases = [...new Set(S.checklist.map(c=>c.phase))];
   const container = document.getElementById("checklist-container");
   container.innerHTML = phases.map(phase => {
@@ -1676,13 +1689,25 @@ function renderChecklist() {
     ${items.map(item => {
       const idx = S.checklist.indexOf(item);
       const priClass = item.priority==="High"?"priority-high":item.priority==="Medium"?"priority-med":"priority-low";
-      return `<div class="check-item ${item.done?'done':''}">
+      return `<div class="check-item ${item.done?'done':''}" style="display:flex;align-items:center;gap:8px">
         <div class="check-box ${item.done?'checked':''}" onclick="S.checklist[${idx}].done=!S.checklist[${idx}].done;saveState();renderChecklist()"></div>
-        <span class="check-label">${item.task}</span>
+        <span class="check-label" style="flex:1">${item.task}</span>
         <span class="priority-tag ${priClass}">${item.priority}</span>
+        <button onclick="S.checklist.splice(${idx},1);saveState();renderChecklist()" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:14px;opacity:0.4;padding:2px 4px" title="Remove">&times;</button>
       </div>`;
-    }).join("")}</div>`;
+    }).join("")}
+    <div style="margin-top:8px;display:flex;gap:6px">
+      <input id="cl-add-${phase.replace(/\s/g,'')}" placeholder="New task..." style="flex:1;padding:6px 10px;border:1px solid var(--border-light);border-radius:6px;font-size:12px" onkeydown="if(event.key==='Enter')addChecklistTask('${phase}',this.value,this)" />
+      <button onclick="addChecklistTask('${phase}',document.getElementById('cl-add-${phase.replace(/\s/g,'')}').value,document.getElementById('cl-add-${phase.replace(/\s/g,'')}'))" class="btn btn-sm btn-dark" style="font-size:11px">+ Add</button>
+    </div></div>`;
   }).join("");
+}
+
+function addChecklistTask(phase, task, inputEl) {
+  if (!task || !task.trim()) return;
+  S.checklist.push({task: task.trim(), phase, priority: 'Medium', done: false});
+  saveState();
+  renderChecklist();
 }
 
 // ══════════════════════════════════════════════════
@@ -2109,8 +2134,9 @@ function renderVendors() {
     <td>${eCell(v.cat,`S.vendors[${i}].cat=this.value;saveState();event.stopPropagation()`)}</td>
     <td>${eCell(v.company,`S.vendors[${i}].company=this.value;saveState();event.stopPropagation()`)}</td>
     <td>${eCell(v.contact,`S.vendors[${i}].contact=this.value;saveState();event.stopPropagation()`)}</td>
-    <td>${eCell(v.email,`S.vendors[${i}].email=this.value;saveState();event.stopPropagation()`)}</td>
-    <td>${eCell(v.phone,`S.vendors[${i}].phone=this.value;saveState();event.stopPropagation()`)}</td>
+    <td>${eCell(v.email,`S.vendors[${i}].email=this.value;saveState();event.stopPropagation()`,"email")}</td>
+    <td>${eCell(v.phone,`S.vendors[${i}].phone=this.value;saveState();event.stopPropagation()`,"tel")}</td>
+    <td onclick="event.stopPropagation()"><input type="text" value="${esc(v.ext||'')}" placeholder="Ext" style="width:50px;padding:6px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;text-align:center" onblur="S.vendors[${i}].ext=this.value;saveState()" /></td>
     <td class="currency" onclick="event.stopPropagation()">${eCell(v.estimatedPrice,`S.vendors[${i}].estimatedPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
     <td class="currency" onclick="event.stopPropagation()">${eCell(v.actualPrice,`S.vendors[${i}].actualPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
     <td class="currency" onclick="event.stopPropagation()">${eCell(v.deposit,`S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
@@ -2675,6 +2701,7 @@ function setupCalDrag(blockEl) {
     if (origS !== null && origE !== null) dur = origE - origS;
     b.time = tlFormatTime(Math.max(0, newMinutes));
     b.end = tlFormatTime(Math.max(0, newMinutes) + dur);
+    syncScheduleToCeremony(b);
     S.timeline.sort((a,c) => (tlParseTime(a.time)||0) - (tlParseTime(c.time)||0));
     saveState(); renderTlSchedule();
   });
@@ -2846,6 +2873,8 @@ function saveTlBlock(idx) {
   b.vendorIdx = vendorVal !== '' ? parseInt(vendorVal) : undefined;
   const selCat = document.querySelector('.tl-cat-btn[style*="opacity: 1"], .tl-cat-btn[style*="opacity:1"]');
   if (selCat) b.cat = selCat.dataset.cat;
+  // Sync back to ceremony if linked
+  syncScheduleToCeremony(b);
   // Sort timeline by start time
   S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
   saveState();
@@ -2945,11 +2974,11 @@ function renderTlCeremonies() {
       <table style="min-width:600px">
         <thead><tr><th style="width:90px">Time</th><th>Event</th><th style="width:150px">Music / Cue</th><th style="width:150px">Notes</th><th></th></tr></thead>
         <tbody>${(cer.timeline||[]).map((r,ri) => `<tr>
-          <td>${eCell(r.time,`S.ceremonies[${ci}].timeline[${ri}].time=this.value;saveState()`,"time")}</td>
-          <td>${eCell(r.event,`S.ceremonies[${ci}].timeline[${ri}].event=this.value;saveState()`)}</td>
-          <td>${eCell(r.music||'',`S.ceremonies[${ci}].timeline[${ri}].music=this.value;saveState()`)}</td>
-          <td>${eCell(r.notes||'',`S.ceremonies[${ci}].timeline[${ri}].notes=this.value;saveState()`)}</td>
-          <td>${delBtn(`S.ceremonies[${ci}].timeline.splice(${ri},1);saveState();renderTlCeremonies()`)}</td>
+          <td>${eCell(r.time,`S.ceremonies[${ci}].timeline[${ri}].time=this.value;syncCeremonyToSchedule(${ci},${ri});saveState();renderTlCeremonies()`,"time")}</td>
+          <td>${eCell(r.event,`S.ceremonies[${ci}].timeline[${ri}].event=this.value;syncCeremonyToSchedule(${ci},${ri});saveState()`)}</td>
+          <td>${eCell(r.music||'',`S.ceremonies[${ci}].timeline[${ri}].music=this.value;syncCeremonyToSchedule(${ci},${ri});saveState()`)}</td>
+          <td>${eCell(r.notes||'',`S.ceremonies[${ci}].timeline[${ri}].notes=this.value;syncCeremonyToSchedule(${ci},${ri});saveState()`)}</td>
+          <td>${delBtn(`var b=S.timeline.find(x=>x.cerIdx===${ci}&&x.cerRowIdx===${ri});if(b){S.timeline.splice(S.timeline.indexOf(b),1)};S.ceremonies[${ci}].timeline.splice(${ri},1);saveState();renderTlCeremonies()`)}</td>
         </tr>`).join('')}</tbody>
       </table>
     </div>
@@ -3067,12 +3096,13 @@ function createCeremonyFromTemplate(type) {
   if (!tmpl) return;
   const rows = tmpl.rows.map(r => ({...r}));
   const name = tmpl.label === 'Custom' ? 'Ceremony ' + (S.ceremonies.length + 1) : tmpl.label + ' Ceremony';
+  const cerIdx = S.ceremonies.length;
   S.ceremonies.push({name, date:'', timeline: rows});
-  selectedCeremonyIdx = S.ceremonies.length - 1;
-  // Also add ceremony events to the main schedule
-  rows.forEach((r, i) => {
+  selectedCeremonyIdx = cerIdx;
+  // Also add ceremony events to the main schedule (linked)
+  rows.forEach((r, ri) => {
     if (!r.time) return;
-    const nextTime = (i < rows.length - 1 && rows[i+1].time) ? rows[i+1].time : '';
+    const nextTime = (ri < rows.length - 1 && rows[ri+1].time) ? rows[ri+1].time : '';
     const startAMPM = time24to12(r.time);
     const endAMPM = nextTime ? time24to12(nextTime) : '';
     S.timeline.push({
@@ -3081,13 +3111,75 @@ function createCeremonyFromTemplate(type) {
       activity: r.event,
       who: r.notes || '',
       notes: r.music ? 'Music: ' + r.music : '',
-      cat: 'ceremony'
+      cat: 'ceremony',
+      cerIdx: cerIdx,
+      cerRowIdx: ri
     });
   });
   S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
   saveState();
   closeTlModal();
   renderTlCeremonies();
+}
+
+// ── BIDIRECTIONAL SYNC ──
+function syncCeremonyToSchedule(ci, ri) {
+  const cer = S.ceremonies[ci];
+  if (!cer || !cer.timeline[ri]) return;
+  const r = cer.timeline[ri];
+  // Find the linked schedule block
+  const tlBlock = S.timeline.find(b => b.cerIdx === ci && b.cerRowIdx === ri);
+  if (tlBlock) {
+    tlBlock.time = time24to12(r.time);
+    tlBlock.activity = r.event;
+    tlBlock.notes = r.music ? 'Music: ' + r.music : '';
+    tlBlock.who = r.notes || '';
+    // Recalculate end time from next ceremony row
+    const nextRow = cer.timeline.find((row, idx) => idx > ri && row.time);
+    tlBlock.end = nextRow ? time24to12(nextRow.time) : '';
+  } else if (r.time) {
+    // No linked block yet — create one
+    const nextRow = cer.timeline.find((row, idx) => idx > ri && row.time);
+    S.timeline.push({
+      time: time24to12(r.time), end: nextRow ? time24to12(nextRow.time) : '',
+      activity: r.event, who: r.notes || '',
+      notes: r.music ? 'Music: ' + r.music : '',
+      cat: 'ceremony', cerIdx: ci, cerRowIdx: ri
+    });
+  }
+  S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
+  // Sort ceremony timeline by time
+  const sorted = [...cer.timeline].sort((a,b) => {
+    if (!a.time && !b.time) return 0;
+    if (!a.time) return 1; if (!b.time) return -1;
+    return a.time.localeCompare(b.time);
+  });
+  cer.timeline = sorted;
+  // Re-index cerRowIdx in S.timeline to match new sort order
+  sorted.forEach((row, newIdx) => {
+    const tlB = S.timeline.find(b => b.cerIdx === ci && b.activity === row.event && b.cerRowIdx !== undefined);
+    if (tlB) tlB.cerRowIdx = newIdx;
+  });
+}
+
+function syncScheduleToCeremony(b) {
+  if (b.cerIdx === undefined || b.cerRowIdx === undefined) return;
+  const cer = S.ceremonies[b.cerIdx];
+  if (!cer || !cer.timeline[b.cerRowIdx]) return;
+  const r = cer.timeline[b.cerRowIdx];
+  // Convert 12h time back to 24h for ceremony
+  const mins = tlParseTime(b.time);
+  if (mins !== null) {
+    const h = Math.floor(mins / 60), m = mins % 60;
+    r.time = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  }
+  r.event = b.activity;
+  // Sort ceremony timeline
+  cer.timeline.sort((a,c) => {
+    if (!a.time && !c.time) return 0;
+    if (!a.time) return 1; if (!c.time) return -1;
+    return a.time.localeCompare(c.time);
+  });
 }
 
 // ══════════════════════════════════════════════════
