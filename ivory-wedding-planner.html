@@ -952,14 +952,20 @@ table input[type="number"]{text-align:right;width:90px}
 
       <!-- ── Schedule sub-tab ── -->
       <div class="tl-section active" id="tl-schedule">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <button class="btn btn-dark" onclick="addTlBlock()">+ Add Block</button>
           <button class="btn btn-outline" onclick="window.print()">Print</button>
+          <button class="btn btn-outline" onclick="if(confirm('Reset schedule to default milestones? This replaces all current events.')){S.timeline=buildTimeline();saveState();renderTlSchedule()}" style="font-size:11px">Reset</button>
           <div class="sch-view-toggle" id="sch-view-toggle">
             <button class="active" onclick="switchSchView('calendar')">Calendar</button>
             <button onclick="switchSchView('agenda')">Agenda</button>
             <button onclick="switchSchView('compact')">Compact</button>
           </div>
+        </div>
+        <div style="margin-bottom:16px">
+          <select id="sch-ceremony-filter" onchange="filterScheduleByCeremony(this.value)" style="padding:6px 12px;border:1px solid var(--border-light);border-radius:8px;font-size:12px;background:white;color:var(--charcoal)">
+            <option value="all">Full Day Schedule</option>
+          </select>
         </div>
 
         <!-- Calendar View -->
@@ -2489,10 +2495,45 @@ function schSidebarHtml() {
   return html;
 }
 
+// ── CEREMONY FILTER ──
+let schCeremonyFilter = 'all';
+
+function filterScheduleByCeremony(val) {
+  schCeremonyFilter = val;
+  renderTlSchedule();
+}
+
+function updateSchCeremonyDropdown() {
+  const sel = document.getElementById('sch-ceremony-filter');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="all">Full Day Schedule</option>' +
+    (S.ceremonies||[]).map((c,i) => `<option value="cer-${i}">${esc(c.name||'Ceremony '+(i+1))}</option>`).join('');
+  sel.value = prev;
+  if (!sel.value) { sel.value = 'all'; schCeremonyFilter = 'all'; }
+}
+
+function getScheduleBlocks() {
+  if (schCeremonyFilter === 'all') return S.timeline;
+  const idx = parseInt(schCeremonyFilter.replace('cer-',''));
+  const cer = (S.ceremonies||[])[idx];
+  if (!cer || !cer.timeline) return S.timeline;
+  // Map ceremony timeline to schedule block format
+  return cer.timeline.map(r => ({
+    time: r.time || '',
+    end: '',
+    activity: r.event || '',
+    who: r.notes || '',
+    notes: r.music ? 'Music: '+r.music : '',
+    cat: 'ceremony'
+  }));
+}
+
 // ── RENDER SCHEDULE (dispatches to active view) ──
 function renderTlSchedule() {
   S.timeline.forEach(b => { if (!b.end) b.end = ''; if (!b.cat) b.cat = 'other'; });
   S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
+  updateSchCeremonyDropdown();
 
   const sidebar = schSidebarHtml();
   ['sch-sidebar-cal','sch-sidebar-agenda','sch-sidebar-compact'].forEach(id => {
@@ -2534,8 +2575,9 @@ function renderSchCalendar() {
   timesEl.innerHTML = timesHtml;
 
   // Event blocks
+  const blocks = getScheduleBlocks();
   let evHtml = linesHtml;
-  S.timeline.forEach((b, i) => {
+  blocks.forEach((b, i) => {
     const s = tlParseTime(b.time), e = tlParseTime(b.end);
     if (s === null) return;
     const eTime = e !== null ? e : s + 30;
@@ -2633,9 +2675,10 @@ function renderSchAgenda() {
   if (!con) return;
 
   // Group by category
+  const agBlocks = getScheduleBlocks();
   const phases = {};
   const phaseOrder = ['prep','ceremony','photos','reception','other'];
-  S.timeline.forEach((b, i) => {
+  agBlocks.forEach((b, i) => {
     const cat = b.cat || 'other';
     if (!phases[cat]) phases[cat] = [];
     phases[cat].push({...b, idx: i});
@@ -2681,8 +2724,8 @@ function renderSchCompact() {
 
   let html = `<div class="sch-progress"><div class="pb-label">Day Progress</div><div class="pb-bar"><div class="pb-fill" style="width:${pct}%"></div></div><div class="pb-pct">${pct}%</div></div>`;
   html += `<table><thead><tr><th style="width:110px">Time</th><th>Event</th><th style="width:60px">Duration</th><th>Vendor</th><th>Notes</th></tr></thead><tbody>`;
-
-  S.timeline.forEach((b, i) => {
+  const cpBlocks = getScheduleBlocks();
+  cpBlocks.forEach((b, i) => {
     const s = tlParseTime(b.time), e = tlParseTime(b.end);
     const isPassed = e !== null && e <= nowMin;
     const isCurrent = s !== null && e !== null && s <= nowMin && e > nowMin;
