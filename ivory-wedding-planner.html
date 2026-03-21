@@ -784,7 +784,7 @@ table input[type="number"]{text-align:right;width:90px}
         </div>
         <input type="file" id="guest-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="importGuestFile(this)" />
         <div class="tbl-wrap">
-          <table><thead><tr><th>#</th><th>Name</th><th>Address</th><th>Table</th><th>+1 Allowed</th><th>RSVP</th><th>+1 Accepted</th><th>Meal</th><th>Gift Recv'd</th><th>Thank You</th><th></th></tr></thead>
+          <table><thead><tr><th>#</th><th>Name</th><th>Role</th><th>Address</th><th>Table</th><th>+1 Allowed</th><th>RSVP</th><th>+1 Accepted</th><th>Meal</th><th>Gift Recv'd</th><th>Thank You</th><th></th></tr></thead>
           <tbody id="guest-body"></tbody></table>
         </div>
       </div>
@@ -1750,6 +1750,7 @@ function renderGuests() {
     let row = `<tr>
     <td style="width:36px;text-align:center;color:var(--stone)">${i+1}</td>
     <td>${eCell(g.name,`S.guests[${i}].name=this.value;saveState()`)}</td>
+    <td>${eCell(g.role||'',`S.guests[${i}].role=this.value;saveState()`,"select",GUEST_ROLES)}</td>
     <td>${eCell(g.address,`S.guests[${i}].address=this.value;saveState()`)}</td>
     <td style="min-width:100px">${fpTables.length > 0 ? tableSelect : '<span style="font-size:11px;color:var(--stone)">Add tables in Floor Plan</span>'}</td>
     <td><input type="number" min="0" max="10" value="${g.allowPlusOne}" style="width:60px;text-align:center" onchange="S.guests[${i}].allowPlusOne=+this.value;saveState()" /></td>
@@ -1765,6 +1766,7 @@ function renderGuests() {
       row += `<tr style="background:rgba(237,232,224,0.18)">
         <td></td>
         <td style="padding-left:28px;font-size:12px;color:var(--stone)"><span style="color:var(--taupe);margin-right:6px">+${pi+1}</span>${pg.name}</td>
+        <td></td>
         <td style="font-size:11px;color:var(--stone);font-style:italic">Guest of ${g.name.split(' ')[0]}</td>
         <td></td>
         <td></td>
@@ -1845,7 +1847,8 @@ function renderMealCounts() {
   }
 }
 
-function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No",table:""}); saveState(); renderGuests(); }
+const GUEST_ROLES = ["","Bride's Family","Groom's Family","Bridesmaid","Groomsman","Maid of Honor","Best Man","Flower Girl","Ring Bearer","Officiant","Usher","Friend"];
+function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No",table:"",role:""}); saveState(); renderGuests(); }
 
 function assignGuestTable(guestIdx, tableName) {
   const guest = S.guests[guestIdx];
@@ -2783,7 +2786,16 @@ function editTlBlock(idx) {
     <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Activity</label>
       <input id="tl-ed-activity" value="${esc(b.activity)}" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
     <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Who</label>
-      <input id="tl-ed-who" value="${esc(b.who)}" placeholder="Who's involved" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
+      <div id="tl-ed-who-tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">${(b.who||'').split(',').filter(n=>n.trim()).map(n=>`<span class="tl-who-tag" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--cream);border:1px solid var(--border-light);border-radius:100px;font-size:11px">${esc(n.trim())}<span onclick="removeTlWhoTag(this.parentElement)" style="cursor:pointer;opacity:0.5;font-size:13px">&times;</span></span>`).join('')}</div>
+      <div style="display:flex;gap:6px">
+        <select id="tl-ed-who-select" style="flex:1;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:white">
+          <option value="">Add from guest list...</option>
+          ${(()=>{const grouped={};S.guests.filter(g=>g.name).forEach(g=>{const r=g.role||'Guest';if(!grouped[r])grouped[r]=[];grouped[r].push(g.name)});return Object.keys(grouped).sort().map(r=>`<optgroup label="${esc(r)}">${grouped[r].map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>`).join('')})()}
+        </select>
+        <button onclick="addTlWhoFromSelect()" class="btn btn-sm btn-dark" style="font-size:11px;padding:4px 10px">Add</button>
+      </div>
+      <input id="tl-ed-who" type="hidden" value="${esc(b.who)}"/>
+    </div>
     <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Notes</label>
       <input id="tl-ed-notes" value="${esc(b.notes)}" placeholder="Optional notes" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
     <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Linked Vendor</label>
@@ -2837,6 +2849,32 @@ function deleteTlBlock(idx) {
   saveState();
   closeTlModal();
   renderTlSchedule();
+}
+
+function addTlWhoFromSelect() {
+  const sel = document.getElementById('tl-ed-who-select');
+  const name = sel.value;
+  if (!name) return;
+  const hidden = document.getElementById('tl-ed-who');
+  const current = hidden.value ? hidden.value.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  if (current.includes(name)) { sel.value = ''; return; }
+  current.push(name);
+  hidden.value = current.join(', ');
+  const tagsEl = document.getElementById('tl-ed-who-tags');
+  const tag = document.createElement('span');
+  tag.className = 'tl-who-tag';
+  tag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--cream);border:1px solid var(--border-light);border-radius:100px;font-size:11px';
+  tag.innerHTML = `${name}<span onclick="removeTlWhoTag(this.parentElement)" style="cursor:pointer;opacity:0.5;font-size:13px">&times;</span>`;
+  tagsEl.appendChild(tag);
+  sel.value = '';
+}
+
+function removeTlWhoTag(tagEl) {
+  const name = tagEl.textContent.replace('×','').trim();
+  const hidden = document.getElementById('tl-ed-who');
+  const current = hidden.value.split(',').map(s=>s.trim()).filter(Boolean).filter(n=>n!==name);
+  hidden.value = current.join(', ');
+  tagEl.remove();
 }
 
 function closeTlModal() {
