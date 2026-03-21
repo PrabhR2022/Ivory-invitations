@@ -1478,8 +1478,8 @@ function eCell(val, onBlur, type="text", opts) {
   if(type === "select" && opts) {
     return `<select onchange="${onBlur.replace('this.value','this.value')}">${opts.map(o=>`<option${o===val?" selected":""}>${o}</option>`).join("")}</select>`;
   }
-  const t = type === "number" ? 'type="number" step="0.01"' : type === "date" ? 'type="date"' : '';
-  const ph = type === "number" ? '0.00' : type === "date" ? '' : 'Enter...';
+  const t = type === "number" ? 'type="number" step="0.01"' : type === "date" ? 'type="date"' : type === "time" ? 'type="time"' : '';
+  const ph = type === "number" ? '0.00' : type === "date" || type === "time" ? '' : 'Enter...';
   return `<input ${t} value="${(val||'').toString().replace(/"/g,'&quot;')}" placeholder="${ph}" onblur="${onBlur}" />`;
 }
 function delBtn(onclick) { return `<button class="btn btn-sm btn-outline btn-danger" onclick="${onclick}" title="Remove">&times;</button>`; }
@@ -1750,7 +1750,7 @@ function renderGuests() {
     let row = `<tr>
     <td style="width:36px;text-align:center;color:var(--stone)">${i+1}</td>
     <td>${eCell(g.name,`S.guests[${i}].name=this.value;saveState()`)}</td>
-    <td>${eCell(g.role||'',`S.guests[${i}].role=this.value;saveState()`,"select",GUEST_ROLES)}</td>
+    <td>${eCell(g.role||'',`setGuestRole(${i},this.value)`,"select",[...GUEST_ROLES,...(g.role && !GUEST_ROLES.includes(g.role)?[g.role]:[])])}</td>
     <td>${eCell(g.address,`S.guests[${i}].address=this.value;saveState()`)}</td>
     <td style="min-width:100px">${fpTables.length > 0 ? tableSelect : '<span style="font-size:11px;color:var(--stone)">Add tables in Floor Plan</span>'}</td>
     <td><input type="number" min="0" max="10" value="${g.allowPlusOne}" style="width:60px;text-align:center" onchange="S.guests[${i}].allowPlusOne=+this.value;saveState()" /></td>
@@ -1847,7 +1847,14 @@ function renderMealCounts() {
   }
 }
 
-const GUEST_ROLES = ["","Bride's Family","Groom's Family","Bridesmaid","Groomsman","Maid of Honor","Best Man","Flower Girl","Ring Bearer","Officiant","Usher","Friend"];
+const GUEST_ROLES = ["","Bride's Family","Groom's Family","Bridesmaid","Groomsman","Maid of Honor","Best Man","Flower Girl","Ring Bearer","Officiant","Usher","Friend","VIP","+ Custom"];
+function setGuestRole(idx, val) {
+  if (val === '+ Custom') {
+    const custom = prompt('Enter custom role:');
+    if (custom && custom.trim()) { S.guests[idx].role = custom.trim(); } else { S.guests[idx].role = ''; }
+  } else { S.guests[idx].role = val; }
+  saveState(); renderGuests();
+}
 function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No",table:"",role:""}); saveState(); renderGuests(); }
 
 function assignGuestTable(guestIdx, tableName) {
@@ -2648,6 +2655,8 @@ function setupCalDrag(blockEl) {
   blockEl.addEventListener('pointerup', (e) => {
     if (!isDragging) return;
     isDragging = false;
+    // When viewing a ceremony, don't drag or edit S.timeline blocks
+    if (schCeremonyFilter !== 'all') { blockEl.classList.remove('dragging'); renderTlSchedule(); return; }
     if (!hasMoved) { editTlBlock(blockIdx); return; }
     blockEl.classList.remove('dragging');
 
@@ -2936,7 +2945,7 @@ function renderTlCeremonies() {
       <table style="min-width:600px">
         <thead><tr><th style="width:90px">Time</th><th>Event</th><th style="width:150px">Music / Cue</th><th style="width:150px">Notes</th><th></th></tr></thead>
         <tbody>${(cer.timeline||[]).map((r,ri) => `<tr>
-          <td>${eCell(r.time,`S.ceremonies[${ci}].timeline[${ri}].time=this.value;saveState()`)}</td>
+          <td>${eCell(r.time,`S.ceremonies[${ci}].timeline[${ri}].time=this.value;saveState()`,"time")}</td>
           <td>${eCell(r.event,`S.ceremonies[${ci}].timeline[${ri}].event=this.value;saveState()`)}</td>
           <td>${eCell(r.music||'',`S.ceremonies[${ci}].timeline[${ri}].music=this.value;saveState()`)}</td>
           <td>${eCell(r.notes||'',`S.ceremonies[${ci}].timeline[${ri}].notes=this.value;saveState()`)}</td>
@@ -2962,65 +2971,65 @@ function deleteTlCeremony() {
 
 const CEREMONY_TEMPLATES = {
   custom: {label:'Custom',rows:[
-    {time:'',event:'Prelude music begins',music:'Instrumental',notes:'Guests seated'},
-    {time:'',event:'Seating of parents',music:'',notes:'Ushers escort'},
-    {time:'',event:'Bridal party processional',music:'',notes:''},
-    {time:'',event:"Bride's entrance",music:'',notes:'All rise'},
-    {time:'',event:'Welcome & opening words',music:'',notes:'Officiant'},
-    {time:'',event:'Readings',music:'',notes:''},
-    {time:'',event:'Exchange of vows',music:'',notes:''},
-    {time:'',event:'Ring exchange',music:'',notes:''},
-    {time:'',event:'The first kiss',music:'',notes:''},
-    {time:'',event:'Recessional',music:'',notes:'Couple exits'}
+    {time:'15:30',event:'Prelude music begins',music:'Instrumental',notes:'Guests seated'},
+    {time:'15:45',event:'Seating of parents',music:'',notes:'Ushers escort'},
+    {time:'15:50',event:'Bridal party processional',music:'',notes:''},
+    {time:'15:55',event:"Bride's entrance",music:'',notes:'All rise'},
+    {time:'16:00',event:'Welcome & opening words',music:'',notes:'Officiant'},
+    {time:'16:05',event:'Readings',music:'',notes:''},
+    {time:'16:10',event:'Exchange of vows',music:'',notes:''},
+    {time:'16:15',event:'Ring exchange',music:'',notes:''},
+    {time:'16:20',event:'The first kiss',music:'',notes:''},
+    {time:'16:22',event:'Recessional',music:'',notes:'Couple exits'}
   ]},
   christian: {label:'Christian',rows:[
-    {time:'',event:'Pre-ceremony music',music:'Instrumental / hymns',notes:'15-20 min as guests arrive'},
-    {time:'',event:'Seating of honoured guests',music:'',notes:'Grandparents, parents escorted to reserved seats'},
-    {time:'',event:'Processional',music:'',notes:'Officiant, groom, groomsmen, bridesmaids, ring bearer, flower girl'},
-    {time:'',event:"Bride's entrance",music:'',notes:'Escorted by father — all rise'},
-    {time:'',event:'Welcome & opening remarks',music:'',notes:'Officiant welcomes congregation'},
-    {time:'',event:'Opening prayer / invocation',music:'',notes:'Prayer for blessing on the ceremony'},
-    {time:'',event:'Scripture readings',music:'',notes:'1-3 Bible passages (e.g. 1 Corinthians 13)'},
-    {time:'',event:'Sermon / homily',music:'',notes:'Message on marriage & love'},
-    {time:'',event:'Declaration of intent',music:'',notes:'Each partner affirms consent'},
-    {time:'',event:'Wedding vows',music:'',notes:'Traditional or personalised'},
-    {time:'',event:'Ring exchange',music:'',notes:'Rings blessed and exchanged'},
-    {time:'',event:'Unity ceremony',music:'',notes:'Optional — candle, sand, or communion'},
-    {time:'',event:'Pronouncement of marriage',music:'',notes:'Couple declared married'},
-    {time:'',event:'First kiss',music:'',notes:''},
-    {time:'',event:'Recessional',music:'Joyful music',notes:'Newlyweds exit first, then wedding party'}
+    {time:'15:30',event:'Pre-ceremony music',music:'Instrumental / hymns',notes:'15-20 min as guests arrive'},
+    {time:'15:50',event:'Seating of honoured guests',music:'',notes:'Grandparents, parents escorted'},
+    {time:'15:55',event:'Processional',music:'',notes:'Officiant, groom, wedding party'},
+    {time:'16:00',event:"Bride's entrance",music:'',notes:'Escorted by father — all rise'},
+    {time:'16:02',event:'Welcome & opening remarks',music:'',notes:'Officiant welcomes congregation'},
+    {time:'16:04',event:'Opening prayer / invocation',music:'',notes:'Prayer for blessing'},
+    {time:'16:06',event:'Scripture readings',music:'',notes:'1-3 Bible passages'},
+    {time:'16:12',event:'Sermon / homily',music:'',notes:'Message on marriage & love'},
+    {time:'16:22',event:'Declaration of intent',music:'',notes:'Each partner affirms consent'},
+    {time:'16:24',event:'Wedding vows',music:'',notes:'Traditional or personalised'},
+    {time:'16:28',event:'Ring exchange',music:'',notes:'Rings blessed and exchanged'},
+    {time:'16:31',event:'Unity ceremony',music:'',notes:'Optional — candle, sand, or communion'},
+    {time:'16:36',event:'Pronouncement of marriage',music:'',notes:'Couple declared married'},
+    {time:'16:37',event:'First kiss',music:'',notes:''},
+    {time:'16:38',event:'Recessional',music:'Joyful music',notes:'Newlyweds exit first'}
   ]},
   hindu: {label:'Hindu',rows:[
-    {time:'',event:'Baraat (groom\'s procession)',music:'Dhol / DJ',notes:'Groom arrives with family dancing — 30-60 min'},
-    {time:'',event:'Milni (family meeting)',music:'',notes:'Corresponding relatives exchange garlands and embrace'},
-    {time:'',event:'Ganesh Puja',music:'',notes:'Pandit invokes Lord Ganesha to bless the ceremony'},
-    {time:'',event:'Groom welcomed at Mandap',music:'',notes:'Prayers performed before bride is invited'},
-    {time:'',event:'Kanya Aagman (bride\'s entry)',music:'',notes:'Bride enters under phoolon ki chaadar (floral canopy)'},
-    {time:'',event:'Jaimala (garland exchange)',music:'',notes:'Couple exchange floral garlands — mutual acceptance'},
-    {time:'',event:'Kanyadaan',music:'',notes:'Bride\'s father places her hand in groom\'s — giving away'},
-    {time:'',event:'Vivaha Homa (sacred fire)',music:'',notes:'Agni (fire) lit, offerings of ghee and grains'},
-    {time:'',event:'Mangal Phera (circling the fire)',music:'',notes:'Couple circles fire 4-7 times — Dharma, Artha, Kama, Moksha'},
-    {time:'',event:'Saptapadi (seven steps)',music:'',notes:'Seven steps together with sacred vows — legally married'},
-    {time:'',event:'Sindoor & Mangalsutra',music:'',notes:'Groom applies sindoor, ties mangalsutra'},
-    {time:'',event:'Ashirvad (blessings)',music:'',notes:'Elders and guests bless the couple'},
-    {time:'',event:'Vidaai (bride\'s farewell)',music:'',notes:'Bride says farewell, tosses rice over shoulder'}
+    {time:'09:00',event:'Baraat (groom\'s procession)',music:'Dhol / DJ',notes:'Groom arrives with family dancing'},
+    {time:'09:45',event:'Milni (family meeting)',music:'',notes:'Relatives exchange garlands and embrace'},
+    {time:'10:00',event:'Ganesh Puja',music:'',notes:'Pandit invokes Lord Ganesha'},
+    {time:'10:15',event:'Groom welcomed at Mandap',music:'',notes:'Prayers before bride is invited'},
+    {time:'10:30',event:'Kanya Aagman (bride\'s entry)',music:'',notes:'Bride enters under floral canopy'},
+    {time:'10:45',event:'Jaimala (garland exchange)',music:'',notes:'Couple exchange floral garlands'},
+    {time:'11:00',event:'Kanyadaan',music:'',notes:'Bride\'s father gives her hand'},
+    {time:'11:15',event:'Vivaha Homa (sacred fire)',music:'',notes:'Fire lit, offerings of ghee and grains'},
+    {time:'11:30',event:'Mangal Phera (circling the fire)',music:'',notes:'Couple circles fire 4-7 times'},
+    {time:'11:50',event:'Saptapadi (seven steps)',music:'',notes:'Seven steps with sacred vows — married'},
+    {time:'12:05',event:'Sindoor & Mangalsutra',music:'',notes:'Groom applies sindoor, ties mangalsutra'},
+    {time:'12:15',event:'Ashirvad (blessings)',music:'',notes:'Elders and guests bless the couple'},
+    {time:'12:30',event:'Vidaai (bride\'s farewell)',music:'',notes:'Bride says farewell, tosses rice'}
   ]},
   sikh: {label:'Sikh (Anand Karaj)',rows:[
-    {time:'',event:'Milni (family meeting)',music:'',notes:'Male relatives exchange garlands outside Gurdwara'},
-    {time:'',event:'Arrival & seating in Darbar Hall',music:'Kirtan (hymns)',notes:'Everyone sits in presence of Guru Granth Sahib'},
-    {time:'',event:'Opening Ardas (prayer)',music:'',notes:'Couple and parents stand to signify consent'},
-    {time:'',event:'Hukamnama (divine command)',music:'',notes:'Random page opened — divine guidance for the couple'},
-    {time:'',event:'Keeta Lorhiye (opening hymn)',music:'Shabad',notes:'Seek Creator\'s guidance before important undertaking'},
-    {time:'',event:'Palle Di Rasam (scarf ceremony)',music:'Palle Tende Laagi',notes:'Father places palla in daughter\'s hand'},
-    {time:'',event:'Lavaan — Round 1',music:'Shabad',notes:'Commitment to righteous living'},
-    {time:'',event:'Lavaan — Round 2',music:'Shabad',notes:'Spiritual purity and devotion'},
-    {time:'',event:'Lavaan — Round 3',music:'Shabad',notes:'Detachment from worldly desire, divine love'},
-    {time:'',event:'Lavaan — Round 4',music:'Shabad',notes:'Soul merges with the Infinite — married'},
-    {time:'',event:'Anand Sahib (song of bliss)',music:'Congregation sings',notes:'Hymn of joy and spiritual fulfillment'},
-    {time:'',event:'Final Ardas (closing prayer)',music:'',notes:'Everyone stands — prayers for happiness'},
-    {time:'',event:'Hukamnama (closing)',music:'',notes:'Final divine blessing for the couple'},
-    {time:'',event:'Karah Prasad',music:'',notes:'Sacred sweet distributed to all — unity and grace'},
-    {time:'',event:'Langar (community meal)',music:'',notes:'Communal vegetarian meal in langar hall'}
+    {time:'09:00',event:'Milni (family meeting)',music:'',notes:'Relatives exchange garlands outside Gurdwara'},
+    {time:'09:15',event:'Arrival & seating in Darbar Hall',music:'Kirtan (hymns)',notes:'Everyone sits before Guru Granth Sahib'},
+    {time:'09:30',event:'Opening Ardas (prayer)',music:'',notes:'Couple and parents stand — consent'},
+    {time:'09:35',event:'Hukamnama (divine command)',music:'',notes:'Random page opened — divine guidance'},
+    {time:'09:40',event:'Keeta Lorhiye (opening hymn)',music:'Shabad',notes:'Seek Creator\'s guidance'},
+    {time:'09:45',event:'Palle Di Rasam (scarf ceremony)',music:'Palle Tende Laagi',notes:'Father places palla in daughter\'s hand'},
+    {time:'09:55',event:'Lavaan — Round 1',music:'Shabad',notes:'Commitment to righteous living'},
+    {time:'10:05',event:'Lavaan — Round 2',music:'Shabad',notes:'Spiritual purity and devotion'},
+    {time:'10:15',event:'Lavaan — Round 3',music:'Shabad',notes:'Detachment, divine love'},
+    {time:'10:25',event:'Lavaan — Round 4',music:'Shabad',notes:'Soul merges with Infinite — married'},
+    {time:'10:35',event:'Anand Sahib (song of bliss)',music:'Congregation sings',notes:'Hymn of joy'},
+    {time:'10:50',event:'Final Ardas (closing prayer)',music:'',notes:'Everyone stands — prayers'},
+    {time:'10:55',event:'Hukamnama (closing)',music:'',notes:'Final divine blessing'},
+    {time:'11:00',event:'Karah Prasad',music:'',notes:'Sacred sweet distributed to all'},
+    {time:'11:10',event:'Langar (community meal)',music:'',notes:'Communal vegetarian meal'}
   ]}
 };
 
@@ -3046,6 +3055,13 @@ function addTlCeremony() {
     </div>`;
 }
 
+function time24to12(t) {
+  if (!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return ((h%12)||12) + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+}
+
 function createCeremonyFromTemplate(type) {
   const tmpl = CEREMONY_TEMPLATES[type];
   if (!tmpl) return;
@@ -3053,6 +3069,22 @@ function createCeremonyFromTemplate(type) {
   const name = tmpl.label === 'Custom' ? 'Ceremony ' + (S.ceremonies.length + 1) : tmpl.label + ' Ceremony';
   S.ceremonies.push({name, date:'', timeline: rows});
   selectedCeremonyIdx = S.ceremonies.length - 1;
+  // Also add ceremony events to the main schedule
+  rows.forEach((r, i) => {
+    if (!r.time) return;
+    const nextTime = (i < rows.length - 1 && rows[i+1].time) ? rows[i+1].time : '';
+    const startAMPM = time24to12(r.time);
+    const endAMPM = nextTime ? time24to12(nextTime) : '';
+    S.timeline.push({
+      time: startAMPM,
+      end: endAMPM,
+      activity: r.event,
+      who: r.notes || '',
+      notes: r.music ? 'Music: ' + r.music : '',
+      cat: 'ceremony'
+    });
+  });
+  S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
   saveState();
   closeTlModal();
   renderTlCeremonies();
