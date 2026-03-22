@@ -319,6 +319,8 @@ table input[type="number"]{text-align:right;width:90px}
 .fp-dj{width:64px;height:64px;border-radius:8px;background:rgba(196,160,53,0.12);border:2px solid var(--yellow)}
 .fp-dance{width:120px;height:120px;border-radius:12px;background:rgba(184,84,80,0.08);border:2px dashed var(--red)}
 .fp-bar{width:100px;height:40px;border-radius:6px;background:rgba(156,139,122,0.12);border:2px solid var(--stone)}
+.fp-entrance{width:60px;height:36px;border-radius:4px;background:rgba(74,122,91,0.15);border:2px solid var(--green);font-size:10px;display:flex;align-items:center;justify-content:center}
+.fp-exit{width:60px;height:36px;border-radius:4px;background:rgba(184,84,80,0.1);border:2px solid var(--red);font-size:10px;display:flex;align-items:center;justify-content:center}
 .fp-custom{width:72px;height:72px;border-radius:8px;background:rgba(237,232,224,0.5);border:2px dashed var(--border)}
 .fp-toolbar{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--border-light);flex-wrap:wrap;background:rgba(250,250,247,0.5)}
 .fp-tool-btn{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:500;border:1px solid var(--border-light);color:var(--stone);background:white;cursor:pointer;transition:all 150ms;display:flex;align-items:center;gap:4px}
@@ -810,6 +812,8 @@ table input[type="number"]{text-align:right;width:90px}
             <button class="fp-tool-btn" onclick="addFpItem('dj')">&#127911; DJ Booth</button>
             <button class="fp-tool-btn" onclick="addFpItem('dance')">&#128131; Dance Floor</button>
             <button class="fp-tool-btn" onclick="addFpItem('bar')">&#127864; Bar</button>
+            <button class="fp-tool-btn" onclick="addFpItem('entrance')">&#128682; Entrance</button>
+            <button class="fp-tool-btn" onclick="addFpItem('exit')">&#128682; Exit</button>
             <button class="fp-tool-btn" onclick="addFpItem('custom')">+ Custom</button>
             <button class="fp-tool-btn" style="margin-left:auto;color:var(--red)" onclick="clearFloorPlan()">&#128465; Clear All</button>
           </div>
@@ -1677,7 +1681,20 @@ function addSubItem(catIdx) {
   renderBudget();
 }
 
-function addBudgetRow() { S.budget.push({cat:"New Category",planned:0,actual:0,notes:"",subs:[]}); saveState(); renderBudget(); }
+function addBudgetRow() {
+  showInputModal('Add Budget Category', [
+    {id:'br-cat', label:'Category Name', required:true, placeholder:'e.g. Venue & Rentals, Photography'},
+    {id:'br-planned', label:'Planned Budget', type:'number', placeholder:'0'},
+    {id:'br-notes', label:'Notes', placeholder:'Optional notes'}
+  ], function() {
+    const cat = document.getElementById('br-cat').value.trim();
+    if (!cat) return;
+    const planned = parseFloat(document.getElementById('br-planned').value) || 0;
+    const notes = document.getElementById('br-notes').value.trim();
+    S.budget.push({cat, planned, actual:0, notes, subs:[]});
+    saveState(); renderBudget(); closeInputModal();
+  });
+}
 
 function editTotalBudget() {
   const el = document.getElementById('b-total');
@@ -3528,6 +3545,8 @@ const FP_TYPES = {
   dj:     {cls:'fp-dj',          label:'DJ', w:64, h:64},
   dance:  {cls:'fp-dance',       label:'Dance Floor', w:120, h:120},
   bar:    {cls:'fp-bar',         label:'Bar', w:100, h:40},
+  entrance:{cls:'fp-entrance',   label:'Entrance', w:60, h:36},
+  exit:   {cls:'fp-exit',        label:'Exit', w:60, h:36},
   custom: {cls:'fp-custom',      label:'Custom', w:72, h:72},
 };
 
