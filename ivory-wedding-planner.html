@@ -900,7 +900,7 @@ table input[type="number"]{text-align:right;width:90px}
       <div class="card">
         <div class="card-title">Ceremony Music</div>
         <div class="tbl-wrap">
-          <table><thead><tr><th style="min-width:160px">Moment</th><th>Song</th><th>Artist</th><th>Notes</th></tr></thead>
+          <table><thead><tr><th style="min-width:160px">Moment</th><th>Song</th><th>Artist</th><th>Link</th><th>Notes</th></tr></thead>
           <tbody id="music-ceremony-body"></tbody></table>
         </div>
       </div>
@@ -909,7 +909,7 @@ table input[type="number"]{text-align:right;width:90px}
       <div class="card">
         <div class="card-title">Special Dances</div>
         <div class="tbl-wrap">
-          <table><thead><tr><th style="min-width:160px">Dance</th><th>Song</th><th>Artist</th><th>Notes</th></tr></thead>
+          <table><thead><tr><th style="min-width:160px">Dance</th><th>Song</th><th>Artist</th><th>Link</th><th>Notes</th></tr></thead>
           <tbody id="music-dances-body"></tbody></table>
         </div>
       </div>
@@ -1103,6 +1103,9 @@ table input[type="number"]{text-align:right;width:90px}
         <div class="stat-card green"><div class="val" id="kit-pct">0%</div><div class="lbl">Ready</div></div>
       </div>
       <div class="kit-grid" id="kit-grid"></div>
+      <div style="margin-top:16px;text-align:center">
+        <button class="btn btn-sm btn-dark" onclick="showInputModal('Add Kit Item',[{id:'kit-item',label:'Item Name',required:true},{id:'kit-cat',label:'Category',type:'select',opts:['Wardrobe','Health','Beauty','Tech','Fuel','Weather','Comfort','Fixes','Other']},{id:'kit-why',label:'Why You Need It'}],function(){var n=document.getElementById('kit-item').value.trim(),c=document.getElementById('kit-cat').value,w=document.getElementById('kit-why').value.trim();if(!n)return;S.kit.push({item:n,category:c||'Other',why:w,got:false});saveState();renderKit();closeInputModal()})">+ Add Item</button>
+      </div>
     </div>
 
     <!-- ═══ VISION BOARD ═══ -->
@@ -1482,13 +1485,48 @@ function eCell(val, onBlur, type="text", opts) {
   if(type === "select" && opts) {
     return `<select onchange="${onBlur.replace('this.value','this.value')}">${opts.map(o=>`<option${o===val?" selected":""}>${o}</option>`).join("")}</select>`;
   }
-  const t = type === "number" ? 'type="number" step="0.01"' : type === "date" ? 'type="date"' : type === "time" ? 'type="time"' : type === "tel" ? 'type="tel" inputmode="numeric" pattern="[0-9\\-\\+\\(\\)\\s]*"' : type === "email" ? 'type="email"' : '';
+  const t = type === "number" ? 'type="number" step="0.01"' : type === "date" ? 'type="date"' : type === "time" ? 'type="time"' : type === "tel" ? 'type="tel" inputmode="numeric" pattern="[0-9\\-\\+\\(\\)\\s]*" oninput="formatPhone(this)"' : type === "email" ? 'type="email"' : '';
   const ph = type === "number" ? '0.00' : type === "date" || type === "time" ? '' : type === "tel" ? '(555) 555-5555' : type === "email" ? 'email@example.com' : 'Enter...';
   return `<input ${t} value="${(val||'').toString().replace(/"/g,'&quot;')}" placeholder="${ph}" onblur="${onBlur}" />`;
 }
 function delBtn(onclick) { return `<button class="btn btn-sm btn-outline btn-danger" onclick="${onclick}" title="Remove">&times;</button>`; }
 function esc(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function money(n) { return "$" + (n||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function formatPhone(el) { el.value = el.value.replace(/[^\d\+\-\(\)\s]/g, ''); }
+
+// ── Reusable modal system ──
+let _inputModalCb = null;
+function showInputModal(title, fields, onSave) {
+  document.getElementById('input-modal-title').textContent = title;
+  const body = document.getElementById('input-modal-body');
+  body.innerHTML = fields.map(f => {
+    if (f.type === 'select') {
+      return `<div class="ob-field"><label class="ob-label">${f.label}</label><select class="ob-input" id="${f.id}">${(f.opts||[]).map(o => `<option${o===(f.value||'')?' selected':''}>${o}</option>`).join('')}</select></div>`;
+    }
+    const t = f.type === 'url' ? 'type="url"' : f.type === 'number' ? 'type="number"' : f.type === 'tel' ? 'type="tel" oninput="formatPhone(this)"' : f.type === 'email' ? 'type="email"' : '';
+    const ph = f.placeholder || '';
+    const val = f.value || '';
+    return `<div class="ob-field"><label class="ob-label">${f.label}${f.required ? ' *' : ''}</label><input class="ob-input" id="${f.id}" ${t} value="${esc(val)}" placeholder="${ph}" /></div>`;
+  }).join('');
+  _inputModalCb = onSave;
+  document.getElementById('input-modal-save').onclick = onSave;
+  document.getElementById('input-modal-overlay').classList.add('active');
+  const firstInput = body.querySelector('input,select');
+  if (firstInput) setTimeout(() => firstInput.focus(), 100);
+}
+function closeInputModal() {
+  document.getElementById('input-modal-overlay').classList.remove('active');
+  _inputModalCb = null;
+}
+
+function showAlertModal(title, msg) {
+  document.getElementById('alert-modal-title').textContent = title;
+  document.getElementById('alert-modal-msg').textContent = msg;
+  document.getElementById('alert-modal-overlay').classList.add('active');
+}
+function closeAlertModal() {
+  document.getElementById('alert-modal-overlay').classList.remove('active');
+}
 
 // ══════════════════════════════════════════════════
 // BUDGET
@@ -1692,7 +1730,7 @@ function renderChecklist() {
       return `<div class="check-item ${item.done?'done':''}" style="display:flex;align-items:center;gap:8px">
         <div class="check-box ${item.done?'checked':''}" onclick="S.checklist[${idx}].done=!S.checklist[${idx}].done;saveState();renderChecklist()"></div>
         <span class="check-label" style="flex:1">${item.task}</span>
-        <span class="priority-tag ${priClass}">${item.priority}</span>
+        <span class="priority-tag ${priClass}" style="cursor:pointer" onclick="event.stopPropagation();cyclePriority(${idx})" title="Click to change">${item.priority}</span>
         <button onclick="S.checklist.splice(${idx},1);saveState();renderChecklist()" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:14px;opacity:0.4;padding:2px 4px" title="Remove">&times;</button>
       </div>`;
     }).join("")}
@@ -1701,6 +1739,14 @@ function renderChecklist() {
       <button onclick="addChecklistTask('${phase}',document.getElementById('cl-add-${phase.replace(/\s/g,'')}').value,document.getElementById('cl-add-${phase.replace(/\s/g,'')}'))" class="btn btn-sm btn-dark" style="font-size:11px">+ Add</button>
     </div></div>`;
   }).join("");
+}
+
+function cyclePriority(idx) {
+  const order = ['High','Medium','Low'];
+  const cur = order.indexOf(S.checklist[idx].priority);
+  S.checklist[idx].priority = order[(cur + 1) % 3];
+  saveState();
+  renderChecklist();
 }
 
 function addChecklistTask(phase, task, inputEl) {
@@ -1875,8 +1921,11 @@ function renderMealCounts() {
 const GUEST_ROLES = ["","Bride's Family","Groom's Family","Bridesmaid","Groomsman","Maid of Honor","Best Man","Flower Girl","Ring Bearer","Officiant","Usher","Friend","VIP","+ Custom"];
 function setGuestRole(idx, val) {
   if (val === '+ Custom') {
-    const custom = prompt('Enter custom role:');
-    if (custom && custom.trim()) { S.guests[idx].role = custom.trim(); } else { S.guests[idx].role = ''; }
+    showInputModal('Custom Role', [{id:'gr-custom', label:'Role Name', required:true, placeholder:'e.g. Cousin, MC, Reader'}], function() {
+      const custom = document.getElementById('gr-custom').value.trim();
+      if (custom) { S.guests[idx].role = custom; } else { S.guests[idx].role = ''; }
+      saveState(); renderGuests(); closeInputModal();
+    });
   } else { S.guests[idx].role = val; }
   saveState(); renderGuests();
 }
@@ -1920,7 +1969,7 @@ function importGuestFile(input) {
   const ext = file.name.split('.').pop().toLowerCase();
 
   function applyImport(parsed) {
-    if (!parsed || parsed.length === 0) { alert('No guests found in file. Make sure it has a "Name" column.'); return; }
+    if (!parsed || parsed.length === 0) { showAlertModal('Import Error', 'No guests found in file. Make sure it has a "Name" column.'); return; }
     const newGuests = parsed.map(g => ({
       name: g.name || '', address: g.address || '', rsvp: 'Pending',
       allowPlusOne: (typeof g.allowPlusOne === 'number') ? g.allowPlusOne : 1,
@@ -1929,7 +1978,7 @@ function importGuestFile(input) {
     S.guests = S.guests.concat(newGuests);
     saveState();
     renderGuests();
-    alert(parsed.length + ' guest' + (parsed.length > 1 ? 's' : '') + ' imported successfully.');
+    showAlertModal('Import Complete', parsed.length + ' guest' + (parsed.length > 1 ? 's' : '') + ' imported successfully.');
   }
 
   if (ext === 'csv') {
@@ -1941,7 +1990,7 @@ function importGuestFile(input) {
     reader.onload = function(e) { applyImport(parseXLSX(new Uint8Array(e.target.result))); };
     reader.readAsArrayBuffer(file);
   } else {
-    alert('Please upload a .csv or .xlsx file');
+    showAlertModal('Invalid File', 'Please upload a .csv or .xlsx file.');
   }
   input.value = '';
 }
@@ -2253,7 +2302,31 @@ function renderVendorCompare() {
   `).join('');
 }
 
-function addVendor() { S.vendors.push({cat:"",company:"",contact:"",email:"",phone:"",status:"",due:"",arrival:"",estimatedPrice:0,actualPrice:0,deposit:0,rating:0,pros:"",cons:"",packageNotes:"",contractNotes:"",hiddenFeeChecks:{},contractChecks:{}}); saveState(); renderVendors(); }
+function addVendor() {
+  const cats = ["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Baker","Hair Stylist","Makeup Artist","Transportation","Wedding Planner","Rentals","Lighting / AV","Photo Booth"];
+  showInputModal('Add Vendor', [
+    {id:'av-cat', label:'Category', type:'select', opts: cats},
+    {id:'av-company', label:'Company Name', required:true, placeholder:'Company or business name'},
+    {id:'av-contact', label:'Contact Person', placeholder:'Primary contact name'},
+    {id:'av-email', label:'Email', type:'email', placeholder:'email@example.com'},
+    {id:'av-phone', label:'Phone', type:'tel', placeholder:'(555) 555-5555'}
+  ], function() {
+    const company = document.getElementById('av-company').value.trim();
+    if (!company) return;
+    const cat = document.getElementById('av-cat').value;
+    const v = {cat, company, contact:document.getElementById('av-contact').value.trim(), email:document.getElementById('av-email').value.trim(), phone:document.getElementById('av-phone').value.trim(), status:'',due:'',arrival:'',estimatedPrice:0,actualPrice:0,deposit:0,rating:0,pros:'',cons:'',packageNotes:'',contractNotes:'',hiddenFeeChecks:{},contractChecks:{}};
+    S.vendors.push(v);
+    // Auto-create transport vehicle if Transportation vendor
+    if (cat === 'Transportation') {
+      S.transport.push({label:company, vehicleType:'', company:company, contactName:v.contact, contactPhone:v.phone, pickupLocation:'',pickupTime:'',dropoffLocation:'',dropoffTime:'',includedHours:'',overtimeRate:'',confirmation:'',cost:0,notes:'',vendorIdx:S.vendors.length-1,assignedTo:''});
+    }
+    saveState();
+    syncVendorsToBudget();
+    renderVendors();
+    renderBudget();
+    closeInputModal();
+  });
+}
 
 // ══════════════════════════════════════════════════
 // MUSIC PLANNER
@@ -2267,6 +2340,7 @@ function renderMusic() {
     <td style="font-weight:500;font-size:13px">${esc(m.moment)}</td>
     <td>${eCell(m.song,`S.music.ceremony[${i}].song=this.value;saveState()`)}</td>
     <td>${eCell(m.artist,`S.music.ceremony[${i}].artist=this.value;saveState()`)}</td>
+    <td>${eCell(m.url||'',`S.music.ceremony[${i}].url=this.value;saveState()`)}</td>
     <td>${eCell(m.notes,`S.music.ceremony[${i}].notes=this.value;saveState()`)}</td>
   </tr>`).join('');
   // Special dances
@@ -2274,6 +2348,7 @@ function renderMusic() {
     <td style="font-weight:500;font-size:13px">${esc(d.dance)}</td>
     <td>${eCell(d.song,`S.music.dances[${i}].song=this.value;saveState()`)}</td>
     <td>${eCell(d.artist,`S.music.dances[${i}].artist=this.value;saveState()`)}</td>
+    <td>${eCell(d.url||'',`S.music.dances[${i}].url=this.value;saveState()`)}</td>
     <td>${eCell(d.notes,`S.music.dances[${i}].notes=this.value;saveState()`)}</td>
   </tr>`).join('');
   // Must-play
@@ -2281,7 +2356,7 @@ function renderMusic() {
   const mpEmpty = document.getElementById('music-must-empty');
   if (S.music.mustPlay.length === 0) { mp.innerHTML = ''; mpEmpty.style.display = ''; }
   else { mpEmpty.style.display = 'none'; mp.innerHTML = S.music.mustPlay.map((s,i) => `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-light)">
-    <span style="flex:1;font-size:13px"><strong>${esc(s.song)}</strong>${s.artist ? ' — '+esc(s.artist) : ''}</span>
+    <span style="flex:1;font-size:13px"><strong>${esc(s.song)}</strong>${s.artist ? ' — '+esc(s.artist) : ''}${s.url ? ' <a href="'+esc(s.url)+'" target="_blank" style="color:var(--taupe);font-size:11px;margin-left:6px" title="'+esc(s.url)+'">&#127925; Link</a>' : ''}</span>
     ${delBtn(`S.music.mustPlay.splice(${i},1);saveState();renderMusic()`)}
   </div>`).join(''); }
   // Do-not-play
@@ -2289,7 +2364,7 @@ function renderMusic() {
   const dnpEmpty = document.getElementById('music-dnp-empty');
   if (S.music.doNotPlay.length === 0) { dnp.innerHTML = ''; dnpEmpty.style.display = ''; }
   else { dnpEmpty.style.display = 'none'; dnp.innerHTML = S.music.doNotPlay.map((s,i) => `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-light)">
-    <span style="flex:1;font-size:13px"><strong>${esc(s.song)}</strong>${s.artist ? ' — '+esc(s.artist) : ''}</span>
+    <span style="flex:1;font-size:13px"><strong>${esc(s.song)}</strong>${s.artist ? ' — '+esc(s.artist) : ''}${s.url ? ' <a href="'+esc(s.url)+'" target="_blank" style="color:var(--taupe);font-size:11px;margin-left:6px" title="'+esc(s.url)+'">&#127925; Link</a>' : ''}</span>
     ${delBtn(`S.music.doNotPlay.splice(${i},1);saveState();renderMusic()`)}
   </div>`).join(''); }
   // Vibe
@@ -2302,12 +2377,20 @@ function renderMusic() {
 }
 
 function addMusicItem(list) {
-  const song = prompt('Song name:');
-  if (!song) return;
-  const artist = prompt('Artist (optional):') || '';
-  S.music[list].push({song, artist});
-  saveState();
-  renderMusic();
+  showInputModal(list === 'mustPlay' ? 'Add Must-Play Song' : 'Add Do-Not-Play Song', [
+    {id:'mi-song', label:'Song Name', required:true, placeholder:'Song title'},
+    {id:'mi-artist', label:'Artist', placeholder:'Artist name (optional)'},
+    {id:'mi-url', label:'Link', type:'url', placeholder:'Spotify or YouTube URL (optional)'}
+  ], function() {
+    const song = document.getElementById('mi-song').value.trim();
+    if (!song) return;
+    const artist = document.getElementById('mi-artist').value.trim();
+    const url = document.getElementById('mi-url').value.trim();
+    S.music[list].push({song, artist, url});
+    saveState();
+    renderMusic();
+    closeInputModal();
+  });
 }
 
 function toggleMusicGenre(genre) {
@@ -2346,8 +2429,25 @@ function renderTransport() {
           ${eCell(t.company,`S.transport[${i}].company=this.value;saveState()`)}
         </div>
         <div>
-          <label class="ob-label">Contact / Phone</label>
-          ${eCell(t.contact,`S.transport[${i}].contact=this.value;saveState()`)}
+          <label class="ob-label">Contact Name</label>
+          ${eCell(t.contactName||t.contact||'',`S.transport[${i}].contactName=this.value;saveState()`)}
+        </div>
+        <div>
+          <label class="ob-label">Phone</label>
+          ${eCell(t.contactPhone||'',`S.transport[${i}].contactPhone=this.value;saveState()`,"tel")}
+        </div>
+        <div>
+          <label class="ob-label">Who's Riding</label>
+          <select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px;background:rgba(250,250,247,0.6)" onchange="S.transport[${i}].assignedTo=this.value;saveState()">
+            ${["","Couple","Bride's Family","Groom's Family","Bridal Party","Groomsmen","Bridesmaids","Maid of Honor / Best Man","Wedding Party","Guests","VIP","Other"].map(r=>`<option${(t.assignedTo||'')===r?' selected':''}>${r}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="ob-label">Linked Vendor</label>
+          <select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px;background:rgba(250,250,247,0.6)" onchange="S.transport[${i}].vendorIdx=this.value?parseInt(this.value):undefined;saveState()">
+            <option value="">— None —</option>
+            ${S.vendors.map((v,vi)=>`<option value="${vi}"${t.vendorIdx===vi?' selected':''}>${esc(v.company||v.cat||'Vendor '+(vi+1))}</option>`).join('')}
+          </select>
         </div>
         <div>
           <label class="ob-label">Pickup Location</label>
@@ -2391,7 +2491,7 @@ function renderTransport() {
 }
 
 function addTransport() {
-  S.transport.push({label:"",vehicleType:"",company:"",contact:"",pickupLocation:"",pickupTime:"",dropoffLocation:"",dropoffTime:"",includedHours:"",overtimeRate:"",confirmation:"",cost:0,notes:""});
+  S.transport.push({label:"",vehicleType:"",company:"",contactName:"",contactPhone:"",pickupLocation:"",pickupTime:"",dropoffLocation:"",dropoffTime:"",includedHours:"",overtimeRate:"",confirmation:"",cost:0,notes:"",assignedTo:"",vendorIdx:undefined});
   saveState();
   renderTransport();
 }
@@ -3263,13 +3363,14 @@ function renderKit() {
   document.getElementById("kit-pct").textContent = total ? Math.round(done/total*100)+"%" : "0%";
 
   document.getElementById("kit-grid").innerHTML = S.kit.map((k,i)=>`
-    <div class="kit-item" style="${k.got?'opacity:0.5':''}">
+    <div class="kit-item" style="${k.got?'opacity:0.5':''};position:relative">
       <div class="check-box ${k.got?'checked':''}" onclick="S.kit[${i}].got=!S.kit[${i}].got;saveState();renderKit()" style="margin-top:2px"></div>
-      <div>
+      <div style="flex:1">
         <div class="name" style="${k.got?'text-decoration:line-through':''}">${k.item}</div>
         <div class="cat">${k.category}</div>
         <div class="why">${k.why}</div>
       </div>
+      <button onclick="event.stopPropagation();S.kit.splice(${i},1);saveState();renderKit()" style="position:absolute;top:4px;right:4px;background:none;border:none;color:var(--stone);cursor:pointer;font-size:14px;opacity:0.3;padding:2px 6px" title="Remove">&times;</button>
     </div>`).join("");
 }
 
@@ -3344,19 +3445,21 @@ function editVbItem(idx) {
   const items = loadVb();
   const item = items[idx];
   if (!item) return;
-  const caption = prompt('Caption:', item.caption || '');
-  if (caption === null) return;
-  const note = prompt('Note:', item.note || '');
-  if (note === null) return;
-  const catList = VB_CATS.map((c,i) => (i+1)+'. '+c).join('\n');
-  const catChoice = prompt('Category (enter number):\n'+catList, (VB_CATS.indexOf(item.category)+1) || VB_CATS.length);
-  const catIdx = parseInt(catChoice) - 1;
-  item.caption = caption;
-  item.note = note;
-  item.category = VB_CATS[catIdx] || item.category;
-  items[idx] = item;
-  saveVb(items);
-  renderVisionBoard();
+  showInputModal('Edit Vision Board Item', [
+    {id:'vb-caption', label:'Caption', value: item.caption || '', placeholder:'Caption...'},
+    {id:'vb-note', label:'Note', value: item.note || '', placeholder:'Notes...'},
+    {id:'vb-cat', label:'Category', type:'select', opts: VB_CATS}
+  ], function() {
+    item.caption = document.getElementById('vb-caption').value.trim();
+    item.note = document.getElementById('vb-note').value.trim();
+    item.category = document.getElementById('vb-cat').value;
+    items[idx] = item;
+    saveVb(items);
+    renderVb();
+    closeInputModal();
+  });
+  // Pre-select current category
+  setTimeout(() => { const sel = document.getElementById('vb-cat'); if (sel && item.category) { for (let o of sel.options) { if (o.text === item.category) { o.selected = true; break; } } } }, 120);
 }
 
 function deleteVbItem(idx) {
@@ -3544,20 +3647,25 @@ function renderFloorPlan() {
     el.ondblclick = (e) => {
       e.stopPropagation();
       if (isTable) {
-        const name = prompt('Table name:', item.label);
-        if (name === null) return;
-        if (name.trim()) S.floorPlan[idx].label = name.trim();
-        const seatCount = prompt('Number of seats:', item.seats || 6);
-        if (seatCount !== null) S.floorPlan[idx].seats = Math.max(1, Math.min(20, parseInt(seatCount) || 6));
-        saveState();
-        renderFloorPlan();
+        showInputModal('Edit Table', [
+          {id:'fp-name', label:'Table Name', value: item.label, required:true},
+          {id:'fp-seats', label:'Number of Seats', type:'number', value: String(item.seats || 6)}
+        ], function() {
+          const n = document.getElementById('fp-name').value.trim();
+          if (n) S.floorPlan[idx].label = n;
+          const sc = parseInt(document.getElementById('fp-seats').value) || 6;
+          S.floorPlan[idx].seats = Math.max(1, Math.min(20, sc));
+          saveState(); renderFloorPlan(); closeInputModal();
+        });
       } else {
-        const name = prompt('Rename this item:', item.label);
-        if (name !== null && name.trim()) {
-          S.floorPlan[idx].label = name.trim();
+        showInputModal('Rename Item', [{id:'fp-rename', label:'Name', value: item.label, required:true}], function() {
+          const name = document.getElementById('fp-rename').value.trim();
+          if (name) {
+          S.floorPlan[idx].label = name;
           saveState();
           renderFloorPlan();
-        }
+          closeInputModal();
+        }});
       }
     };
 
@@ -4537,7 +4645,7 @@ function obHandleFile(input) {
     };
     reader.readAsArrayBuffer(file);
   } else {
-    alert('Please upload a .csv or .xlsx file');
+    showAlertModal('Invalid File', 'Please upload a .csv or .xlsx file.');
     input.value = '';
   }
 }
@@ -4907,7 +5015,7 @@ function verifyPin() {
 function sendNewPin() {
   const pinData = getPinData();
   if (!pinData || !pinData.email) {
-    alert('No email configured. Please set up PIN protection first via the lock icon in the top bar.');
+    showAlertModal('No Email', 'No email configured. Please set up PIN protection first via the lock icon in the top bar.');
     return;
   }
   const newPin = generatePin();
@@ -4931,20 +5039,24 @@ function showPinSetup() {
     if (choice) {
       pinData.enabled = false;
       savePinData(pinData);
-      alert('PIN protection disabled.');
+      showAlertModal('PIN Disabled', 'PIN protection has been disabled.');
     }
     return;
   }
 
-  const email = prompt('Set up PIN protection.\n\nEnter the email address where PINs should be sent:', S.coupleName1 ? '' : '');
-  if (!email || !email.includes('@')) {
-    if (email !== null) alert('Please enter a valid email address.');
-    return;
-  }
-
-  const newPin = generatePin();
-  savePinData({enabled: true, email: email, currentPin: newPin});
-  alert('PIN protection enabled!\n\nYour first PIN is: ' + newPin + '\n\n(In production, this would be emailed to ' + email + ')');
+  showInputModal('Set Up PIN Protection', [
+    {id:'pin-email', label:'Email for PIN delivery', type:'email', required:true, placeholder:'your@email.com'}
+  ], function() {
+    const email = document.getElementById('pin-email').value.trim();
+    if (!email || !email.includes('@')) {
+      showAlertModal('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+    const newPin = generatePin();
+    savePinData({enabled: true, email: email, currentPin: newPin});
+    closeInputModal();
+    showAlertModal('PIN Enabled', 'PIN protection enabled! Your first PIN is: ' + newPin + ' (In production, this would be emailed to ' + email + ')');
+  });
 }
 
 function disablePinAuth() {
@@ -5017,6 +5129,27 @@ if (!S.onboardingDone) {
 </div>
 
 <!-- ═══ TIMELINE BLOCK MODAL ═══ -->
+<!-- ═══ REUSABLE INPUT MODAL ═══ -->
+<div class="ob-overlay" id="input-modal-overlay" onclick="if(event.target===this)closeInputModal()">
+  <div class="ob-modal" style="max-width:420px">
+    <p class="ob-title" id="input-modal-title"></p>
+    <div id="input-modal-body"></div>
+    <div class="ob-btn-row">
+      <button class="ob-btn ob-btn-secondary" onclick="closeInputModal()">Cancel</button>
+      <button class="ob-btn ob-btn-primary" id="input-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ALERT MODAL ═══ -->
+<div class="ob-overlay" id="alert-modal-overlay" onclick="if(event.target===this)closeAlertModal()">
+  <div class="ob-modal" style="max-width:380px;text-align:center">
+    <p class="ob-title" id="alert-modal-title"></p>
+    <p id="alert-modal-msg" style="font-size:14px;color:var(--stone);margin-bottom:24px;line-height:1.5"></p>
+    <button class="ob-btn ob-btn-primary" onclick="closeAlertModal()" style="width:100%">OK</button>
+  </div>
+</div>
+
 <div id="tl-block-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:200;justify-content:center;align-items:center">
   <div class="card" style="width:380px;max-width:90vw;max-height:80vh;overflow-y:auto" id="tl-block-form"></div>
 </div>
