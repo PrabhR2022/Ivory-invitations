@@ -853,8 +853,9 @@ table input[type="number"]{text-align:right;width:90px}
       <div id="vendor-table-view">
         <div class="card" id="vendor-table-card">
           <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
+          <div id="vendor-cat-filter" class="budget-filter" style="margin-bottom:12px"></div>
           <div class="tbl-wrap">
-            <table><thead><tr><th style="min-width:110px">Category</th><th style="min-width:130px">Company</th><th style="text-align:right;min-width:90px">Estimated</th><th style="text-align:right;min-width:80px">Actual</th><th style="text-align:right;min-width:70px">Deposit</th><th style="min-width:100px">Status</th><th style="min-width:110px">Payment Due</th><th style="min-width:90px">Arrival</th><th>Rating</th><th></th></tr></thead>
+            <table><thead><tr><th style="min-width:120px">Category</th><th style="min-width:100px">Status</th><th style="min-width:130px">Company</th><th style="text-align:right;min-width:80px">Price</th><th style="text-align:right;min-width:70px">Deposit</th><th style="min-width:110px">Payment Due</th><th style="width:30px"></th><th style="width:30px"></th></tr></thead>
             <tbody id="vendor-body"></tbody></table>
           </div>
         </div>
@@ -1337,7 +1338,7 @@ function buildChecklist() {
 }
 
 function buildVendors() {
-  return ["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Baker","Hair Stylist","Makeup Artist","Transportation","Wedding Planner","Rentals","Lighting / AV","Photo Booth"].map(c=>({cat:c,company:"",contact:"",email:"",phone:"",status:"",due:"",arrival:"",estimatedPrice:0,actualPrice:0,deposit:0}));
+  return ["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Baker","Hair Stylist","Makeup Artist","Transportation","Wedding Planner","Rentals","Lighting / AV","Photo Booth"].map(c=>({cat:c,company:"",contact:"",email:"",phone:"",status:"",due:"",arrival:"",price:0,priceConfirmed:false,deposit:0}));
 }
 
 // ── Hidden Fee Checklists per Vendor Type ──
@@ -1393,10 +1394,16 @@ function syncVendorsToBudget() {
   S.vendors.forEach(v => {
     const budgetCat = VENDOR_BUDGET_MAP[v.cat];
     if (!budgetCat) return;
-    catPlanned[budgetCat] = (catPlanned[budgetCat] || 0) + (parseFloat(v.estimatedPrice) || 0);
-    catActual[budgetCat] = (catActual[budgetCat] || 0) + (parseFloat(v.actualPrice) || 0) + (parseFloat(v.deposit) || 0);
+    const price = parseFloat(v.price) || parseFloat(v.estimatedPrice) || 0;
+    const deposit = parseFloat(v.deposit) || 0;
+    if (v.priceConfirmed) {
+      catActual[budgetCat] = (catActual[budgetCat] || 0) + price;
+      catPlanned[budgetCat] = (catPlanned[budgetCat] || 0) + price;
+    } else {
+      catPlanned[budgetCat] = (catPlanned[budgetCat] || 0) + price;
+      catActual[budgetCat] = (catActual[budgetCat] || 0) + deposit;
+    }
   });
-  // Update matching budget rows
   S.budget.forEach(b => {
     if (catPlanned[b.cat] !== undefined) {
       b.planned = catPlanned[b.cat];
@@ -2179,6 +2186,13 @@ function removeMealOption(idx) {
 // ══════════════════════════════════════════════════
 let vendorViewMode = 'table';
 let expandedVendor = -1;
+let vendorCatFilter = 'all';
+const VENDOR_CATS_DEFAULT = ["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Baker","Hair Stylist","Makeup Artist","Transportation","Wedding Planner","Rentals","Lighting / AV","Photo Booth"];
+
+function getVendorCats() {
+  const custom = S.customVendorCats || [];
+  return [...VENDOR_CATS_DEFAULT, ...custom];
+}
 
 function setVendorView(mode) {
   vendorViewMode = mode;
@@ -2190,12 +2204,37 @@ function setVendorView(mode) {
   renderVendors();
 }
 
+function setVendorCatFilter(cat) { vendorCatFilter = cat; expandedVendor = -1; renderVendors(); }
+
+function vendorCatSelect(i, val) {
+  if (val === '__custom__') {
+    showInputModal('Custom Category', [{id:'vc-name', label:'Category Name', required:true}], function() {
+      const name = document.getElementById('vc-name').value.trim();
+      if (!name) return;
+      if (!S.customVendorCats) S.customVendorCats = [];
+      if (!S.customVendorCats.includes(name)) S.customVendorCats.push(name);
+      S.vendors[i].cat = name;
+      saveState(); renderVendors(); closeInputModal();
+    });
+  } else {
+    S.vendors[i].cat = val;
+    saveState();
+  }
+}
+
+function toggleVendorPrice(i) {
+  S.vendors[i].priceConfirmed = !S.vendors[i].priceConfirmed;
+  saveState(); renderVendors();
+}
+
 function renderVendors() {
+  // Migrate old estimatedPrice/actualPrice → price
   S.vendors.forEach(v => {
-    if (v.estimatedPrice === undefined) v.estimatedPrice = 0;
-    if (v.actualPrice === undefined) v.actualPrice = 0;
+    if (v.price === undefined) {
+      v.price = (v.actualPrice || 0) > 0 ? v.actualPrice : (v.estimatedPrice || 0);
+      v.priceConfirmed = (v.actualPrice || 0) > 0;
+    }
     if (v.deposit === undefined) v.deposit = 0;
-    if (v.rating === undefined) v.rating = 0;
     if (v.pros === undefined) v.pros = '';
     if (v.cons === undefined) v.cons = '';
     if (v.packageNotes === undefined) v.packageNotes = '';
@@ -2209,48 +2248,58 @@ function renderVendors() {
   const compareView = document.getElementById('vendor-compare-view');
   if (tableView) tableView.style.display = vendorViewMode === 'table' ? '' : 'none';
   if (compareView) compareView.style.display = vendorViewMode === 'compare' ? '' : 'none';
-
   if (vendorViewMode === 'compare') { renderVendorCompareDropdown(); return; }
 
-  const stars = (idx, rating) => [1,2,3,4,5].map(s =>
-    `<span style="cursor:pointer;font-size:14px;color:${s<=rating?'var(--yellow)':'var(--border)'}" onclick="event.stopPropagation();S.vendors[${idx}].rating=${s};saveState();renderVendors()">${s<=rating?'&#9733;':'&#9734;'}</span>`
-  ).join('');
+  // Category filter bar
+  const filterEl = document.getElementById('vendor-cat-filter');
+  if (filterEl) {
+    const usedCats = [...new Set(S.vendors.map(v => v.cat).filter(Boolean))];
+    filterEl.innerHTML = `<button class="budget-filter-btn ${vendorCatFilter==='all'?'active':''}" onclick="setVendorCatFilter('all')">All</button>` +
+      usedCats.map(c => `<button class="budget-filter-btn ${vendorCatFilter===c?'active':''}" onclick="setVendorCatFilter('${c.replace(/'/g,"\\'")}')">${c}</button>`).join('');
+  }
 
-  const statusColors = {'Researching':'var(--stone)','Contacted':'var(--yellow)','Contract Sent':'var(--taupe)','Signed':'var(--green)','Paid in Full':'var(--green)'};
+  // Filter vendors
+  const filtered = vendorCatFilter === 'all' ? S.vendors : S.vendors.filter(v => v.cat === vendorCatFilter);
+  const allCats = getVendorCats();
+  const catOpts = allCats.map(c => `<option value="${esc(c)}">`).join('') + '<option value="__custom__">Custom...</option>';
 
-  document.getElementById("vendor-body").innerHTML = S.vendors.map((v,i) => {
+  document.getElementById("vendor-body").innerHTML = filtered.map((v) => {
+    const i = S.vendors.indexOf(v);
     const isExpanded = expandedVendor === i;
-    const sc = statusColors[v.status] || 'var(--stone)';
+    const priceIcon = v.priceConfirmed
+      ? `<span onclick="event.stopPropagation();toggleVendorPrice(${i})" style="cursor:pointer;color:var(--green);font-weight:bold;margin-right:2px" title="Confirmed price — click to mark as estimate">&#10003;</span>`
+      : `<span onclick="event.stopPropagation();toggleVendorPrice(${i})" style="cursor:pointer;color:var(--stone);font-weight:bold;margin-right:2px" title="Estimated — click to confirm">~</span>`;
+
     let row = `<tr style="cursor:pointer;${isExpanded?'background:var(--cream)':''}" onclick="toggleVendorDetail(${i})">
-      <td onclick="event.stopPropagation()">${eCell(v.cat,`S.vendors[${i}].cat=this.value;saveState()`)}</td>
-      <td><strong style="color:var(--charcoal)">${esc(v.company) || 'Unnamed'}</strong></td>
-      <td class="currency" onclick="event.stopPropagation()">${eCell(v.estimatedPrice,`S.vendors[${i}].estimatedPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
-      <td class="currency" onclick="event.stopPropagation()">${eCell(v.actualPrice,`S.vendors[${i}].actualPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
-      <td class="currency" onclick="event.stopPropagation()">${eCell(v.deposit,`S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
+      <td onclick="event.stopPropagation()"><select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:rgba(250,250,247,0.6)" onchange="vendorCatSelect(${i},this.value)">${[''].concat(allCats).concat(['__custom__']).map(c => `<option value="${c==='__custom__'?'__custom__':esc(c)}"${c===v.cat?' selected':''}>${c==='__custom__'?'Custom...':c||'—'}</option>`).join('')}</select></td>
       <td onclick="event.stopPropagation()">${eCell(v.status,`S.vendors[${i}].status=this.value;saveState()`,"select",["","Researching","Contacted","Contract Sent","Signed","Paid in Full"])}</td>
+      <td><strong style="color:var(--charcoal)">${esc(v.company) || 'Unnamed'}</strong></td>
+      <td class="currency" onclick="event.stopPropagation()" style="white-space:nowrap">${priceIcon}${eCell(v.price,`S.vendors[${i}].price=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
+      <td class="currency" onclick="event.stopPropagation()">${eCell(v.deposit,`S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
       <td onclick="event.stopPropagation()">${eCell(v.due,`S.vendors[${i}].due=this.value;saveState()`,"date")}</td>
-      <td onclick="event.stopPropagation()"><input type="time" value="${esc(v.arrival||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);font-size:13px" onchange="S.vendors[${i}].arrival=this.value;saveState()"/></td>
-      <td onclick="event.stopPropagation()">${stars(i, v.rating)}</td>
       <td onclick="event.stopPropagation()">${delBtn(`S.vendors.splice(${i},1);expandedVendor=-1;saveState();syncVendorsToBudget();renderVendors();renderBudget()`)}</td>
+      <td style="text-align:center;font-size:12px;color:var(--stone)">${isExpanded?'&#9650;':'&#9660;'}</td>
     </tr>`;
 
     if (isExpanded) {
-      const phone = formatPhoneDisplay(v.phone);
       const fees = VENDOR_HIDDEN_FEES[v.cat] || [];
       const feeHTML = fees.length ? fees.map(f => `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" ${v.hiddenFeeChecks[f]?'checked':''} onchange="S.vendors[${i}].hiddenFeeChecks['${f.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${f}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see hidden fees.</p>';
       const checks = VENDOR_CONTRACT_CHECKS[v.cat] || [];
       const checkHTML = checks.length ? checks.map(c => `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" ${v.contractChecks[c]?'checked':''} onchange="S.vendors[${i}].contractChecks['${c.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${c}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see contract items.</p>';
 
-      row += `<tr><td colspan="10" style="padding:0;border:none"><div style="padding:20px 24px;background:var(--cream);border-top:2px solid var(--charcoal)">
+      row += `<tr><td colspan="8" style="padding:0;border:none"><div style="padding:20px 24px;background:var(--cream);border-top:2px solid var(--charcoal)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <h3 style="font-family:var(--font-serif);font-size:18px">${esc(v.company) || 'Vendor'} <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;border-radius:100px;background:rgba(156,139,122,0.1);color:var(--taupe);margin-left:8px">${esc(v.cat)}</span></h3>
-          <button onclick="expandedVendor=-1;renderVendors()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--stone)">&#10005; Close</button>
+          <div style="flex:1"><label class="ob-label">Company Name</label><input class="ob-input" value="${esc(v.company)}" onblur="S.vendors[${i}].company=this.value;saveState()" style="padding:8px 12px;font-size:15px;font-family:var(--font-serif)"/></div>
+          <button onclick="expandedVendor=-1;renderVendors()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--stone);margin-left:12px;align-self:flex-end">&#10005; Close</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
           <div><label class="ob-label">Contact</label><input class="ob-input" value="${esc(v.contact)}" onblur="S.vendors[${i}].contact=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Email</label><input class="ob-input" type="email" value="${esc(v.email)}" onblur="S.vendors[${i}].email=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Phone</label><input class="ob-input" type="tel" value="${esc(v.phone)}" onblur="S.vendors[${i}].phone=this.value;saveState()" oninput="formatPhone(this)" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Ext</label><input class="ob-input" value="${esc(v.ext||'')}" onblur="S.vendors[${i}].ext=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div><label class="ob-label">Arrival Time</label><input class="ob-input" type="time" value="${esc(v.arrival||'')}" onchange="S.vendors[${i}].arrival=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
           <div><label class="ob-label">Pros</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].pros=this.value;saveState()">${esc(v.pros)}</textarea></div>
@@ -2510,9 +2559,8 @@ function renderVendorDetailView() {
 }
 
 function addVendor() {
-  const cats = ["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Baker","Hair Stylist","Makeup Artist","Transportation","Wedding Planner","Rentals","Lighting / AV","Photo Booth"];
   showInputModal('Add Vendor', [
-    {id:'av-cat', label:'Category', type:'select', opts: cats},
+    {id:'av-cat', label:'Category', type:'select', opts: getVendorCats()},
     {id:'av-company', label:'Company Name', required:true, placeholder:'Company or business name'},
     {id:'av-contact', label:'Contact Person', placeholder:'Primary contact name'},
     {id:'av-email', label:'Email', type:'email', placeholder:'email@example.com'},
@@ -2521,9 +2569,8 @@ function addVendor() {
     const company = document.getElementById('av-company').value.trim();
     if (!company) return;
     const cat = document.getElementById('av-cat').value;
-    const v = {cat, company, contact:document.getElementById('av-contact').value.trim(), email:document.getElementById('av-email').value.trim(), phone:document.getElementById('av-phone').value.trim(), status:'',due:'',arrival:'',estimatedPrice:0,actualPrice:0,deposit:0,rating:0,pros:'',cons:'',packageNotes:'',contractNotes:'',hiddenFeeChecks:{},contractChecks:{}};
+    const v = {cat, company, contact:document.getElementById('av-contact').value.trim(), email:document.getElementById('av-email').value.trim(), phone:document.getElementById('av-phone').value.trim(), status:'',due:'',arrival:'',price:0,priceConfirmed:false,deposit:0,pros:'',cons:'',packageNotes:'',contractNotes:'',hiddenFeeChecks:{},contractChecks:{}};
     S.vendors.push(v);
-    // Auto-create transport vehicle if Transportation vendor
     if (cat === 'Transportation') {
       S.transport.push({label:company, vehicleType:'', company:company, contactName:v.contact, contactPhone:v.phone, pickupLocation:'',pickupTime:'',dropoffLocation:'',dropoffTime:'',includedHours:'',overtimeRate:'',confirmation:'',cost:0,notes:'',vendorIdx:S.vendors.length-1,assignedTo:''});
     }
