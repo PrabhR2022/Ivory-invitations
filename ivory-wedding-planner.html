@@ -3617,7 +3617,8 @@ function renderFloorPlan() {
     const seatInfo = isTable && seats > 0 ? `<br><span style="font-size:8px;color:var(--stone)">${assigned}/${seats}</span>` : '';
     const isEntExit = item.type === 'entrance' || item.type === 'exit';
     const arrowHtml = isEntExit ? `<div class="fp-arrow ${item.showArrow !== false ? 'visible' : ''} ${item.type}" style="pointer-events:none"></div><div class="fp-arrow-toggle" onclick="event.stopPropagation();toggleFpArrow(${idx})" title="Toggle arrow">${item.showArrow !== false ? '&#10132;' : '&#8212;'}</div>` : '';
-    el.innerHTML = `<span class="fp-label">${item.label}${seatInfo}</span>${arrowHtml}<div class="fp-rotate" onclick="event.stopPropagation();rotateFpItem(${idx})">&#x21BB;</div><div class="fp-delete" onclick="event.stopPropagation();deleteFpItem(${idx})">&times;</div>`;
+    const labelRotate = rotation ? ` style="transform:rotate(-${rotation}deg)"` : '';
+    el.innerHTML = `<span class="fp-label"${labelRotate}>${item.label}${seatInfo}</span>${arrowHtml}<div class="fp-rotate" onclick="event.stopPropagation();rotateFpItem(${idx})">&#x21BB;</div><div class="fp-delete" onclick="event.stopPropagation();deleteFpItem(${idx})">&times;</div>`;
 
     // Draw chairs around tables
     if (isTable && seats > 0) {
