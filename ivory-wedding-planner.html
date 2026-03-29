@@ -844,14 +844,22 @@ table input[type="number"]{text-align:right;width:90px}
       <p class="page-desc">All vendor info in one place — expand any vendor for hidden fees, contract checklists & comparison tools</p>
 
       <!-- Vendor view toggle -->
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <button class="btn btn-sm" id="vendor-view-table" onclick="setVendorView('table')" style="background:var(--charcoal);color:var(--ivory)">Table View</button>
-        <button class="btn btn-sm btn-outline" id="vendor-view-compare" onclick="setVendorView('compare')">Compare Vendors</button>
+      <div class="tl-tabs" id="vendor-view-tabs">
+        <button class="tl-tab active" onclick="setVendorView('cards')">Card View</button>
+        <button class="tl-tab" onclick="setVendorView('table')">Table View</button>
+        <button class="tl-tab" onclick="setVendorView('detail')">Detail View</button>
+        <button class="tl-tab" onclick="setVendorView('compare')">Compare</button>
+      </div>
+
+      <!-- Cards View -->
+      <div class="card" id="vendor-cards-container" style="display:none">
+        <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
+        <div id="vendor-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px"></div>
       </div>
 
       <!-- Table View -->
       <div id="vendor-table-view">
-        <div class="card">
+        <div class="card" id="vendor-table-card">
           <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
           <div class="tbl-wrap">
             <table style="min-width:1200px"><thead><tr><th style="min-width:120px">Category</th><th style="min-width:110px">Company</th><th style="min-width:100px">Contact</th><th style="min-width:120px">Email</th><th style="min-width:100px">Phone</th><th style="width:50px">Ext</th><th style="text-align:right;min-width:90px">Estimated</th><th style="text-align:right;min-width:90px">Actual</th><th style="text-align:right;min-width:80px">Deposit</th><th style="min-width:100px">Status</th><th style="min-width:120px">Payment Due</th><th style="min-width:100px">Arrival Time</th><th>Rating</th><th></th></tr></thead>
@@ -860,6 +868,22 @@ table input[type="number"]{text-align:right;width:90px}
         </div>
         <!-- Expandable vendor detail panel -->
         <div id="vendor-detail-panel" style="display:none" class="card" style="margin-top:16px">
+        </div>
+      </div>
+
+      <!-- Detail View -->
+      <div id="vendor-detail-view-container" style="display:none">
+        <div style="display:grid;grid-template-columns:280px 1fr;gap:16px">
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
+            <div id="vendor-detail-list"></div>
+          </div>
+          <div class="card" style="margin-bottom:0" id="vendor-detail-right">
+            <div style="text-align:center;padding:40px;color:var(--stone)">
+              <p style="font-size:28px;margin-bottom:8px;opacity:0.3">&#128203;</p>
+              <p>Select a vendor to view details</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1505,6 +1529,13 @@ function delBtn(onclick) { return `<button class="btn btn-sm btn-outline btn-dan
 function esc(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function money(n) { return "$" + (n||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}); }
 function formatPhone(el) { el.value = el.value.replace(/[^\d\+\-\(\)\s]/g, ''); }
+function formatPhoneDisplay(num) {
+  if (!num) return '';
+  const d = num.replace(/\D/g, '');
+  if (d.length === 10) return '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+  if (d.length === 11 && d[0]==='1') return '+1 (' + d.slice(1,4) + ') ' + d.slice(4,7) + '-' + d.slice(7);
+  return num;
+}
 
 // ── Reusable modal system ──
 let _inputModalCb = null;
@@ -2173,18 +2204,16 @@ function removeMealOption(idx) {
 // ══════════════════════════════════════════════════
 // VENDORS
 // ══════════════════════════════════════════════════
-let vendorView = 'table';
+let vendorViewMode = 'cards';
 let expandedVendor = -1;
 
-function setVendorView(view) {
-  vendorView = view;
-  document.getElementById('vendor-table-view').style.display = view === 'table' ? '' : 'none';
-  document.getElementById('vendor-compare-view').style.display = view === 'compare' ? '' : 'none';
-  document.getElementById('vendor-view-table').className = view === 'table' ? 'btn btn-sm' : 'btn btn-sm btn-outline';
-  document.getElementById('vendor-view-table').style.cssText = view === 'table' ? 'background:var(--charcoal);color:var(--ivory)' : '';
-  document.getElementById('vendor-view-compare').className = view === 'compare' ? 'btn btn-sm' : 'btn btn-sm btn-outline';
-  document.getElementById('vendor-view-compare').style.cssText = view === 'compare' ? 'background:var(--charcoal);color:var(--ivory)' : '';
-  if (view === 'compare') renderVendorCompareDropdown();
+function setVendorView(mode) {
+  vendorViewMode = mode;
+  document.querySelectorAll('#vendor-view-tabs .tl-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#vendor-view-tabs .tl-tab').forEach(b => {
+    if (b.textContent.toLowerCase().includes(mode === 'cards' ? 'card' : mode === 'table' ? 'table' : mode === 'detail' ? 'detail' : 'compare')) b.classList.add('active');
+  });
+  renderVendors();
 }
 
 function renderVendors() {
@@ -2200,6 +2229,23 @@ function renderVendors() {
     if (v.hiddenFeeChecks === undefined) v.hiddenFeeChecks = {};
     if (v.contractChecks === undefined) v.contractChecks = {};
   });
+
+  // Show/hide containers based on view mode
+  const tableCard = document.getElementById('vendor-table-card');
+  const tableView = document.getElementById('vendor-table-view');
+  const cardsContainer = document.getElementById('vendor-cards-container');
+  const detailViewContainer = document.getElementById('vendor-detail-view-container');
+  const compareView = document.getElementById('vendor-compare-view');
+  if (tableCard) tableCard.style.display = vendorViewMode === 'table' ? '' : 'none';
+  if (tableView) tableView.style.display = vendorViewMode === 'table' ? '' : 'none';
+  if (cardsContainer) cardsContainer.style.display = vendorViewMode === 'cards' ? '' : 'none';
+  if (detailViewContainer) detailViewContainer.style.display = vendorViewMode === 'detail' ? '' : 'none';
+  if (compareView) compareView.style.display = vendorViewMode === 'compare' ? '' : 'none';
+
+  if (vendorViewMode === 'cards') { renderVendorCards(); return; }
+  if (vendorViewMode === 'detail') { renderVendorDetailView(); return; }
+  if (vendorViewMode === 'compare') { renderVendorCompareDropdown(); return; }
+
   const stars = (idx, rating) => [1,2,3,4,5].map(s =>
     `<span style="cursor:pointer;font-size:14px;color:${s<=rating?'var(--yellow)':'var(--border)'}" onclick="S.vendors[${idx}].rating=${s};saveState();renderVendors()">${s<=rating?'&#9733;':'&#9734;'}</span>`
   ).join('');
@@ -2325,6 +2371,140 @@ function renderVendorCompare() {
       ${v.packageNotes ? `<div><span style="font-size:11px;font-weight:600;color:var(--taupe)">PACKAGE</span><p style="font-size:12px;margin-top:2px">${esc(v.packageNotes)}</p></div>` : ''}
     </div>
   `).join('');
+}
+
+// ── Vendor Cards View ──
+function renderVendorCards() {
+  document.getElementById('vendor-table-card').style.display = 'none';
+  document.getElementById('vendor-table-view').style.display = 'none';
+  document.getElementById('vendor-cards-container').style.display = '';
+  document.getElementById('vendor-detail-view-container').style.display = 'none';
+  document.getElementById('vendor-compare-view').style.display = 'none';
+  document.getElementById('vendor-detail-panel').style.display = 'none';
+
+  const grid = document.getElementById('vendor-cards-grid');
+  const statusColors = {'Researching':'var(--stone)','Contacted':'var(--yellow)','Contract Sent':'var(--taupe)','Signed':'var(--green)','Paid in Full':'var(--green)'};
+
+  grid.innerHTML = S.vendors.map((v, i) => {
+    const stars = [1,2,3,4,5].map(s =>
+      `<span style="cursor:pointer;font-size:14px;color:${s<=v.rating?'var(--yellow)':'var(--border)'}" onclick="event.stopPropagation();S.vendors[${i}].rating=${s};saveState();renderVendors()">${s<=v.rating?'&#9733;':'&#9734;'}</span>`
+    ).join('');
+    const statusColor = statusColors[v.status] || 'var(--stone)';
+    const phone = formatPhoneDisplay(v.phone);
+
+    return `<div class="vendor-card" onclick="expandedVendor=${i};setVendorView('detail')" style="padding:20px;border:1px solid var(--border-light);border-radius:12px;background:white;cursor:pointer;transition:all 200ms;position:relative">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:2px">${esc(v.company) || 'Unnamed'}</div>
+          <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;border-radius:100px;background:rgba(156,139,122,0.1);color:var(--taupe)">${esc(v.cat) || 'Uncategorized'}</span>
+        </div>
+        <button onclick="event.stopPropagation();S.vendors.splice(${i},1);saveState();syncVendorsToBudget();renderVendors();renderBudget()" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:16px;opacity:0.3;padding:0" title="Delete">&times;</button>
+      </div>
+      ${v.contact ? `<div style="font-size:12px;color:var(--charcoal);margin-bottom:4px">&#128100; ${esc(v.contact)}</div>` : ''}
+      ${v.email ? `<div style="font-size:12px;color:var(--stone);margin-bottom:4px">&#128231; <a href="mailto:${esc(v.email)}" onclick="event.stopPropagation()" style="color:var(--taupe)">${esc(v.email)}</a></div>` : ''}
+      ${phone ? `<div style="font-size:12px;color:var(--stone);margin-bottom:8px">&#128222; ${phone}${v.ext ? ' x'+esc(v.ext) : ''}</div>` : ''}
+      <div style="display:flex;gap:16px;font-size:12px;margin-bottom:8px">
+        <div><span style="color:var(--stone)">Est:</span> <strong>$${(v.estimatedPrice||0).toLocaleString()}</strong></div>
+        <div><span style="color:var(--stone)">Actual:</span> <strong>$${(v.actualPrice||0).toLocaleString()}</strong></div>
+        <div><span style="color:var(--stone)">Dep:</span> $${(v.deposit||0).toLocaleString()}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>${stars}</div>
+        ${v.status ? `<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:100px;border:1px solid ${statusColor};color:${statusColor}">${esc(v.status)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  if (S.vendors.length === 0) {
+    grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--stone);grid-column:1/-1"><p style="font-size:28px;margin-bottom:8px;opacity:0.3">&#128203;</p><p>No vendors yet. Click + Add Vendor to get started.</p></div>';
+  }
+}
+
+// ── Vendor Detail View ──
+function renderVendorDetailView() {
+  document.getElementById('vendor-table-card').style.display = 'none';
+  document.getElementById('vendor-table-view').style.display = 'none';
+  document.getElementById('vendor-cards-container').style.display = 'none';
+  document.getElementById('vendor-detail-view-container').style.display = '';
+  document.getElementById('vendor-compare-view').style.display = 'none';
+  document.getElementById('vendor-detail-panel').style.display = 'none';
+
+  const list = document.getElementById('vendor-detail-list');
+  list.innerHTML = S.vendors.map((v, i) => `
+    <div onclick="expandedVendor=${i};renderVendorDetailView()" style="padding:10px 12px;border-bottom:1px solid var(--border-light);cursor:pointer;transition:all 150ms;${expandedVendor===i?'background:var(--cream);border-left:3px solid var(--charcoal)':'border-left:3px solid transparent'}">
+      <div style="font-weight:${expandedVendor===i?'600':'400'};font-size:13px">${esc(v.company) || 'Unnamed'}</div>
+      <div style="font-size:11px;color:var(--stone)">${esc(v.cat) || 'Uncategorized'}</div>
+    </div>
+  `).join('');
+
+  if (S.vendors.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--stone);font-size:12px">No vendors yet</div>';
+  }
+
+  // Right panel
+  const right = document.getElementById('vendor-detail-right');
+  if (expandedVendor < 0 || expandedVendor >= S.vendors.length) {
+    right.innerHTML = '<div style="text-align:center;padding:40px;color:var(--stone)"><p style="font-size:28px;margin-bottom:8px;opacity:0.3">&#128203;</p><p>Select a vendor to view details</p></div>';
+    return;
+  }
+
+  const v = S.vendors[expandedVendor];
+  const i = expandedVendor;
+  const phone = formatPhoneDisplay(v.phone);
+  const stars = [1,2,3,4,5].map(s =>
+    `<span style="cursor:pointer;font-size:16px;color:${s<=v.rating?'var(--yellow)':'var(--border)'}" onclick="S.vendors[${i}].rating=${s};saveState();renderVendors()">${s<=v.rating?'&#9733;':'&#9734;'}</span>`
+  ).join('');
+
+  // Hidden fee checklist
+  const fees = VENDOR_HIDDEN_FEES[v.cat] || [];
+  const feeHTML = fees.length ? fees.map((f,fi) => {
+    const checked = v.hiddenFeeChecks[f] ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" ${checked} onchange="S.vendors[${i}].hiddenFeeChecks['${f.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${f}</span></label>`;
+  }).join('') : '<p style="color:var(--stone);font-size:11px">Set vendor category to see hidden fees.</p>';
+
+  const checks = VENDOR_CONTRACT_CHECKS[v.cat] || [];
+  const checkHTML = checks.length ? checks.map(c => {
+    const checked = v.contractChecks[c] ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" ${checked} onchange="S.vendors[${i}].contractChecks['${c.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${c}</span></label>`;
+  }).join('') : '<p style="color:var(--stone);font-size:11px">Set vendor category to see contract items.</p>';
+
+  right.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div>
+        <h3 style="font-family:var(--font-serif);font-size:20px;margin-bottom:4px">${esc(v.company) || 'Unnamed'}</h3>
+        <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;border-radius:100px;background:rgba(156,139,122,0.1);color:var(--taupe)">${esc(v.cat)}</span>
+      </div>
+      <div>${stars}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div><label class="ob-label">Contact</label><input class="ob-input" value="${esc(v.contact)}" onblur="S.vendors[${i}].contact=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+      <div><label class="ob-label">Email</label><input class="ob-input" type="email" value="${esc(v.email)}" onblur="S.vendors[${i}].email=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+      <div><label class="ob-label">Phone</label><input class="ob-input" type="tel" value="${esc(v.phone)}" onblur="S.vendors[${i}].phone=this.value;saveState();renderVendors()" oninput="formatPhone(this)" style="padding:8px 12px;font-size:13px"/></div>
+      <div><label class="ob-label">Ext</label><input class="ob-input" value="${esc(v.ext||'')}" onblur="S.vendors[${i}].ext=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
+      <div><label class="ob-label">Estimated</label><input class="ob-input" type="number" step="0.01" value="${v.estimatedPrice}" onblur="S.vendors[${i}].estimatedPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()" style="padding:8px 12px;font-size:13px"/></div>
+      <div><label class="ob-label">Actual</label><input class="ob-input" type="number" step="0.01" value="${v.actualPrice}" onblur="S.vendors[${i}].actualPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()" style="padding:8px 12px;font-size:13px"/></div>
+      <div><label class="ob-label">Deposit</label><input class="ob-input" type="number" step="0.01" value="${v.deposit}" onblur="S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()" style="padding:8px 12px;font-size:13px"/></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
+      <div><label class="ob-label">Status</label><select class="ob-input" style="padding:8px 12px;font-size:13px" onchange="S.vendors[${i}].status=this.value;saveState();renderVendors()">${["","Researching","Contacted","Contract Sent","Signed","Paid in Full"].map(o=>`<option${o===v.status?' selected':''}>${o}</option>`).join('')}</select></div>
+      <div><label class="ob-label">Payment Due</label><input class="ob-input" type="date" value="${esc(v.due||'')}" onchange="S.vendors[${i}].due=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+      <div><label class="ob-label">Arrival Time</label><input class="ob-input" type="time" value="${esc(v.arrival||'')}" onchange="S.vendors[${i}].arrival=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div><label class="ob-label">Pros</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].pros=this.value;saveState()">${esc(v.pros)}</textarea></div>
+      <div><label class="ob-label">Cons</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].cons=this.value;saveState()">${esc(v.cons)}</textarea></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div><label class="ob-label">Package Notes</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].packageNotes=this.value;saveState()">${esc(v.packageNotes)}</textarea></div>
+      <div><label class="ob-label">Contract Notes</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].contractNotes=this.value;saveState()">${esc(v.contractNotes)}</textarea></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div><label class="ob-label">&#9888; Hidden Fees to Ask About</label><div style="padding:8px 12px;background:rgba(250,250,247,0.6);border-radius:8px;max-height:200px;overflow-y:auto">${feeHTML}</div></div>
+      <div><label class="ob-label">&#9989; Contract Checklist</label><div style="padding:8px 12px;background:rgba(250,250,247,0.6);border-radius:8px;max-height:200px;overflow-y:auto">${checkHTML}</div></div>
+    </div>
+    <div style="margin-top:16px;text-align:right"><button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red)" onclick="S.vendors.splice(${i},1);expandedVendor=-1;saveState();syncVendorsToBudget();renderVendors();renderBudget()">Delete Vendor</button></div>`;
 }
 
 function addVendor() {
