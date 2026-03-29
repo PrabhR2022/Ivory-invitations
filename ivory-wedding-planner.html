@@ -845,44 +845,17 @@ table input[type="number"]{text-align:right;width:90px}
 
       <!-- Vendor view toggle -->
       <div class="tl-tabs" id="vendor-view-tabs">
-        <button class="tl-tab active" onclick="setVendorView('cards')">Card View</button>
-        <button class="tl-tab" onclick="setVendorView('table')">Table View</button>
-        <button class="tl-tab" onclick="setVendorView('detail')">Detail View</button>
-        <button class="tl-tab" onclick="setVendorView('compare')">Compare</button>
+        <button class="tl-tab active" onclick="setVendorView('table')">Table View</button>
+        <button class="tl-tab" onclick="setVendorView('compare')">Compare Vendors</button>
       </div>
 
-      <!-- Cards View -->
-      <div class="card" id="vendor-cards-container" style="display:none">
-        <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
-        <div id="vendor-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px"></div>
-      </div>
-
-      <!-- Table View -->
+      <!-- Unified Table + Inline Detail View -->
       <div id="vendor-table-view">
         <div class="card" id="vendor-table-card">
           <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
           <div class="tbl-wrap">
-            <table style="min-width:1200px"><thead><tr><th style="min-width:120px">Category</th><th style="min-width:110px">Company</th><th style="min-width:100px">Contact</th><th style="min-width:120px">Email</th><th style="min-width:100px">Phone</th><th style="width:50px">Ext</th><th style="text-align:right;min-width:90px">Estimated</th><th style="text-align:right;min-width:90px">Actual</th><th style="text-align:right;min-width:80px">Deposit</th><th style="min-width:100px">Status</th><th style="min-width:120px">Payment Due</th><th style="min-width:100px">Arrival Time</th><th>Rating</th><th></th></tr></thead>
+            <table><thead><tr><th style="min-width:110px">Category</th><th style="min-width:130px">Company</th><th style="text-align:right;min-width:90px">Estimated</th><th style="text-align:right;min-width:80px">Actual</th><th style="text-align:right;min-width:70px">Deposit</th><th style="min-width:100px">Status</th><th style="min-width:110px">Payment Due</th><th style="min-width:90px">Arrival</th><th>Rating</th><th></th></tr></thead>
             <tbody id="vendor-body"></tbody></table>
-          </div>
-        </div>
-        <!-- Expandable vendor detail panel -->
-        <div id="vendor-detail-panel" style="display:none" class="card" style="margin-top:16px">
-        </div>
-      </div>
-
-      <!-- Detail View -->
-      <div id="vendor-detail-view-container" style="display:none">
-        <div style="display:grid;grid-template-columns:280px 1fr;gap:16px">
-          <div class="card" style="margin-bottom:0">
-            <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
-            <div id="vendor-detail-list"></div>
-          </div>
-          <div class="card" style="margin-bottom:0" id="vendor-detail-right">
-            <div style="text-align:center;padding:40px;color:var(--stone)">
-              <p style="font-size:28px;margin-bottom:8px;opacity:0.3">&#128203;</p>
-              <p>Select a vendor to view details</p>
-            </div>
           </div>
         </div>
       </div>
@@ -2204,14 +2177,15 @@ function removeMealOption(idx) {
 // ══════════════════════════════════════════════════
 // VENDORS
 // ══════════════════════════════════════════════════
-let vendorViewMode = 'cards';
+let vendorViewMode = 'table';
 let expandedVendor = -1;
 
 function setVendorView(mode) {
   vendorViewMode = mode;
+  expandedVendor = -1;
   document.querySelectorAll('#vendor-view-tabs .tl-tab').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('#vendor-view-tabs .tl-tab').forEach(b => {
-    if (b.textContent.toLowerCase().includes(mode === 'cards' ? 'card' : mode === 'table' ? 'table' : mode === 'detail' ? 'detail' : 'compare')) b.classList.add('active');
+  document.querySelectorAll('#vendor-view-tabs .tl-tab').forEach((b, i) => {
+    if ((i === 0 && mode === 'table') || (i === 1 && mode === 'compare')) b.classList.add('active');
   });
   renderVendors();
 }
@@ -2230,48 +2204,76 @@ function renderVendors() {
     if (v.contractChecks === undefined) v.contractChecks = {};
   });
 
-  // Show/hide containers based on view mode
-  const tableCard = document.getElementById('vendor-table-card');
+  // Show/hide containers
   const tableView = document.getElementById('vendor-table-view');
-  const cardsContainer = document.getElementById('vendor-cards-container');
-  const detailViewContainer = document.getElementById('vendor-detail-view-container');
   const compareView = document.getElementById('vendor-compare-view');
-  if (tableCard) tableCard.style.display = vendorViewMode === 'table' ? '' : 'none';
   if (tableView) tableView.style.display = vendorViewMode === 'table' ? '' : 'none';
-  if (cardsContainer) cardsContainer.style.display = vendorViewMode === 'cards' ? '' : 'none';
-  if (detailViewContainer) detailViewContainer.style.display = vendorViewMode === 'detail' ? '' : 'none';
   if (compareView) compareView.style.display = vendorViewMode === 'compare' ? '' : 'none';
 
-  if (vendorViewMode === 'cards') { renderVendorCards(); return; }
-  if (vendorViewMode === 'detail') { renderVendorDetailView(); return; }
   if (vendorViewMode === 'compare') { renderVendorCompareDropdown(); return; }
 
   const stars = (idx, rating) => [1,2,3,4,5].map(s =>
-    `<span style="cursor:pointer;font-size:14px;color:${s<=rating?'var(--yellow)':'var(--border)'}" onclick="S.vendors[${idx}].rating=${s};saveState();renderVendors()">${s<=rating?'&#9733;':'&#9734;'}</span>`
+    `<span style="cursor:pointer;font-size:14px;color:${s<=rating?'var(--yellow)':'var(--border)'}" onclick="event.stopPropagation();S.vendors[${idx}].rating=${s};saveState();renderVendors()">${s<=rating?'&#9733;':'&#9734;'}</span>`
   ).join('');
 
-  document.getElementById("vendor-body").innerHTML = S.vendors.map((v,i)=>`<tr style="cursor:pointer" onclick="toggleVendorDetail(${i})">
-    <td>${eCell(v.cat,`S.vendors[${i}].cat=this.value;saveState();event.stopPropagation()`)}</td>
-    <td>${eCell(v.company,`S.vendors[${i}].company=this.value;saveState();event.stopPropagation()`)}</td>
-    <td>${eCell(v.contact,`S.vendors[${i}].contact=this.value;saveState();event.stopPropagation()`)}</td>
-    <td>${eCell(v.email,`S.vendors[${i}].email=this.value;saveState();event.stopPropagation()`,"email")}</td>
-    <td>${eCell(v.phone,`S.vendors[${i}].phone=this.value;saveState();event.stopPropagation()`,"tel")}</td>
-    <td onclick="event.stopPropagation()"><input type="text" value="${esc(v.ext||'')}" placeholder="Ext" style="width:50px;padding:6px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;text-align:center" onblur="S.vendors[${i}].ext=this.value;saveState()" /></td>
-    <td class="currency" onclick="event.stopPropagation()">${eCell(v.estimatedPrice,`S.vendors[${i}].estimatedPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
-    <td class="currency" onclick="event.stopPropagation()">${eCell(v.actualPrice,`S.vendors[${i}].actualPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
-    <td class="currency" onclick="event.stopPropagation()">${eCell(v.deposit,`S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
-    <td onclick="event.stopPropagation()">${eCell(v.status,`S.vendors[${i}].status=this.value;saveState()`,"select",["","Researching","Contacted","Contract Sent","Signed","Paid in Full"])}</td>
-    <td onclick="event.stopPropagation()">${eCell(v.due,`S.vendors[${i}].due=this.value;saveState()`,"date")}</td>
-    <td onclick="event.stopPropagation()"><input type="time" value="${esc(v.arrival||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);font-size:13px" onchange="S.vendors[${i}].arrival=this.value;saveState()"/></td>
-    <td onclick="event.stopPropagation()">${stars(i, v.rating)}</td>
-    <td onclick="event.stopPropagation()">${delBtn(`S.vendors.splice(${i},1);saveState();syncVendorsToBudget();renderVendors();renderBudget()`)}</td>
-  </tr>`).join("");
-  renderVendorDetail();
+  const statusColors = {'Researching':'var(--stone)','Contacted':'var(--yellow)','Contract Sent':'var(--taupe)','Signed':'var(--green)','Paid in Full':'var(--green)'};
+
+  document.getElementById("vendor-body").innerHTML = S.vendors.map((v,i) => {
+    const isExpanded = expandedVendor === i;
+    const sc = statusColors[v.status] || 'var(--stone)';
+    let row = `<tr style="cursor:pointer;${isExpanded?'background:var(--cream)':''}" onclick="toggleVendorDetail(${i})">
+      <td onclick="event.stopPropagation()">${eCell(v.cat,`S.vendors[${i}].cat=this.value;saveState()`)}</td>
+      <td><strong style="color:var(--charcoal)">${esc(v.company) || 'Unnamed'}</strong></td>
+      <td class="currency" onclick="event.stopPropagation()">${eCell(v.estimatedPrice,`S.vendors[${i}].estimatedPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
+      <td class="currency" onclick="event.stopPropagation()">${eCell(v.actualPrice,`S.vendors[${i}].actualPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
+      <td class="currency" onclick="event.stopPropagation()">${eCell(v.deposit,`S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
+      <td onclick="event.stopPropagation()">${eCell(v.status,`S.vendors[${i}].status=this.value;saveState()`,"select",["","Researching","Contacted","Contract Sent","Signed","Paid in Full"])}</td>
+      <td onclick="event.stopPropagation()">${eCell(v.due,`S.vendors[${i}].due=this.value;saveState()`,"date")}</td>
+      <td onclick="event.stopPropagation()"><input type="time" value="${esc(v.arrival||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);font-size:13px" onchange="S.vendors[${i}].arrival=this.value;saveState()"/></td>
+      <td onclick="event.stopPropagation()">${stars(i, v.rating)}</td>
+      <td onclick="event.stopPropagation()">${delBtn(`S.vendors.splice(${i},1);expandedVendor=-1;saveState();syncVendorsToBudget();renderVendors();renderBudget()`)}</td>
+    </tr>`;
+
+    if (isExpanded) {
+      const phone = formatPhoneDisplay(v.phone);
+      const fees = VENDOR_HIDDEN_FEES[v.cat] || [];
+      const feeHTML = fees.length ? fees.map(f => `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" ${v.hiddenFeeChecks[f]?'checked':''} onchange="S.vendors[${i}].hiddenFeeChecks['${f.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${f}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see hidden fees.</p>';
+      const checks = VENDOR_CONTRACT_CHECKS[v.cat] || [];
+      const checkHTML = checks.length ? checks.map(c => `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" ${v.contractChecks[c]?'checked':''} onchange="S.vendors[${i}].contractChecks['${c.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${c}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see contract items.</p>';
+
+      row += `<tr><td colspan="10" style="padding:0;border:none"><div style="padding:20px 24px;background:var(--cream);border-top:2px solid var(--charcoal)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h3 style="font-family:var(--font-serif);font-size:18px">${esc(v.company) || 'Vendor'} <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;border-radius:100px;background:rgba(156,139,122,0.1);color:var(--taupe);margin-left:8px">${esc(v.cat)}</span></h3>
+          <button onclick="expandedVendor=-1;renderVendors()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--stone)">&#10005; Close</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div><label class="ob-label">Contact</label><input class="ob-input" value="${esc(v.contact)}" onblur="S.vendors[${i}].contact=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+          <div><label class="ob-label">Email</label><input class="ob-input" type="email" value="${esc(v.email)}" onblur="S.vendors[${i}].email=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+          <div><label class="ob-label">Phone</label><input class="ob-input" type="tel" value="${esc(v.phone)}" onblur="S.vendors[${i}].phone=this.value;saveState()" oninput="formatPhone(this)" style="padding:8px 12px;font-size:13px"/></div>
+          <div><label class="ob-label">Ext</label><input class="ob-input" value="${esc(v.ext||'')}" onblur="S.vendors[${i}].ext=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div><label class="ob-label">Pros</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].pros=this.value;saveState()">${esc(v.pros)}</textarea></div>
+          <div><label class="ob-label">Contract Notes</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].contractNotes=this.value;saveState()">${esc(v.contractNotes)}</textarea></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div><label class="ob-label">Cons</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].cons=this.value;saveState()">${esc(v.cons)}</textarea></div>
+          <div><label class="ob-label">Package Notes</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].packageNotes=this.value;saveState()">${esc(v.packageNotes)}</textarea></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div><label class="ob-label">&#9888; Hidden Fees to Ask About</label><div style="padding:8px 12px;background:white;border-radius:8px;max-height:200px;overflow-y:auto;border:1px solid var(--border-light)">${feeHTML}</div></div>
+          <div><label class="ob-label">&#9989; Contract Checklist</label><div style="padding:8px 12px;background:white;border-radius:8px;max-height:200px;overflow-y:auto;border:1px solid var(--border-light)">${checkHTML}</div></div>
+        </div>
+        <div style="margin-top:16px;text-align:right"><button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red)" onclick="S.vendors.splice(${i},1);expandedVendor=-1;saveState();syncVendorsToBudget();renderVendors();renderBudget()">Delete Vendor</button></div>
+      </div></td></tr>`;
+    }
+    return row;
+  }).join("");
 }
 
 function toggleVendorDetail(idx) {
   expandedVendor = expandedVendor === idx ? -1 : idx;
-  renderVendorDetail();
+  renderVendors();
 }
 
 function renderVendorDetail() {
