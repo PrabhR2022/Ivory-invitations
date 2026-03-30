@@ -855,7 +855,7 @@ table input[type="number"]{text-align:right;width:90px}
           <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
           <div id="vendor-cat-filter" class="budget-filter" style="margin-bottom:12px"></div>
           <div class="tbl-wrap">
-            <table><thead><tr><th style="min-width:120px">Category</th><th style="min-width:100px">Status</th><th style="min-width:130px">Company</th><th style="text-align:right;min-width:80px">Price</th><th style="text-align:right;min-width:70px">Deposit</th><th style="min-width:110px">Payment Due</th><th style="width:30px"></th><th style="width:30px"></th></tr></thead>
+            <table><thead><tr><th style="min-width:120px">Category</th><th style="min-width:100px">Status</th><th style="min-width:130px">Company</th><th style="text-align:right;min-width:80px">Cost</th><th style="text-align:right;min-width:70px">Deposit</th><th style="min-width:110px">Payment Due</th><th style="width:30px"></th><th style="width:30px"></th></tr></thead>
             <tbody id="vendor-body"></tbody></table>
           </div>
         </div>
@@ -1338,7 +1338,7 @@ function buildChecklist() {
 }
 
 function buildVendors() {
-  return ["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Baker","Hair Stylist","Makeup Artist","Transportation","Wedding Planner","Rentals","Lighting / AV","Photo Booth"].map(c=>({cat:c,company:"",contact:"",email:"",phone:"",status:"",due:"",arrival:"",price:0,priceConfirmed:false,deposit:0}));
+  return ["Venue & Rentals","Catering & Bar","Photography & Video","Florals & Decor","Entertainment / DJ","Transportation","Wedding Attire","Hair & Makeup","Stationery","Planner / Coordinator","Miscellaneous"].map(c=>({cat:c,company:"",contact:"",email:"",phone:"",status:"",due:"",arrival:"",price:0,deposit:0}));
 }
 
 // ── Hidden Fee Checklists per Vendor Type ──
@@ -1357,7 +1357,17 @@ const VENDOR_HIDDEN_FEES = {
   "Wedding Planner":["Day-of coordination vs full service","Vendor referral commission","Overtime rate","Post-wedding wrap-up","Additional meetings fee"],
   "Rentals":["Delivery/pickup fee","Damage waiver","Setup labor","Cleaning fee","Replacement cost","Weekend surcharge","Weather contingency"],
   "Lighting / AV":["Setup/teardown labor","Power generator rental","Technician fee","Overtime rate","Custom gobo/monogram"],
-  "Photo Booth":["Extra hours rate","Custom backdrop","Prop package","Guest book/album","Digital copies fee","Attendant fee"]
+  "Photo Booth":["Extra hours rate","Custom backdrop","Prop package","Guest book/album","Digital copies fee","Attendant fee"],
+  "Venue & Rentals":["Corkage fee","Service charge (%)","Cleaning fee","Overtime rate","Minimum spend","Setup/teardown window","Parking fee","Security deposit","Delivery/pickup fee","Damage waiver","Setup labor"],
+  "Catering & Bar":["Per-guest minimum","Cake cutting fee","Service charge (%)","Tastings cost","Linen/table rental","Staff gratuity","Late guest additions","Dietary surcharge","Delivery/setup fee"],
+  "Photography & Video":["Extra hours rate","Second shooter cost","Travel fee","Rush editing fee","Album/print cost","Raw files fee","Drone footage cost","Highlight reel vs full edit"],
+  "Florals & Decor":["Delivery/setup fee","Teardown/removal fee","Seasonal surcharge","Container/vase rental","Ceremony→reception repurpose cost","Last-minute changes fee"],
+  "Entertainment / DJ":["Overtime rate","Equipment fee","Sound check time","MC services extra","Lighting package","Travel fee","Custom gobo/monogram"],
+  "Hair & Makeup":["Trial cost","Travel fee","Early morning surcharge","Airbrush upcharge","Lash application","Per-person rate","Touch-up kit"],
+  "Planner / Coordinator":["Day-of coordination vs full service","Vendor referral commission","Overtime rate","Post-wedding wrap-up","Additional meetings fee"],
+  "Wedding Attire":["Alterations cost","Rush order fee","Preservation/cleaning","Accessories not included","Shipping fee"],
+  "Stationery":["Rush printing fee","Shipping cost","Reprint fee for errors","Envelope addressing","Custom design surcharge"],
+  "Miscellaneous":[]
 };
 
 // ── Contract Checklist per Vendor Type ──
@@ -1376,33 +1386,47 @@ const VENDOR_CONTRACT_CHECKS = {
   "Wedding Planner":["Services included (itemized)","Communication expectations","Day-of timeline ownership","Vendor coordination scope","Cancellation/refund","Payment schedule","Emergency contact protocol"],
   "Rentals":["Delivery/pickup times","Setup included","Damage policy","Missing items policy","Rain plan for outdoor","Cancellation policy","Payment schedule"],
   "Lighting / AV":["Setup/teardown schedule","Technician on-site","Power requirements","Equipment list","Cancellation policy","Payment schedule"],
-  "Photo Booth":["Hours of operation","Props included","Backdrop options","Print copies per session","Digital delivery","Attendant included","Cancellation policy"]
+  "Photo Booth":["Hours of operation","Props included","Backdrop options","Print copies per session","Digital delivery","Attendant included","Cancellation policy"],
+  "Venue & Rentals":["Total hours included","Overtime policy & rate","Cancellation/refund policy","Insurance requirements","Noise restrictions/curfew","Payment schedule","Rain/weather backup plan","Delivery/pickup times","Damage policy"],
+  "Catering & Bar":["Per-head pricing breakdown","Minimum guest count","Final headcount deadline","Menu tasting included","Staff-to-guest ratio","Alcohol policy/BYOB","Payment schedule","Cancellation policy"],
+  "Photography & Video":["Hours of coverage","Deliverables (# of photos/videos)","Editing turnaround time","Print/usage rights","Second shooter included","Backup equipment policy","Payment schedule","Raw footage included"],
+  "Florals & Decor":["Proposal vs final cost","Substitution policy","Setup/teardown times","Day-of contact","Rental items return","Cancellation/refund","Payment schedule"],
+  "Entertainment / DJ":["Hours of performance","Break schedule","Equipment provided","Song requests process","MC duties included","Cancellation policy","Payment schedule","Backup plan if sick"],
+  "Hair & Makeup":["Trial included","Travel arrangements","Timeline/schedule","Products used","Touch-ups included","Cancellation policy","Payment schedule"],
+  "Transportation":["Vehicle type confirmed","Hours included","Overtime rate","Pickup/drop locations","Driver gratuity","Cancellation policy","Payment schedule","Vehicle backup plan"],
+  "Planner / Coordinator":["Services included (itemized)","Communication expectations","Day-of timeline ownership","Vendor coordination scope","Cancellation/refund","Payment schedule"],
+  "Wedding Attire":["Fitting schedule","Alterations included","Delivery timeline","Cancellation/refund","Payment schedule"],
+  "Stationery":["Proof approval process","Production timeline","Reprint policy","Shipping timeline","Cancellation policy","Payment schedule"],
+  "Miscellaneous":[]
 };
 
 // Vendor → Budget category mapping
 const VENDOR_BUDGET_MAP = {
+  // Direct matches (vendor cat = budget cat)
+  "Venue & Rentals":"Venue & Rentals","Catering & Bar":"Catering & Bar","Photography & Video":"Photography & Video",
+  "Florals & Decor":"Florals & Decor","Entertainment / DJ":"Entertainment / DJ","Transportation":"Transportation",
+  "Wedding Attire":"Wedding Attire","Hair & Makeup":"Hair & Makeup","Stationery":"Stationery",
+  "Planner / Coordinator":"Planner / Coordinator","Honeymoon":"Honeymoon","Gifts & Favors":"Gifts & Favors",
+  "Miscellaneous":"Miscellaneous",
+  // Legacy mappings for old data
   "Venue":"Venue & Rentals","Caterer":"Catering & Bar","Photographer":"Photography & Video",
   "Videographer":"Photography & Video","Florist":"Florals & Decor","DJ / Band":"Entertainment / DJ",
   "Officiant":"Miscellaneous","Baker":"Catering & Bar","Hair Stylist":"Hair & Makeup",
-  "Makeup Artist":"Hair & Makeup","Transportation":"Transportation","Wedding Planner":"Planner / Coordinator",
+  "Makeup Artist":"Hair & Makeup","Wedding Planner":"Planner / Coordinator",
   "Rentals":"Venue & Rentals","Lighting / AV":"Entertainment / DJ","Photo Booth":"Entertainment / DJ"
 };
 
 function syncVendorsToBudget() {
-  // Aggregate vendor prices by budget category
+  // Aggregate vendor costs by budget category — status determines planned vs actual
   const catPlanned = {}, catActual = {};
   S.vendors.forEach(v => {
     const budgetCat = VENDOR_BUDGET_MAP[v.cat];
     if (!budgetCat) return;
-    const price = parseFloat(v.price) || parseFloat(v.estimatedPrice) || 0;
+    const cost = parseFloat(v.price) || parseFloat(v.estimatedPrice) || 0;
     const deposit = parseFloat(v.deposit) || 0;
-    if (v.priceConfirmed) {
-      catActual[budgetCat] = (catActual[budgetCat] || 0) + price;
-      catPlanned[budgetCat] = (catPlanned[budgetCat] || 0) + price;
-    } else {
-      catPlanned[budgetCat] = (catPlanned[budgetCat] || 0) + price;
-      catActual[budgetCat] = (catActual[budgetCat] || 0) + deposit;
-    }
+    const isConfirmed = v.status === 'Signed' || v.status === 'Paid in Full';
+    catPlanned[budgetCat] = (catPlanned[budgetCat] || 0) + cost;
+    catActual[budgetCat] = (catActual[budgetCat] || 0) + (isConfirmed ? cost : deposit);
   });
   S.budget.forEach(b => {
     if (catPlanned[b.cat] !== undefined) {
@@ -2187,7 +2211,7 @@ function removeMealOption(idx) {
 let vendorViewMode = 'table';
 let expandedVendor = -1;
 let vendorCatFilter = 'all';
-const VENDOR_CATS_DEFAULT = ["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Baker","Hair Stylist","Makeup Artist","Transportation","Wedding Planner","Rentals","Lighting / AV","Photo Booth"];
+const VENDOR_CATS_DEFAULT = ["Venue & Rentals","Catering & Bar","Photography & Video","Florals & Decor","Entertainment / DJ","Transportation","Wedding Attire","Hair & Makeup","Stationery","Planner / Coordinator","Honeymoon","Gifts & Favors","Miscellaneous"];
 
 function getVendorCats() {
   const custom = S.customVendorCats || [];
@@ -2222,10 +2246,7 @@ function vendorCatSelect(i, val) {
   }
 }
 
-function toggleVendorPrice(i) {
-  S.vendors[i].priceConfirmed = !S.vendors[i].priceConfirmed;
-  saveState(); renderVendors();
-}
+
 
 function renderVendors() {
   // Migrate old estimatedPrice/actualPrice → price
@@ -2253,7 +2274,7 @@ function renderVendors() {
   // Category filter bar
   const filterEl = document.getElementById('vendor-cat-filter');
   if (filterEl) {
-    const usedCats = [...new Set(S.vendors.map(v => v.cat).filter(Boolean))];
+    const usedCats = [...new Set(S.vendors.filter(v => v.company).map(v => v.cat).filter(Boolean))];
     filterEl.innerHTML = `<button class="budget-filter-btn ${vendorCatFilter==='all'?'active':''}" onclick="setVendorCatFilter('all')">All</button>` +
       usedCats.map(c => `<button class="budget-filter-btn ${vendorCatFilter===c?'active':''}" onclick="setVendorCatFilter('${c.replace(/'/g,"\\'")}')">${c}</button>`).join('');
   }
@@ -2266,15 +2287,12 @@ function renderVendors() {
   document.getElementById("vendor-body").innerHTML = filtered.map((v) => {
     const i = S.vendors.indexOf(v);
     const isExpanded = expandedVendor === i;
-    const priceIcon = v.priceConfirmed
-      ? `<span onclick="event.stopPropagation();toggleVendorPrice(${i})" style="cursor:pointer;color:var(--green);font-weight:bold;margin-right:2px" title="Confirmed price — click to mark as estimate">&#10003;</span>`
-      : `<span onclick="event.stopPropagation();toggleVendorPrice(${i})" style="cursor:pointer;color:var(--stone);font-weight:bold;margin-right:2px" title="Estimated — click to confirm">~</span>`;
 
     let row = `<tr style="cursor:pointer;${isExpanded?'background:var(--cream)':''}" onclick="toggleVendorDetail(${i})">
       <td onclick="event.stopPropagation()"><select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:rgba(250,250,247,0.6)" onchange="vendorCatSelect(${i},this.value)">${[''].concat(allCats).concat(['__custom__']).map(c => `<option value="${c==='__custom__'?'__custom__':esc(c)}"${c===v.cat?' selected':''}>${c==='__custom__'?'Custom...':c||'—'}</option>`).join('')}</select></td>
-      <td onclick="event.stopPropagation()">${eCell(v.status,`S.vendors[${i}].status=this.value;saveState()`,"select",["","Researching","Contacted","Contract Sent","Signed","Paid in Full"])}</td>
+      <td onclick="event.stopPropagation()">${eCell(v.status,`S.vendors[${i}].status=this.value;saveState();syncVendorsToBudget();renderBudget()`,"select",["","Researching","Contacted","Contract Sent","Signed","Paid in Full"])}</td>
       <td><strong style="color:var(--charcoal)">${esc(v.company) || 'Unnamed'}</strong></td>
-      <td class="currency" onclick="event.stopPropagation()" style="white-space:nowrap">${priceIcon}${eCell(v.price,`S.vendors[${i}].price=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
+      <td class="currency" onclick="event.stopPropagation()">${eCell(v.price,`S.vendors[${i}].price=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
       <td class="currency" onclick="event.stopPropagation()">${eCell(v.deposit,`S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
       <td onclick="event.stopPropagation()">${eCell(v.due,`S.vendors[${i}].due=this.value;saveState()`,"date")}</td>
       <td onclick="event.stopPropagation()">${delBtn(`S.vendors.splice(${i},1);expandedVendor=-1;saveState();syncVendorsToBudget();renderVendors();renderBudget()`)}</td>
