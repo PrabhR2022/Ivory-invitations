@@ -3429,11 +3429,12 @@ function renderTlCeremonies() {
       </div>
     </div>
     <div class="tbl-wrap" style="margin:0 -24px;padding:0 24px">
-      <table style="min-width:600px">
-        <thead><tr><th style="width:90px">Time</th><th>Event</th><th style="width:150px">Music / Cue</th><th style="width:150px">Notes</th><th></th></tr></thead>
+      <table style="min-width:700px">
+        <thead><tr><th style="width:90px">Time</th><th>Event</th><th style="width:100px">Tag</th><th style="width:150px">Music / Cue</th><th style="width:150px">Notes</th><th></th></tr></thead>
         <tbody>${(cer.timeline||[]).map((r,ri) => `<tr>
           <td>${eCell(r.time,`S.ceremonies[${ci}].timeline[${ri}].time=this.value;syncCeremonyToSchedule(${ci},${ri});saveState();renderTlCeremonies()`,"time")}</td>
           <td>${eCell(r.event,`S.ceremonies[${ci}].timeline[${ri}].event=this.value;syncCeremonyToSchedule(${ci},${ri});saveState()`)}</td>
+          <td>${eCell(r.tag||'ceremony',`S.ceremonies[${ci}].timeline[${ri}].tag=this.value;syncCeremonyToSchedule(${ci},${ri});saveState()`,"select",["prep","ceremony","photos","reception","other"])}</td>
           <td>${eCell(r.music||'',`S.ceremonies[${ci}].timeline[${ri}].music=this.value;syncCeremonyToSchedule(${ci},${ri});saveState()`)}</td>
           <td>${eCell(r.notes||'',`S.ceremonies[${ci}].timeline[${ri}].notes=this.value;syncCeremonyToSchedule(${ci},${ri});saveState()`)}</td>
           <td>${delBtn(`var b=S.timeline.find(x=>x.cerIdx===${ci}&&x.cerRowIdx===${ri});if(b){S.timeline.splice(S.timeline.indexOf(b),1)};S.ceremonies[${ci}].timeline.splice(${ri},1);saveState();renderTlCeremonies()`)}</td>
@@ -3441,11 +3442,35 @@ function renderTlCeremonies() {
       </table>
     </div>
     <div class="btn-row">
-      <button class="btn btn-sm btn-dark" onclick="S.ceremonies[${ci}].timeline.push({time:'',event:'',music:'',notes:''});saveState();renderTlCeremonies()">+ Add Row</button>
+      <button class="btn btn-sm btn-dark" onclick="addCeremonyBlock(${ci})">+ Add Block</button>
     </div>
   </div>`;
 
   con.innerHTML = html;
+}
+
+function addCeremonyBlock(ci) {
+  const cer = S.ceremonies[ci];
+  if (!cer) return;
+  const last = cer.timeline[cer.timeline.length - 1];
+  let nextTime = '';
+  if (last && last.time) {
+    // Add 15 min to last time
+    const parts = last.time.split(':');
+    let h = parseInt(parts[0]), m = parseInt(parts[1] || 0) + 15;
+    if (m >= 60) { h++; m -= 60; }
+    nextTime = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  }
+  const ri = cer.timeline.length;
+  cer.timeline.push({time:nextTime, event:'New event', music:'', notes:'', tag:'ceremony'});
+  // Also add to main timeline linked
+  if (nextTime) {
+    const startAMPM = time24to12(nextTime);
+    S.timeline.push({time:startAMPM, end:'', activity:'New event', who:'', notes:'', cat:'ceremony', cerIdx:ci, cerRowIdx:ri});
+    S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
+  }
+  saveState();
+  renderTlCeremonies();
 }
 
 function deleteTlCeremony() {
@@ -3641,22 +3666,23 @@ function syncCeremonyToSchedule(ci, ri) {
   const r = cer.timeline[ri];
   // Find the linked schedule block
   const tlBlock = S.timeline.find(b => b.cerIdx === ci && b.cerRowIdx === ri);
+  const tag = r.tag || 'ceremony';
+  // Auto end-time: next ceremony row's start time (for ceremony-tagged items)
+  const nextRow = cer.timeline.find((row, idx) => idx > ri && row.time);
+  const endTime = nextRow ? time24to12(nextRow.time) : '';
   if (tlBlock) {
     tlBlock.time = time24to12(r.time);
     tlBlock.activity = r.event;
     tlBlock.notes = r.music ? 'Music: ' + r.music : '';
     tlBlock.who = r.notes || '';
-    // Recalculate end time from next ceremony row
-    const nextRow = cer.timeline.find((row, idx) => idx > ri && row.time);
-    tlBlock.end = nextRow ? time24to12(nextRow.time) : '';
+    tlBlock.cat = tag;
+    tlBlock.end = endTime;
   } else if (r.time) {
-    // No linked block yet — create one
-    const nextRow = cer.timeline.find((row, idx) => idx > ri && row.time);
     S.timeline.push({
-      time: time24to12(r.time), end: nextRow ? time24to12(nextRow.time) : '',
+      time: time24to12(r.time), end: endTime,
       activity: r.event, who: r.notes || '',
       notes: r.music ? 'Music: ' + r.music : '',
-      cat: 'ceremony', cerIdx: ci, cerRowIdx: ri
+      cat: tag, cerIdx: ci, cerRowIdx: ri
     });
   }
   S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
