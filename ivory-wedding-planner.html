@@ -1417,22 +1417,17 @@ const VENDOR_BUDGET_MAP = {
 };
 
 function syncVendorsToBudget() {
-  // Aggregate vendor costs by budget category — status determines planned vs actual
-  const catPlanned = {}, catActual = {};
+  // Only sync vendor costs → budget ACTUAL column (planned is standalone)
+  const catActual = {};
   S.vendors.forEach(v => {
     const budgetCat = VENDOR_BUDGET_MAP[v.cat];
     if (!budgetCat) return;
     const cost = parseFloat(v.price) || parseFloat(v.estimatedPrice) || 0;
-    const deposit = parseFloat(v.deposit) || 0;
     const isConfirmed = v.status === 'Signed' || v.status === 'Paid in Full';
-    catPlanned[budgetCat] = (catPlanned[budgetCat] || 0) + cost;
-    catActual[budgetCat] = (catActual[budgetCat] || 0) + (isConfirmed ? cost : deposit);
+    if (isConfirmed) catActual[budgetCat] = (catActual[budgetCat] || 0) + cost;
   });
   S.budget.forEach(b => {
-    if (catPlanned[b.cat] !== undefined) {
-      b.planned = catPlanned[b.cat];
-      b.actual = catActual[b.cat];
-    }
+    if (catActual[b.cat] !== undefined) b.actual = catActual[b.cat];
   });
   saveState();
 }
@@ -1662,11 +1657,11 @@ function renderBudget() {
         </span>
         ${hasSubs
           ? `<strong style="font-size:13px">${r.cat}</strong> <span style="font-size:11px;color:var(--stone)">(${subs.length})</span>`
-          : eCell(r.cat, `S.budget[${i}].cat=this.value;saveState()`)}
+          : `<select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:rgba(250,250,247,0.6)" onchange="S.budget[${i}].cat=this.value;saveState();renderBudget()">${getVendorCats().concat(S.customVendorCats||[]).filter((v,j,a)=>a.indexOf(v)===j).map(c => '<option'+(c===r.cat?' selected':'')+'>'+c+'</option>').join('')}${r.cat && !getVendorCats().includes(r.cat) ? '<option selected>'+esc(r.cat)+'</option>' : ''}</select>`}
       </td>
-      <td class="currency">${hasSubs ? '<strong>'+money(catPlanned)+'</strong>' : isVendorSyncedBudget(r.cat) ? '<span title="Auto-synced from Vendors" style="cursor:help">'+money(catPlanned)+' <span style="font-size:9px;color:var(--taupe)">&#128279;</span></span>' : eCell(r.planned,`S.budget[${i}].planned=+this.value;saveState();renderBudget()`,"number")}</td>
+      <td class="currency">${hasSubs ? '<strong>'+money(catPlanned)+'</strong>' : eCell(r.planned,`S.budget[${i}].planned=+this.value;saveState();renderBudget()`,"number")}</td>
       <td class="currency" style="color:var(--stone);font-size:12px">${pPct}</td>
-      <td class="currency">${hasSubs ? '<strong>'+money(catActual)+'</strong>' : isVendorSyncedBudget(r.cat) ? '<span title="Auto-synced from Vendors" style="cursor:help">'+money(catActual)+' <span style="font-size:9px;color:var(--taupe)">&#128279;</span></span>' : eCell(r.actual,`S.budget[${i}].actual=+this.value;saveState();renderBudget()`,"number")}</td>
+      <td class="currency">${hasSubs ? '<strong>'+money(catActual)+'</strong>' : isVendorSyncedBudget(r.cat) ? '<span title="Auto-synced from Vendors (Signed/Paid)" style="cursor:help">'+money(catActual)+' <span style="font-size:9px;color:var(--taupe)">&#128279;</span></span>' : eCell(r.actual,`S.budget[${i}].actual=+this.value;saveState();renderBudget()`,"number")}</td>
       <td class="currency" style="color:var(--stone);font-size:12px">${aPct}</td>
       <td class="currency" style="font-weight:600;color:${diff>=0?'var(--green)':'var(--red)'}">${money(diff)}</td>
       <td>${hasSubs ? '' : eCell(r.notes,`S.budget[${i}].notes=this.value;saveState()`)}</td>
@@ -2301,9 +2296,9 @@ function renderVendors() {
 
     if (isExpanded) {
       const fees = VENDOR_HIDDEN_FEES[v.cat] || [];
-      const feeHTML = fees.length ? fees.map(f => `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" ${v.hiddenFeeChecks[f]?'checked':''} onchange="S.vendors[${i}].hiddenFeeChecks['${f.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${f}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see hidden fees.</p>';
+      const feeHTML = fees.length ? fees.map(f => `<label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;padding:4px 0;cursor:pointer;line-height:1.4"><input type="checkbox" style="margin-top:2px;flex-shrink:0" ${v.hiddenFeeChecks[f]?'checked':''} onchange="S.vendors[${i}].hiddenFeeChecks['${f.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${f}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see hidden fees.</p>';
       const checks = VENDOR_CONTRACT_CHECKS[v.cat] || [];
-      const checkHTML = checks.length ? checks.map(c => `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" ${v.contractChecks[c]?'checked':''} onchange="S.vendors[${i}].contractChecks['${c.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${c}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see contract items.</p>';
+      const checkHTML = checks.length ? checks.map(c => `<label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;padding:4px 0;cursor:pointer;line-height:1.4"><input type="checkbox" style="margin-top:2px;flex-shrink:0" ${v.contractChecks[c]?'checked':''} onchange="S.vendors[${i}].contractChecks['${c.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${c}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see contract items.</p>';
 
       row += `<tr><td colspan="8" style="padding:0;border:none"><div style="padding:20px 24px;background:var(--cream);border-top:2px solid var(--charcoal)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -2313,7 +2308,7 @@ function renderVendors() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
           <div><label class="ob-label">Contact</label><input class="ob-input" value="${esc(v.contact)}" onblur="S.vendors[${i}].contact=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Email</label><input class="ob-input" type="email" value="${esc(v.email)}" onblur="S.vendors[${i}].email=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
-          <div><label class="ob-label">Phone</label><input class="ob-input" type="tel" value="${esc(v.phone)}" onblur="S.vendors[${i}].phone=this.value;saveState()" oninput="formatPhone(this)" style="padding:8px 12px;font-size:13px"/></div>
+          <div><label class="ob-label">Phone</label><input class="ob-input" type="tel" value="${esc(formatPhoneDisplay(v.phone))}" onblur="S.vendors[${i}].phone=this.value;saveState()" oninput="formatPhone(this)" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Ext</label><input class="ob-input" value="${esc(v.ext||'')}" onblur="S.vendors[${i}].ext=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
