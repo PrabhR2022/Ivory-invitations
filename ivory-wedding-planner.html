@@ -1260,19 +1260,15 @@ function defaultState() {
   return {
     totalBudget: 50000,
     budget: [
-      {cat:"Venue & Rentals",planned:0,actual:0,notes:""},
-      {cat:"Catering & Bar",planned:0,actual:0,notes:""},
-      {cat:"Florals & Decor",planned:0,actual:0,notes:""},
-      {cat:"Wedding Attire",planned:0,actual:0,notes:""},
-      {cat:"Photography & Video",planned:0,actual:0,notes:""},
-      {cat:"Entertainment / DJ",planned:0,actual:0,notes:""},
-      {cat:"Transportation",planned:0,actual:0,notes:""},
-      {cat:"Stationery",planned:0,actual:0,notes:""},
-      {cat:"Hair & Makeup",planned:0,actual:0,notes:""},
-      {cat:"Planner / Coordinator",planned:0,actual:0,notes:""},
-      {cat:"Honeymoon",planned:0,actual:0,notes:""},
-      {cat:"Gifts & Favors",planned:0,actual:0,notes:""},
-      {cat:"Miscellaneous",planned:0,actual:0,notes:""},
+      {cat:"Venue",planned:0,actual:0,notes:""},{cat:"Rentals",planned:0,actual:0,notes:""},
+      {cat:"Catering",planned:0,actual:0,notes:""},{cat:"Bar",planned:0,actual:0,notes:""},
+      {cat:"Photography & Video",planned:0,actual:0,notes:""},{cat:"Photography",planned:0,actual:0,notes:""},{cat:"Video",planned:0,actual:0,notes:""},
+      {cat:"Florals",planned:0,actual:0,notes:""},{cat:"Decor",planned:0,actual:0,notes:""},
+      {cat:"Entertainment",planned:0,actual:0,notes:""},{cat:"DJ",planned:0,actual:0,notes:""},{cat:"MC",planned:0,actual:0,notes:""},{cat:"Officiants",planned:0,actual:0,notes:""},
+      {cat:"Transportation",planned:0,actual:0,notes:""},{cat:"Wedding Attire",planned:0,actual:0,notes:""},
+      {cat:"Hair & Makeup",planned:0,actual:0,notes:""},{cat:"Stationery",planned:0,actual:0,notes:""},
+      {cat:"Planner / Coordinator",planned:0,actual:0,notes:""},{cat:"Honeymoon",planned:0,actual:0,notes:""},
+      {cat:"Gifts & Favors",planned:0,actual:0,notes:""},{cat:"Miscellaneous",planned:0,actual:0,notes:""},
     ],
     checklist: buildChecklist(),
     guests: [],
@@ -1338,7 +1334,7 @@ function buildChecklist() {
 }
 
 function buildVendors() {
-  return ["Venue & Rentals","Catering & Bar","Photography & Video","Florals & Decor","Entertainment / DJ","Transportation","Wedding Attire","Hair & Makeup","Stationery","Planner / Coordinator","Miscellaneous"].map(c=>({cat:c,company:"",contact:"",email:"",phone:"",status:"",due:"",arrival:"",price:0,deposit:0}));
+  return ["Venue","Rentals","Catering","Bar","Photography & Video","Photography","Video","Florals","Decor","Entertainment","DJ","MC","Officiants","Transportation","Wedding Attire","Hair & Makeup","Stationery","Planner / Coordinator","Honeymoon","Gifts & Favors","Miscellaneous"].map(c=>({cat:c,company:"",contact:"",email:"",phone:"",status:"",due:"",arrival:"",price:0,deposit:0}));
 }
 
 // ── Hidden Fee Checklists per Vendor Type ──
@@ -1367,6 +1363,16 @@ const VENDOR_HIDDEN_FEES = {
   "Planner / Coordinator":["Day-of coordination vs full service","Vendor referral commission","Overtime rate","Post-wedding wrap-up","Additional meetings fee"],
   "Wedding Attire":["Alterations cost","Rush order fee","Preservation/cleaning","Accessories not included","Shipping fee"],
   "Stationery":["Rush printing fee","Shipping cost","Reprint fee for errors","Envelope addressing","Custom design surcharge"],
+  "Catering":["Per-guest minimum","Cake cutting fee","Service charge (%)","Tastings cost","Staff gratuity","Late guest additions","Dietary surcharge"],
+  "Bar":["Corkage fee","Minimum spend","Per-person bar package","Overtime rate","Specialty cocktail surcharge","Glassware rental","Non-alcoholic options"],
+  "Photography":["Extra hours rate","Second shooter cost","Travel fee","Rush editing fee","Album/print cost","Raw files fee","Engagement session cost"],
+  "Video":["Extra hours rate","Drone footage cost","Highlight reel vs full edit","Raw footage fee","Travel fee","Same-day edit cost"],
+  "Florals":["Delivery/setup fee","Teardown/removal fee","Seasonal surcharge","Container/vase rental","Ceremony to reception repurpose cost","Last-minute changes fee"],
+  "Decor":["Delivery/setup fee","Teardown/removal fee","Damage waiver","Custom fabrication surcharge","Weekend surcharge"],
+  "Entertainment":["Overtime rate","Equipment fee","Sound check time","Travel fee","Setup/teardown time","Custom requests surcharge"],
+  "DJ":["Overtime rate","Equipment fee","Sound check time","MC services extra","Lighting package","Travel fee","Setup/teardown time"],
+  "MC":["Overtime rate","Rehearsal fee","Script writing fee","Travel fee","Equipment requirements"],
+  "Officiants":["Rehearsal fee","Marriage license filing","Travel fee","Custom ceremony writing","Pre-marital counseling"],
   "Miscellaneous":[]
 };
 
@@ -1397,23 +1403,34 @@ const VENDOR_CONTRACT_CHECKS = {
   "Planner / Coordinator":["Services included (itemized)","Communication expectations","Day-of timeline ownership","Vendor coordination scope","Cancellation/refund","Payment schedule"],
   "Wedding Attire":["Fitting schedule","Alterations included","Delivery timeline","Cancellation/refund","Payment schedule"],
   "Stationery":["Proof approval process","Production timeline","Reprint policy","Shipping timeline","Cancellation policy","Payment schedule"],
+  "Catering":["Per-head pricing breakdown","Minimum guest count","Final headcount deadline","Menu tasting included","Staff-to-guest ratio","Payment schedule","Cancellation policy"],
+  "Bar":["Hours of service","Alcohol types included","Bartender-to-guest ratio","Last call policy","BYOB allowed","Payment schedule","Cancellation policy"],
+  "Photography":["Hours of coverage","Deliverables (# of photos)","Editing turnaround time","Print/usage rights","Second shooter included","Backup equipment policy","Cancellation/refund","Payment schedule"],
+  "Video":["Hours of coverage","Deliverables (highlight, full film)","Editing turnaround","Raw footage included","Drone usage","Music licensing","Cancellation policy","Payment schedule"],
+  "Florals":["Proposal vs final cost","Substitution policy","Setup/teardown times","Day-of contact","Rental items return","Cancellation/refund","Payment schedule"],
+  "Decor":["Setup/teardown schedule","Damage policy","Custom design approval","Delivery timeline","Cancellation/refund","Payment schedule"],
+  "Entertainment":["Hours of performance","Equipment provided","Break schedule","Cancellation policy","Payment schedule","Backup plan if sick"],
+  "DJ":["Hours of performance","Break schedule","Equipment provided","Song requests process","MC duties included","Cancellation policy","Payment schedule","Backup plan if sick"],
+  "MC":["Hours of service","Script approval process","Rehearsal included","Equipment needs","Cancellation policy","Payment schedule"],
+  "Officiants":["Ceremony length","Rehearsal included","Script approval process","Legal filing included","Cancellation policy","Payment schedule","Backup officiant plan"],
   "Miscellaneous":[]
 };
 
 // Vendor → Budget category mapping
 const VENDOR_BUDGET_MAP = {
-  // Direct matches (vendor cat = budget cat)
-  "Venue & Rentals":"Venue & Rentals","Catering & Bar":"Catering & Bar","Photography & Video":"Photography & Video",
-  "Florals & Decor":"Florals & Decor","Entertainment / DJ":"Entertainment / DJ","Transportation":"Transportation",
-  "Wedding Attire":"Wedding Attire","Hair & Makeup":"Hair & Makeup","Stationery":"Stationery",
-  "Planner / Coordinator":"Planner / Coordinator","Honeymoon":"Honeymoon","Gifts & Favors":"Gifts & Favors",
-  "Miscellaneous":"Miscellaneous",
-  // Legacy mappings for old data
-  "Venue":"Venue & Rentals","Caterer":"Catering & Bar","Photographer":"Photography & Video",
-  "Videographer":"Photography & Video","Florist":"Florals & Decor","DJ / Band":"Entertainment / DJ",
-  "Officiant":"Miscellaneous","Baker":"Catering & Bar","Hair Stylist":"Hair & Makeup",
-  "Makeup Artist":"Hair & Makeup","Wedding Planner":"Planner / Coordinator",
-  "Rentals":"Venue & Rentals","Lighting / AV":"Entertainment / DJ","Photo Booth":"Entertainment / DJ"
+  // 1:1 matches (new categories)
+  "Venue":"Venue","Rentals":"Rentals","Catering":"Catering","Bar":"Bar",
+  "Photography & Video":"Photography & Video","Photography":"Photography","Video":"Video",
+  "Florals":"Florals","Decor":"Decor","Entertainment":"Entertainment","DJ":"DJ","MC":"MC",
+  "Officiants":"Officiants","Transportation":"Transportation","Wedding Attire":"Wedding Attire",
+  "Hair & Makeup":"Hair & Makeup","Stationery":"Stationery","Planner / Coordinator":"Planner / Coordinator",
+  "Honeymoon":"Honeymoon","Gifts & Favors":"Gifts & Favors","Miscellaneous":"Miscellaneous",
+  // Legacy mappings for old saved data
+  "Venue & Rentals":"Venue","Catering & Bar":"Catering","Florals & Decor":"Florals",
+  "Entertainment / DJ":"Entertainment","Caterer":"Catering","Photographer":"Photography",
+  "Videographer":"Video","Florist":"Florals","DJ / Band":"DJ","Officiant":"Officiants",
+  "Baker":"Catering","Hair Stylist":"Hair & Makeup","Makeup Artist":"Hair & Makeup",
+  "Wedding Planner":"Planner / Coordinator","Lighting / AV":"Entertainment","Photo Booth":"Entertainment"
 };
 
 function syncVendorsToBudget() {
@@ -2206,7 +2223,7 @@ function removeMealOption(idx) {
 let vendorViewMode = 'table';
 let expandedVendor = -1;
 let vendorCatFilter = 'all';
-const VENDOR_CATS_DEFAULT = ["Venue & Rentals","Catering & Bar","Photography & Video","Florals & Decor","Entertainment / DJ","Transportation","Wedding Attire","Hair & Makeup","Stationery","Planner / Coordinator","Honeymoon","Gifts & Favors","Miscellaneous"];
+const VENDOR_CATS_DEFAULT = ["Venue","Rentals","Catering","Bar","Photography & Video","Photography","Video","Florals","Decor","Entertainment","DJ","MC","Officiants","Transportation","Wedding Attire","Hair & Makeup","Stationery","Planner / Coordinator","Honeymoon","Gifts & Favors","Miscellaneous"];
 
 function getVendorCats() {
   const custom = S.customVendorCats || [];
