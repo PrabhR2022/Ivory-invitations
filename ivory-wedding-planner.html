@@ -2083,27 +2083,33 @@ function assignGuestTable(guestIdx, tableName) {
 }
 
 function showTablePopover(guestIdx, btnEl) {
+  event.stopPropagation();
   // Close any existing popover
-  const old = document.querySelector('.table-popover');
-  if (old) old.remove();
+  closeTablePopover();
 
   const fpTables = (S.floorPlan||[]).filter(f => {const d=FP_TYPES[f.type];return d&&d.isTable;});
   const pop = document.createElement('div');
   pop.className = 'table-popover';
-  pop.style.cssText = 'position:absolute;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:100;min-width:160px;padding:4px;left:0;top:100%;margin-top:4px';
+  pop.style.cssText = 'position:absolute;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:100;min-width:180px;padding:4px;left:0;top:100%;margin-top:4px';
+  pop.onclick = function(e) { e.stopPropagation(); };
 
   let html = '';
   fpTables.forEach(t => {
     const count = S.seatAssignments && S.seatAssignments[t.id] ? S.seatAssignments[t.id].length : 0;
-    html += `<div onclick="event.stopPropagation();assignGuestTable(${guestIdx},'${t.label.replace(/'/g,"\\'")}');closeTablePopover();renderGuests()" style="padding:8px 12px;font-size:13px;cursor:pointer;border-radius:6px;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''"><span>${esc(t.label)}</span><span style="font-size:10px;color:var(--stone)">${count}/${t.seats}</span></div>`;
+    html += `<div onclick="assignGuestTable(${guestIdx},'${t.label.replace(/'/g,"\\'")}');closeTablePopover();renderGuests()" style="padding:8px 12px;font-size:13px;cursor:pointer;border-radius:6px;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''"><span>${esc(t.label)}</span><span style="font-size:10px;color:var(--stone)">${count}/${t.seats}</span></div>`;
   });
-  html += `<div onclick="event.stopPropagation();quickAddTableAndAssign(${guestIdx})" style="padding:8px 12px;font-size:13px;cursor:pointer;border-radius:6px;font-weight:600;color:var(--charcoal);border-top:1px solid var(--border-light);margin-top:2px" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">+ Add Table</div>`;
+  html += `<div onclick="quickAddTableAndAssign(${guestIdx})" style="padding:8px 12px;font-size:13px;cursor:pointer;border-radius:6px;font-weight:600;color:var(--charcoal);border-top:1px solid var(--border-light);margin-top:2px" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">+ Add Table</div>`;
 
   pop.innerHTML = html;
   btnEl.closest('td').appendChild(pop);
 
-  // Close on click outside
-  setTimeout(() => document.addEventListener('click', closeTablePopover, {once:true}), 0);
+  // Close on click outside (delayed to avoid immediate close from current click)
+  setTimeout(() => {
+    function outsideClick(e) {
+      if (!pop.contains(e.target)) { closeTablePopover(); document.removeEventListener('click', outsideClick); }
+    }
+    document.addEventListener('click', outsideClick);
+  }, 10);
 }
 
 function closeTablePopover() {
