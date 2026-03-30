@@ -1940,7 +1940,7 @@ function renderGuests() {
     // Table assignment — popover-based
     const tableCell = g.table
       ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--cream);border:1px solid var(--border-light);border-radius:100px;font-size:12px;font-weight:500;cursor:pointer" onclick="showTablePopover(event,${i},this)">${esc(g.table)} <span onclick="event.stopPropagation();unassignGuestTable(${i})" style="color:var(--stone);cursor:pointer;font-size:14px;line-height:1">&times;</span></span>`
-      : `<button onclick="showTablePopover(event,${i},this)" style="padding:5px 12px;border:1px solid var(--border-light);border-radius:100px;font-size:11px;font-weight:500;background:white;color:var(--charcoal);cursor:pointer">Assign Table</button>`;
+      : `<a href="#" onclick="event.preventDefault();showTablePopover(event,${i},this)" style="font-size:12px;color:var(--taupe);text-decoration:underline;cursor:pointer">Assign</a>`;
 
     let row = `<tr>
     <td style="width:36px;text-align:center;color:var(--stone)">${i+1}</td>
@@ -2094,7 +2094,7 @@ function showTablePopover(e, guestIdx, btnEl) {
   const fpTables = (S.floorPlan||[]).filter(f => {const d=FP_TYPES[f.type];return d&&d.isTable;});
   const pop = document.createElement('div');
   pop.className = 'table-popover';
-  pop.style.cssText = 'position:absolute;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:100;min-width:180px;padding:4px;left:0;top:100%;margin-top:4px';
+  pop.style.cssText = 'position:absolute;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.15);z-index:999;min-width:180px;padding:4px;left:0;top:100%;margin-top:4px';
   pop.onclick = function(e) { e.stopPropagation(); };
 
   let html = '';
