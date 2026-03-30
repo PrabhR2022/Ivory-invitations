@@ -1903,18 +1903,17 @@ function renderGuests() {
       plusAccepted = 'Pending'; plusAcceptedColor = 'var(--stone)';
     }
 
-    // Table assignment dropdown
-    const tableSelect = `<select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:rgba(250,250,247,0.6)" onchange="assignGuestTable(${i},this.value)">
-      <option value="">—</option>
-      ${fpTables.map(t=>`<option value="${t.label.replace(/"/g,'&quot;')}"${g.table===t.label?' selected':''}>${t.label}</option>`).join('')}
-    </select>`;
+    // Table assignment — popover-based
+    const tableCell = g.table
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--cream);border:1px solid var(--border-light);border-radius:100px;font-size:12px;font-weight:500;cursor:pointer" onclick="showTablePopover(${i},this)">${esc(g.table)} <span onclick="event.stopPropagation();unassignGuestTable(${i})" style="color:var(--stone);cursor:pointer;font-size:14px;line-height:1">&times;</span></span>`
+      : `<button onclick="showTablePopover(${i},this)" style="padding:5px 12px;border:1px solid var(--border-light);border-radius:100px;font-size:11px;font-weight:500;background:white;color:var(--charcoal);cursor:pointer">Assign Table</button>`;
 
     let row = `<tr>
     <td style="width:36px;text-align:center;color:var(--stone)">${i+1}</td>
     <td>${eCell(g.name,`S.guests[${i}].name=this.value;saveState()`)}</td>
     <td>${eCell(g.role||'',`setGuestRole(${i},this.value)`,"select",[...GUEST_ROLES,...(g.role && !GUEST_ROLES.includes(g.role)?[g.role]:[])])}</td>
     <td>${eCell(g.address,`S.guests[${i}].address=this.value;saveState()`)}</td>
-    <td style="min-width:100px">${fpTables.length > 0 ? tableSelect : '<span style="font-size:11px;color:var(--stone)">Add tables in Floor Plan</span>'}</td>
+    <td style="min-width:100px;position:relative">${tableCell}</td>
     <td><input type="number" min="0" max="10" value="${g.allowPlusOne}" style="width:60px;text-align:center" onchange="S.guests[${i}].allowPlusOne=+this.value;saveState()" /></td>
     <td><div>${eCell(g.rsvp,`S.guests[${i}].rsvp=this.value;saveState();renderGuests()`,"select",["Pending","Attending","Declined"])}</div>${rsvpInfo}</td>
     <td><div style="font-size:13px;font-weight:500;color:${plusAcceptedColor}">${plusAccepted}</div></td>
@@ -2052,6 +2051,70 @@ function assignGuestTable(guestIdx, tableName) {
 
   saveState();
 }
+
+function showTablePopover(guestIdx, btnEl) {
+  // Close any existing popover
+  const old = document.querySelector('.table-popover');
+  if (old) old.remove();
+
+  const fpTables = (S.floorPlan||[]).filter(f => {const d=FP_TYPES[f.type];return d&&d.isTable;});
+  const pop = document.createElement('div');
+  pop.className = 'table-popover';
+  pop.style.cssText = 'position:absolute;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:100;min-width:160px;padding:4px;left:0;top:100%;margin-top:4px';
+
+  let html = '';
+  fpTables.forEach(t => {
+    const count = S.seatAssignments && S.seatAssignments[t.id] ? S.seatAssignments[t.id].length : 0;
+    html += `<div onclick="event.stopPropagation();assignGuestTable(${guestIdx},'${t.label.replace(/'/g,"\\'")}');closeTablePopover();renderGuests()" style="padding:8px 12px;font-size:13px;cursor:pointer;border-radius:6px;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''"><span>${esc(t.label)}</span><span style="font-size:10px;color:var(--stone)">${count}/${t.seats}</span></div>`;
+  });
+  html += `<div onclick="event.stopPropagation();quickAddTableAndAssign(${guestIdx})" style="padding:8px 12px;font-size:13px;cursor:pointer;border-radius:6px;font-weight:600;color:var(--charcoal);border-top:1px solid var(--border-light);margin-top:2px" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">+ Add Table</div>`;
+
+  pop.innerHTML = html;
+  btnEl.closest('td').appendChild(pop);
+
+  // Close on click outside
+  setTimeout(() => document.addEventListener('click', closeTablePopover, {once:true}), 0);
+}
+
+function closeTablePopover() {
+  const pop = document.querySelector('.table-popover');
+  if (pop) pop.remove();
+}
+
+function quickAddTableAndAssign(guestIdx) {
+  closeTablePopover();
+  S.floorPlanCleared = false;
+  if (!S.floorPlan) S.floorPlan = [];
+  const tableNum = S.floorPlan.filter(f => FP_TYPES[f.type]?.isTable).length + 1;
+  const item = {
+    id: 'fp-' + Date.now() + '-' + tableNum,
+    type: 'round',
+    label: 'Table ' + tableNum,
+    x: 40 + Math.random() * 200,
+    y: 40 + Math.random() * 200,
+    seats: 6
+  };
+  S.floorPlan.push(item);
+  assignGuestTable(guestIdx, item.label);
+  saveState();
+  renderGuests();
+}
+
+function unassignGuestTable(guestIdx) {
+  const g = S.guests[guestIdx];
+  if (!g) return;
+  const oldTable = g.table;
+  g.table = '';
+  if (oldTable && S.seatAssignments) {
+    const fpItem = (S.floorPlan||[]).find(f => f.label === oldTable);
+    if (fpItem && S.seatAssignments[fpItem.id]) {
+      S.seatAssignments[fpItem.id] = S.seatAssignments[fpItem.id].filter(n => n !== g.name);
+    }
+  }
+  saveState();
+  renderGuests();
+}
+
 function copyRsvpLink(btn) { const url = window.location.href.replace(/[^/]*$/,'') + 'ivory-rsvp.html'; navigator.clipboard.writeText(url).then(()=>{ btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy Link',2000); }); }
 
 function importGuestFile(input) {
