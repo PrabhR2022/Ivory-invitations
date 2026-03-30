@@ -616,6 +616,36 @@ table input[type="number"]{text-align:right;width:90px}
         <p id="notif-wedding-countdown" style="font-size:12px;color:var(--stone)"></p>
       </div>
 
+      <!-- Getting Started Guide -->
+      <div id="notif-getting-started" style="display:none;margin-bottom:24px;padding:24px 20px;background:white;border:1px solid var(--border-light);border-radius:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <p style="font-family:var(--font-serif);font-size:18px;margin:0">Getting Started</p>
+          <button onclick="S.hideGettingStarted=true;saveState();document.getElementById('notif-getting-started').style.display='none'" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:12px">Dismiss</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div onclick="showTab('budget')" style="padding:12px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">
+            <span style="font-size:20px">💰</span>
+            <p style="font-size:13px;font-weight:600;margin:4px 0 2px">Set Your Budget</p>
+            <p style="font-size:11px;color:var(--stone)">Plan how much to spend on each category</p>
+          </div>
+          <div onclick="showTab('guests')" style="padding:12px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">
+            <span style="font-size:20px">👥</span>
+            <p style="font-size:13px;font-weight:600;margin:4px 0 2px">Add Guests</p>
+            <p style="font-size:11px;color:var(--stone)">Import or add your guest list</p>
+          </div>
+          <div onclick="showTab('vendors')" style="padding:12px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">
+            <span style="font-size:20px">🤝</span>
+            <p style="font-size:13px;font-weight:600;margin:4px 0 2px">Find Vendors</p>
+            <p style="font-size:11px;color:var(--stone)">Track contacts, costs & contracts</p>
+          </div>
+          <div onclick="showTab('timeline')" style="padding:12px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">
+            <span style="font-size:20px">📋</span>
+            <p style="font-size:13px;font-weight:600;margin:4px 0 2px">Plan Your Day</p>
+            <p style="font-size:11px;color:var(--stone)">Build your wedding day itinerary</p>
+          </div>
+        </div>
+      </div>
+
       <h1 class="page-title">Notification Centre</h1>
       <p class="page-desc">Smart alerts from your planning data — never miss a deadline</p>
 
@@ -2008,7 +2038,7 @@ function renderMealCounts() {
   }
 }
 
-const GUEST_ROLES = ["","Bride's Family","Groom's Family","Bridesmaid","Groomsman","Maid of Honor","Best Man","Flower Girl","Ring Bearer","Officiant","Usher","Friend","VIP","+ Custom"];
+const GUEST_ROLES = ["Guest","Bride's Family","Groom's Family","Bridesmaid","Groomsman","Maid of Honor","Best Man","Flower Girl","Ring Bearer","Officiant","Usher","Friend","VIP","+ Custom"];
 function setGuestRole(idx, val) {
   if (val === '+ Custom') {
     showInputModal('Custom Role', [{id:'gr-custom', label:'Role Name', required:true, placeholder:'e.g. Cousin, MC, Reader'}], function() {
@@ -2019,7 +2049,7 @@ function setGuestRole(idx, val) {
   } else { S.guests[idx].role = val; }
   saveState(); renderGuests();
 }
-function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No",table:"",role:""}); saveState(); renderGuests(); }
+function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No",table:"",role:"Guest"}); saveState(); renderGuests(); }
 
 function assignGuestTable(guestIdx, tableName) {
   const guest = S.guests[guestIdx];
@@ -4552,6 +4582,9 @@ function renderNotifCoupleBanner() {
     const diff = Math.ceil((new Date(S.weddingDate) - new Date()) / (1000*60*60*24));
     cd.textContent = diff > 0 ? diff + ' days to go' : diff === 0 ? 'Today is the day!' : 'Congratulations!';
   } else { cd.textContent = ''; }
+  // Getting started guide
+  const gsEl = document.getElementById('notif-getting-started');
+  if (gsEl) gsEl.style.display = S.hideGettingStarted ? 'none' : 'block';
 }
 
 function renderNotifBudgetPie() {
@@ -5026,7 +5059,9 @@ function generateQR() {
 // ONBOARDING
 // ══════════════════════════════════════════════════
 let obStep = 1;
-let obMeals = ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal"];
+const OB_MEAL_DEFAULTS = ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal","Gluten-Free","Halal","Kosher"];
+let obMealSelections = {};
+let obMeals = [];
 let obParsedGuests = [];
 
 function showOnboarding() {
@@ -5081,8 +5116,15 @@ function obNext() {
     if (!name1) fields.push(document.getElementById('ob-name1'));
     if (!name2) fields.push(document.getElementById('ob-name2'));
     if (!date) fields.push(document.getElementById('ob-date'));
+    if (date && new Date(date) < new Date(new Date().toDateString())) {
+      fields.push(document.getElementById('ob-date'));
+      const dateEl = document.getElementById('ob-date');
+      dateEl.style.borderColor = 'var(--red)';
+      const msg = dateEl.parentElement.querySelector('.ob-date-err');
+      if (!msg) { const e = document.createElement('p'); e.className='ob-date-err'; e.style.cssText='color:var(--red);font-size:11px;margin-top:4px'; e.textContent='Wedding date cannot be in the past'; dateEl.parentElement.appendChild(e); }
+    }
     if (fields.length > 0) {
-      fields.forEach(f => { f.style.borderColor = 'var(--red)'; f.addEventListener('input', function handler() { f.style.borderColor = ''; f.removeEventListener('input', handler); }, {once: true}); });
+      fields.forEach(f => { f.style.borderColor = 'var(--red)'; f.addEventListener('input', function handler() { f.style.borderColor = ''; const err=f.parentElement.querySelector('.ob-date-err'); if(err)err.remove(); f.removeEventListener('input', handler); }, {once: true}); });
       fields[0].focus();
       return;
     }
@@ -5438,25 +5480,32 @@ function inflateRaw(input) {
   return new Uint8Array(result);
 }
 
-// ── Onboarding meal options ──
+// ── Onboarding meal options (checklist opt-in) ──
 function renderObMeals() {
-  const container = document.getElementById('ob-meal-tags');
-  container.innerHTML = obMeals.map((m, i) =>
-    `<span class="ob-meal-tag">${m}<span class="remove" onclick="obRemoveMeal(${i})">&times;</span></span>`
-  ).join('');
+  const allMeals = [...new Set([...OB_MEAL_DEFAULTS, ...Object.keys(obMealSelections).filter(k => !OB_MEAL_DEFAULTS.includes(k))])];
+  const container = document.getElementById('ob-meal-checklist');
+  if (!container) return;
+  container.innerHTML = allMeals.map(m => {
+    const checked = obMealSelections[m] === true;
+    const isCustom = !OB_MEAL_DEFAULTS.includes(m);
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms;${checked?'background:var(--cream);border-color:var(--charcoal)':''}">
+      <input type="checkbox" ${checked?'checked':''} onchange="obMealSelections['${m.replace(/'/g,"\\'")}']=this.checked;renderObMeals()" style="width:16px;height:16px;accent-color:var(--charcoal)" />
+      <span style="font-size:14px;font-weight:500;flex:1">${m}</span>
+      ${isCustom ? '<span onclick="event.preventDefault();event.stopPropagation();delete obMealSelections[\''+m.replace(/'/g,"\\'")+'\'];renderObMeals()" style="color:var(--stone);cursor:pointer;font-size:14px">&times;</span>' : ''}
+    </label>`;
+  }).join('');
+  // Sync obMeals array for saving
+  obMeals = allMeals.filter(m => obMealSelections[m] === true);
 }
 function obAddMeal() {
   const input = document.getElementById('ob-meal-input');
   const val = input.value.trim();
-  if (!val || obMeals.includes(val)) { input.value = ''; return; }
-  obMeals.push(val);
+  if (!val) { input.value = ''; return; }
+  obMealSelections[val] = true;
   input.value = '';
   renderObMeals();
 }
-function obRemoveMeal(idx) {
-  obMeals.splice(idx, 1);
-  renderObMeals();
-}
+function obRemoveMeal(idx) { obMeals.splice(idx, 1); renderObMeals(); } // legacy
 
 function updateSidebarBadges() {
   const clDone2 = S.checklist.filter(c=>c.done).length;
@@ -6007,12 +6056,12 @@ if (!S.onboardingDone) {
     <!-- STEP 3: Meal Options -->
     <div class="ob-step" id="ob-step-3">
       <p class="ob-title">Meal Options</p>
-      <p class="ob-sub">Set the meal choices your guests can pick from on the RSVP page. You can always change these later.</p>
+      <p class="ob-sub">Select the meal choices your guests can pick from. You can always change these later.</p>
 
-      <div class="ob-meal-tags" id="ob-meal-tags"></div>
+      <div id="ob-meal-checklist" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
 
       <div class="ob-add-row">
-        <input class="ob-add-input" id="ob-meal-input" placeholder="Add a meal option..." onkeydown="if(event.key==='Enter')obAddMeal()" />
+        <input class="ob-add-input" id="ob-meal-input" placeholder="Add a custom meal option..." onkeydown="if(event.key==='Enter')obAddMeal()" />
         <button class="btn btn-sm btn-dark" onclick="obAddMeal()">+ Add</button>
       </div>
 
