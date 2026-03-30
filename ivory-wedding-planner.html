@@ -996,6 +996,9 @@ table input[type="number"]{text-align:right;width:90px}
       <h1 class="page-title">Itinerary</h1>
       <p class="page-desc">Your complete day-of schedule — ceremonies, events & vendor coordination</p>
 
+      <!-- Inline itinerary setup wizard -->
+      <div id="itin-setup-inline" style="display:none;max-width:520px;margin:0 auto;padding:20px 0"></div>
+
       <!-- Sub-tabs -->
       <div class="tl-tabs" id="timeline-subtabs">
         <button class="tl-tab active" onclick="showTimelineSub('schedule')">Schedule</button>
@@ -1564,9 +1567,10 @@ function renderTab(id) {
     case "ceremony": renderCeremony(); break;
     case "music": renderMusic(); break;
     case "timeline":
-      renderTimeline();
-      if (!S.itinerarySetupDone && S.timeline.length === 0 && S.ceremonies.length === 0) {
-        setTimeout(showItinOnboarding, 300);
+      if (!S.itinerarySetupDone && (S.timeline.length === 0 && S.ceremonies.length === 0 || S.itinObStep)) {
+        showItinOnboarding();
+      } else {
+        renderTimeline();
       }
       break;
     case "transport": renderTransport(); break;
@@ -5529,28 +5533,48 @@ let itinObStep = 1;
 let itinObData = { startTime: '07:00', ceremonies: [], reception: [], prep: true };
 
 function showItinOnboarding() {
-  document.getElementById('itin-ob-overlay').classList.add('active');
-  itinObStep = 1;
-  itinObData = { startTime: '07:00', ceremonies: [], reception: [], prep: true };
+  // Restore saved progress or start fresh
+  itinObStep = S.itinObStep || 1;
+  itinObData = S.itinObData || { startTime: '07:00', ceremonies: [], reception: [], prep: true };
+  // Hide schedule content, show wizard
+  const subtabs = document.getElementById('timeline-subtabs');
+  if (subtabs) subtabs.style.display = 'none';
+  document.querySelectorAll('#tab-timeline .tl-section').forEach(s => s.style.display = 'none');
+  const wizEl = document.getElementById('itin-setup-inline');
+  if (wizEl) wizEl.style.display = 'block';
   renderItinObStep();
 }
 
 function closeItinOnboarding() {
-  document.getElementById('itin-ob-overlay').classList.remove('active');
+  // Hide wizard, show schedule
+  const wizEl = document.getElementById('itin-setup-inline');
+  if (wizEl) { wizEl.style.display = 'none'; wizEl.innerHTML = ''; }
+  const subtabs = document.getElementById('timeline-subtabs');
+  if (subtabs) subtabs.style.display = '';
+  document.querySelectorAll('#tab-timeline .tl-section').forEach(s => s.style.display = '');
+  // Clear saved progress
+  delete S.itinObStep;
+  delete S.itinObData;
+}
+
+function saveItinProgress() {
+  S.itinObStep = itinObStep;
+  S.itinObData = {...itinObData, ceremonies: [...itinObData.ceremonies], reception: [...itinObData.reception]};
+  saveState();
 }
 
 function renderItinObStep() {
-  // Update progress dots
-  document.querySelectorAll('#itin-ob-overlay .ob-dot').forEach((d, i) => {
-    d.className = 'ob-dot';
-    if (i + 1 < itinObStep) d.classList.add('done');
-    else if (i + 1 === itinObStep) d.classList.add('current');
-  });
+  saveItinProgress();
 
-  const con = document.getElementById('itin-ob-content');
+  const con = document.getElementById('itin-setup-inline');
+  if (!con) return;
+
+  // Build progress dots inline
+  const dots = [1,2,3,4].map(n => `<div class="ob-dot ${n < itinObStep ? 'done' : n === itinObStep ? 'current' : ''}"></div>`).join('');
+  const skipLink = `<div style="text-align:center;margin-top:12px"><a href="#" onclick="event.preventDefault();S.itinerarySetupDone=true;saveState();closeItinOnboarding();renderTimeline()" style="font-size:12px;color:var(--stone);text-decoration:underline">Skip setup entirely</a></div>`;
 
   if (itinObStep === 1) {
-    con.innerHTML = `
+    con.innerHTML = `<div class="ob-progress">${dots}</div>
       <p class="ob-title">Plan Your Day</p>
       <p class="ob-sub">Let's build your wedding day itinerary step by step.</p>
       <div class="ob-field">
@@ -5566,7 +5590,7 @@ function renderItinObStep() {
       </div>
       <div class="ob-btn-row">
         <button class="ob-btn ob-btn-primary" onclick="itinObData.startTime=document.getElementById('itin-start-time').value||'07:00';itinObStep=2;renderItinObStep()">Next</button>
-      </div>`;
+      </div>${skipLink}`;
   } else if (itinObStep === 2) {
     const types = [
       {key:'custom', label:'Custom / Secular'},
@@ -5578,7 +5602,7 @@ function renderItinObStep() {
       {key:'muslim', label:'Muslim (Nikah)'},
       {key:'nondenominational', label:'Non-Denominational'}
     ];
-    con.innerHTML = `
+    con.innerHTML = `<div class="ob-progress">${dots}</div>
       <p class="ob-title">Ceremonies</p>
       <p class="ob-sub">Select the ceremony types for your wedding day. You can add multiple.</p>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
@@ -5591,7 +5615,7 @@ function renderItinObStep() {
         <button class="ob-btn ob-btn-secondary" onclick="itinObStep=1;renderItinObStep()">Back</button>
         <button class="ob-btn ob-btn-secondary" onclick="itinObData.ceremonies=[];itinObStep=3;renderItinObStep()">Skip</button>
         <button class="ob-btn ob-btn-primary" onclick="itinObStep=3;renderItinObStep()">Next</button>
-      </div>`;
+      </div>${skipLink}`;
   } else if (itinObStep === 3) {
     const opts = [
       {key:'cocktail', label:'Cocktail Hour'},
@@ -5605,7 +5629,7 @@ function renderItinObStep() {
       {key:'sangeet', label:'Sangeet / Dance Night'},
       {key:'mehndi', label:'Mehndi / Henna'}
     ];
-    con.innerHTML = `
+    con.innerHTML = `<div class="ob-progress">${dots}</div>
       <p class="ob-title">Reception & Celebrations</p>
       <p class="ob-sub">Select the events for your reception. You can always add more later.</p>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
@@ -5618,14 +5642,14 @@ function renderItinObStep() {
         <button class="ob-btn ob-btn-secondary" onclick="itinObStep=2;renderItinObStep()">Back</button>
         <button class="ob-btn ob-btn-secondary" onclick="itinObData.reception=[];itinObStep=4;renderItinObStep()">Skip</button>
         <button class="ob-btn ob-btn-primary" onclick="itinObStep=4;renderItinObStep()">Next</button>
-      </div>`;
+      </div>${skipLink}`;
   } else if (itinObStep === 4) {
     const cerNames = itinObData.ceremonies.map(k => CEREMONY_TEMPLATES[k]?.label || k).join(', ') || 'None selected';
     const recNames = itinObData.reception.map(k => {
       const map = {cocktail:'Cocktail Hour',dinner:'Dinner',speeches:'Speeches & Toasts',dancing:'Dancing',grandexit:'Grand Exit',walima:'Walima',langar:'Langar',hora:'Hora Dance',sangeet:'Sangeet',mehndi:'Mehndi'};
       return map[k] || k;
     }).join(', ') || 'None selected';
-    con.innerHTML = `
+    con.innerHTML = `<div class="ob-progress">${dots}</div>
       <p class="ob-title">Your Day at a Glance</p>
       <p class="ob-sub">Here's what we'll add to your itinerary. You can edit everything after.</p>
       <div style="background:white;border:1px solid var(--border-light);border-radius:12px;padding:16px;margin-bottom:20px">
@@ -5750,9 +5774,11 @@ function buildItinFromWizard() {
   S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
 
   S.itinerarySetupDone = true;
+  delete S.itinObStep;
+  delete S.itinObData;
   saveState();
   closeItinOnboarding();
-  renderTlSchedule();
+  renderTimeline();
 }
 
 // ══════════════════════════════════════════════════
@@ -6080,18 +6106,7 @@ if (!S.onboardingDone) {
   </div>
 </div>
 
-<!-- Itinerary Onboarding Wizard -->
-<div class="ob-overlay" id="itin-ob-overlay">
-  <div class="ob-modal">
-    <div class="ob-progress">
-      <div class="ob-dot current"></div>
-      <div class="ob-dot"></div>
-      <div class="ob-dot"></div>
-      <div class="ob-dot"></div>
-    </div>
-    <div id="itin-ob-content"></div>
-  </div>
-</div>
+<!-- Itinerary overlay removed — wizard is now inline -->
 
 <div id="print-area"></div>
 </body>
