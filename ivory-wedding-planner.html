@@ -2313,9 +2313,9 @@ function renderVendors() {
 
     if (isExpanded) {
       const fees = VENDOR_HIDDEN_FEES[v.cat] || [];
-      const feeHTML = fees.length ? fees.map(f => `<label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;padding:4px 0;cursor:pointer;line-height:1.4"><input type="checkbox" style="margin-top:2px;flex-shrink:0" ${v.hiddenFeeChecks[f]?'checked':''} onchange="S.vendors[${i}].hiddenFeeChecks['${f.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${f}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see hidden fees.</p>';
+      const feeHTML = fees.length ? fees.map(f => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;cursor:pointer;line-height:1.3;border-bottom:1px solid rgba(0,0,0,0.04)"><input type="checkbox" style="width:16px;height:16px;flex-shrink:0;accent-color:var(--charcoal)" ${v.hiddenFeeChecks[f]?'checked':''} onchange="S.vendors[${i}].hiddenFeeChecks['${f.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${f}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see hidden fees.</p>';
       const checks = VENDOR_CONTRACT_CHECKS[v.cat] || [];
-      const checkHTML = checks.length ? checks.map(c => `<label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;padding:4px 0;cursor:pointer;line-height:1.4"><input type="checkbox" style="margin-top:2px;flex-shrink:0" ${v.contractChecks[c]?'checked':''} onchange="S.vendors[${i}].contractChecks['${c.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${c}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see contract items.</p>';
+      const checkHTML = checks.length ? checks.map(c => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;cursor:pointer;line-height:1.3;border-bottom:1px solid rgba(0,0,0,0.04)"><input type="checkbox" style="width:16px;height:16px;flex-shrink:0;accent-color:var(--charcoal)" ${v.contractChecks[c]?'checked':''} onchange="S.vendors[${i}].contractChecks['${c.replace(/'/g,"\\'")}']=this.checked;saveState()"/><span>${c}</span></label>`).join('') : '<p style="color:var(--stone);font-size:11px">Set category to see contract items.</p>';
 
       row += `<tr><td colspan="8" style="padding:0;border:none"><div style="padding:20px 24px;background:var(--cream);border-top:2px solid var(--charcoal)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -2340,8 +2340,8 @@ function renderVendors() {
           <div><label class="ob-label">Package Notes</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].packageNotes=this.value;saveState()">${esc(v.packageNotes)}</textarea></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          <div><label class="ob-label">&#9888; Hidden Fees to Ask About</label><div style="padding:8px 12px;background:white;border-radius:8px;max-height:200px;overflow-y:auto;border:1px solid var(--border-light)">${feeHTML}</div></div>
-          <div><label class="ob-label">&#9989; Contract Checklist</label><div style="padding:8px 12px;background:white;border-radius:8px;max-height:200px;overflow-y:auto;border:1px solid var(--border-light)">${checkHTML}</div></div>
+          <div><label class="ob-label">&#9888; Hidden Fees to Ask About</label><div style="padding:10px 14px;background:white;border-radius:8px;max-height:240px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--border-light)">${feeHTML}</div></div>
+          <div><label class="ob-label">&#9989; Contract Checklist</label><div style="padding:10px 14px;background:white;border-radius:8px;max-height:240px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--border-light)">${checkHTML}</div></div>
         </div>
         <div style="margin-top:16px;text-align:right"><button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red)" onclick="S.vendors.splice(${i},1);expandedVendor=-1;saveState();syncVendorsToBudget();renderVendors();renderBudget()">Delete Vendor</button></div>
       </div></td></tr>`;
