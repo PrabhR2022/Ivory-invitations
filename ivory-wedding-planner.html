@@ -129,10 +129,10 @@ table input[type="number"]{text-align:right;width:90px}
 .sch-cal-slot{height:60px;padding:4px 6px;text-align:right;font-size:10px;font-weight:500;color:var(--stone);border-bottom:1px solid rgba(214,208,200,0.2)}
 .sch-cal-events{position:relative}
 .sch-cal-hline{position:absolute;left:0;right:0;height:1px;background:rgba(214,208,200,0.25)}
-.sch-cal-ev{position:absolute;left:4px;right:4px;border-radius:8px;padding:8px 10px;overflow:hidden;cursor:pointer;transition:all 200ms;border-left:3px solid;user-select:none}
+.sch-cal-ev{position:absolute;left:4px;right:4px;border-radius:8px;padding:8px 10px;overflow:visible;min-height:28px;cursor:pointer;transition:all 200ms;border-left:3px solid;user-select:none}
 .sch-cal-ev:hover{box-shadow:0 2px 12px rgba(0,0,0,0.1);transform:scale(1.01)}
 .sch-cal-ev.dragging{cursor:grabbing;box-shadow:0 6px 16px rgba(0,0,0,0.15);opacity:0.95;z-index:10}
-.sch-cal-ev .ce-name{font-size:11px;font-weight:600;line-height:1.3}
+.sch-cal-ev .ce-name{font-size:11px;font-weight:600;line-height:1.3;word-wrap:break-word;overflow-wrap:break-word}
 .sch-cal-ev .ce-time{font-size:9px;opacity:0.6;margin-top:1px}
 .sch-cal-ev .ce-vendor{font-size:9px;color:var(--stone);margin-top:2px}
 .sch-cal-ev.cat-prep{background:rgba(196,160,53,0.1);border-color:var(--yellow)}
@@ -140,6 +140,17 @@ table input[type="number"]{text-align:right;width:90px}
 .sch-cal-ev.cat-photos{background:rgba(74,122,91,0.08);border-color:var(--green)}
 .sch-cal-ev.cat-reception{background:rgba(156,139,122,0.08);border-color:var(--taupe)}
 .sch-cal-ev.cat-other{background:rgba(237,232,224,0.5);border-color:var(--stone)}
+.sch-tag-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.sch-tag-pill{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid var(--border-light);background:white;color:var(--charcoal);cursor:pointer;transition:all 150ms;user-select:none}
+.sch-tag-pill:hover{border-color:var(--taupe)}
+.sch-tag-pill.active{background:var(--charcoal);color:white;border-color:var(--charcoal)}
+.sch-tag-pill.active.tag-prep{background:var(--yellow);border-color:var(--yellow);color:var(--charcoal)}
+.sch-tag-pill.active.tag-ceremony{background:var(--red);border-color:var(--red);color:white}
+.sch-tag-pill.active.tag-photos{background:var(--green);border-color:var(--green);color:white}
+.sch-tag-pill.active.tag-reception{background:var(--taupe);border-color:var(--taupe);color:white}
+.sch-tag-pill.active.tag-other{background:var(--stone);border-color:var(--stone);color:white}
+.ce-cat-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.ce-cat-dot.dot-prep{background:var(--yellow)}.ce-cat-dot.dot-ceremony{background:var(--red)}.ce-cat-dot.dot-photos{background:var(--green)}.ce-cat-dot.dot-reception{background:var(--taupe)}.ce-cat-dot.dot-other{background:var(--stone)}
 .sch-cal-now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:5}
 .sch-cal-now::before{content:'';position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red)}
 
@@ -570,7 +581,7 @@ table input[type="number"]{text-align:right;width:90px}
       <div class="sidebar-label">Events</div>
       <button class="sidebar-btn" onclick="showTab('ceremony')"><span class="icon">&#9829;</span>Ceremony & Reception</button>
       <button class="sidebar-btn" onclick="showTab('music')"><span class="icon">&#9835;</span>Music Planner</button>
-      <button class="sidebar-btn" onclick="showTab('timeline')"><span class="icon">&#9200;</span>Day-of Timeline</button>
+      <button class="sidebar-btn" onclick="showTab('timeline')"><span class="icon">&#9200;</span>Itinerary</button>
       <button class="sidebar-btn" onclick="showTab('transport')"><span class="icon">&#128663;</span>Transportation</button>
     </div>
     <div class="sidebar-section">
@@ -952,14 +963,15 @@ table input[type="number"]{text-align:right;width:90px}
 
     <!-- ═══ TIMELINE ═══ -->
     <div class="tab-content" id="tab-timeline">
-      <h1 class="page-title">Day-of Timeline</h1>
-      <p class="page-desc">Visual schedule, vendor coordination & ceremony management</p>
+      <h1 class="page-title">Itinerary</h1>
+      <p class="page-desc">Your complete day-of schedule — ceremonies, events & vendor coordination</p>
 
       <!-- Sub-tabs -->
       <div class="tl-tabs" id="timeline-subtabs">
         <button class="tl-tab active" onclick="showTimelineSub('schedule')">Schedule</button>
         <button class="tl-tab" onclick="showTimelineSub('ceremonies')">Ceremonies</button>
-        <button class="tl-tab" onclick="showTimelineSub('vendors')">Vendors</button>
+        <!-- Vendors sub-tab hidden; tl-vendors section preserved -->
+        <!-- <button class="tl-tab" onclick="showTimelineSub('vendors')">Vendors</button> -->
       </div>
 
       <!-- ── Schedule sub-tab ── -->
@@ -976,9 +988,10 @@ table input[type="number"]{text-align:right;width:90px}
         </div>
         <div style="margin-bottom:16px">
           <select id="sch-ceremony-filter" onchange="filterScheduleByCeremony(this.value)" style="padding:6px 12px;border:1px solid var(--border-light);border-radius:8px;font-size:12px;background:white;color:var(--charcoal)">
-            <option value="all">Full Day Schedule</option>
+            <option value="all">All Events</option>
           </select>
         </div>
+        <div class="sch-tag-bar" id="sch-tag-bar"></div>
 
         <!-- Calendar View -->
         <div class="sch-view-panel active" id="sch-view-calendar">
@@ -1277,7 +1290,7 @@ function defaultState() {
     reception: buildReception(),
     timeline: buildTimeline(),
     timelineVendors: [],
-    ceremonies: [{name:"Main Ceremony",date:"",timeline:[]}],
+    ceremonies: [],
     attire: buildAttire(),
     beauty: buildBeauty(),
     stationery: buildStationery(),
@@ -2857,6 +2870,7 @@ const tlCatColors = {prep:'prep',ceremony:'ceremony',photos:'photos',reception:'
 const tlCatLabels = {prep:'Prep',ceremony:'Ceremony',photos:'Photos',reception:'Reception',other:'Other'};
 const tlCatIcons = {prep:'&#9733;',ceremony:'&#9829;',photos:'&#128247;',reception:'&#127878;',other:'&#9670;'};
 let schActiveView = 'calendar';
+let schTagFilter = 'all';
 
 function switchSchView(view) {
   schActiveView = view;
@@ -2927,26 +2941,85 @@ function updateSchCeremonyDropdown() {
   const sel = document.getElementById('sch-ceremony-filter');
   if (!sel) return;
   const prev = sel.value;
-  sel.innerHTML = '<option value="all">Full Day Schedule</option>' +
+  sel.innerHTML = '<option value="all">All Events</option>' +
     (S.ceremonies||[]).map((c,i) => `<option value="cer-${i}">${esc(c.name||'Ceremony '+(i+1))}</option>`).join('');
   sel.value = prev;
   if (!sel.value) { sel.value = 'all'; schCeremonyFilter = 'all'; }
 }
 
+function cerTimeTo12h(t) {
+  if (!t) return t;
+  // Already in 12h format?
+  if (/AM|PM/i.test(t)) return t;
+  const m = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return t;
+  let h = parseInt(m[1]), min = m[2];
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  if (h > 12) h -= 12;
+  if (h === 0) h = 12;
+  return h + ':' + min + ' ' + ampm;
+}
 function getScheduleBlocks() {
-  if (schCeremonyFilter === 'all') return S.timeline;
-  const idx = parseInt(schCeremonyFilter.replace('cer-',''));
-  const cer = (S.ceremonies||[])[idx];
-  if (!cer || !cer.timeline) return S.timeline;
-  // Map ceremony timeline to schedule block format
-  return cer.timeline.map(r => ({
-    time: r.time || '',
-    end: '',
-    activity: r.event || '',
-    who: r.notes || '',
-    notes: r.music ? 'Music: '+r.music : '',
-    cat: 'ceremony'
-  }));
+  let blocks;
+  if (schCeremonyFilter === 'all') {
+    blocks = S.timeline;
+  } else {
+    const idx = parseInt(schCeremonyFilter.replace('cer-',''));
+    const cer = (S.ceremonies||[])[idx];
+    if (!cer || !cer.timeline) { blocks = S.timeline; }
+    else {
+      // Map ceremony timeline to schedule block format, converting 24h → 12h
+      blocks = cer.timeline.map(r => ({
+        time: cerTimeTo12h(r.time) || '',
+        end: '',
+        activity: r.event || '',
+        who: r.notes || '',
+        notes: r.music ? 'Music: '+r.music : '',
+        cat: 'ceremony'
+      }));
+    }
+  }
+  // Apply tag filter
+  if (schTagFilter !== 'all') {
+    blocks = blocks.filter(b => (b.cat || 'other') === schTagFilter);
+  }
+  return blocks;
+}
+function setSchTagFilter(tag) {
+  if (tag.startsWith('cer-')) {
+    // Ceremony name clicked — set ceremony filter and clear tag filter
+    schTagFilter = 'all';
+    schCeremonyFilter = tag;
+    const dd = document.getElementById('sch-ceremony-filter');
+    if (dd) dd.value = tag;
+  } else {
+    schTagFilter = tag;
+    // Reset ceremony filter to 'all' when filtering by category
+    schCeremonyFilter = 'all';
+    const dd = document.getElementById('sch-ceremony-filter');
+    if (dd) dd.value = 'all';
+  }
+  renderSchTagBar();
+  renderTlSchedule();
+}
+function renderSchTagBar() {
+  const bar = document.getElementById('sch-tag-bar');
+  if (!bar) return;
+  const tags = ['all','prep','ceremony','photos','reception','other'];
+  const labels = {all:'All',prep:'Prep',ceremony:'Ceremony',photos:'Photos',reception:'Reception',other:'Other'};
+  let html = '';
+  tags.forEach(t => {
+    const cls = schTagFilter === t ? 'active' : '';
+    const tagCls = t !== 'all' ? ' tag-' + t : '';
+    html += `<button class="sch-tag-pill ${cls}${tagCls}" onclick="setSchTagFilter('${t}')">${labels[t]}</button>`;
+  });
+  // Add per-ceremony buttons
+  (S.ceremonies||[]).forEach((c, i) => {
+    if (!c.name) return;
+    const isActive = schCeremonyFilter === 'cer-'+i ? 'active tag-ceremony' : '';
+    html += `<button class="sch-tag-pill ${isActive}" onclick="setSchTagFilter('cer-${i}')">${esc(c.name)}</button>`;
+  });
+  bar.innerHTML = html;
 }
 
 // ── RENDER SCHEDULE (dispatches to active view) ──
@@ -2954,6 +3027,7 @@ function renderTlSchedule() {
   S.timeline.forEach(b => { if (!b.end) b.end = ''; if (!b.cat) b.cat = 'other'; });
   S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
   updateSchCeremonyDropdown();
+  renderSchTagBar();
 
   const sidebar = schSidebarHtml();
   ['sch-sidebar-cal','sch-sidebar-agenda','sch-sidebar-compact'].forEach(id => {
@@ -3005,7 +3079,7 @@ function renderSchCalendar() {
     const height = Math.max(((eTime - s) / 60) * pxPerHour, 26);
     const cat = b.cat || 'other';
     evHtml += `<div class="sch-cal-ev cat-${cat}" data-block-idx="${i}" style="top:${top}px;height:${height}px">
-      <div class="ce-name">${esc(b.activity)}</div>
+      <div class="ce-name"><span class="ce-cat-dot dot-${cat}"></span>${esc(b.activity)}</div>
       <div class="ce-time">${esc(b.time)}${b.end ? ' – '+esc(b.end) : ''}</div>
       ${b.who ? `<div class="ce-vendor">${esc(b.who)}</div>` : ''}
       ${b.vendorIdx !== undefined && S.vendors[b.vendorIdx] ? `<div style="font-size:9px;opacity:0.7;margin-top:1px">&#128188; ${esc(S.vendors[b.vendorIdx].company)}</div>` : ''}
@@ -3121,7 +3195,7 @@ function renderSchAgenda() {
       const durStr = durMin >= 60 ? (durMin/60) + ' hr' : durMin + ' min';
       html += `<div class="sch-ag-item" onclick="editTlBlock(${b.idx})">
         <div class="sch-ag-time ${cat}"><div class="start">${esc(b.time||'')}</div><div class="end">${esc(b.end||'')}</div></div>
-        <div class="sch-ag-body"><div class="sch-ag-title">${esc(b.activity)}</div>
+        <div class="sch-ag-body"><div class="sch-ag-title"><span class="ce-cat-dot dot-${cat}"></span>${esc(b.activity)}</div>
           <div class="sch-ag-meta">${b.who ? `<span class="vendor">${esc(b.who)}</span>` : ''}<span>${esc(durStr)}</span></div>
           ${b.notes ? `<div class="sch-ag-notes">${esc(b.notes)}</div>` : ''}
         </div>
@@ -3443,6 +3517,60 @@ const CEREMONY_TEMPLATES = {
     {time:'10:55',event:'Hukamnama (closing)',music:'',notes:'Final divine blessing'},
     {time:'11:00',event:'Karah Prasad',music:'',notes:'Sacred sweet distributed to all'},
     {time:'11:10',event:'Langar (community meal)',music:'',notes:'Communal vegetarian meal'}
+  ]},
+  jewish: {label:'Jewish',rows:[
+    {time:'15:00',event:'Ketubah signing',music:'',notes:'Witnessed by two people in private room'},
+    {time:'15:20',event:'Bedeken (veiling)',music:'',notes:'Groom veils the bride'},
+    {time:'15:30',event:'Processional',music:'String ensemble',notes:'Wedding party, then bride with both parents'},
+    {time:'15:40',event:'Circling (Hakafot)',music:'',notes:'Bride circles groom 3 or 7 times'},
+    {time:'15:45',event:'Birkat Erusin (betrothal blessings)',music:'',notes:'Rabbi recites blessings over wine'},
+    {time:'15:50',event:'Ring exchange',music:'',notes:'Simple gold band, declaration in Hebrew'},
+    {time:'15:55',event:'Ketubah reading',music:'',notes:'Marriage contract read aloud'},
+    {time:'16:00',event:'Sheva Brachot (seven blessings)',music:'',notes:'Seven blessings recited or sung'},
+    {time:'16:10',event:'Breaking of the glass',music:'',notes:'Groom stomps glass — Mazel Tov!'},
+    {time:'16:12',event:'Recessional',music:'Upbeat klezmer',notes:'Couple exits to celebration'},
+    {time:'16:15',event:'Yichud (seclusion)',music:'',notes:'Private moment together — first meal'}
+  ]},
+  muslim: {label:'Muslim (Nikah)',rows:[
+    {time:'13:00',event:'Guests arrive & seating',music:'Nasheed (optional)',notes:'Men and women may be seated separately'},
+    {time:'13:15',event:'Recitation of Quran',music:'',notes:'Opening with Surah Al-Fatiha'},
+    {time:'13:20',event:'Khutbah (sermon)',music:'',notes:'Imam delivers marriage sermon'},
+    {time:'13:30',event:'Mahr announcement',music:'',notes:'Groom presents agreed gift to bride'},
+    {time:'13:35',event:'Ijab (offer)',music:'',notes:'Bride\'s wali makes offer of marriage'},
+    {time:'13:37',event:'Qubool (acceptance)',music:'',notes:'Groom says "Qubool hai" three times'},
+    {time:'13:40',event:'Signing of Nikkah Nama',music:'',notes:'Marriage contract signed by both parties and witnesses'},
+    {time:'13:50',event:'Dua (blessing)',music:'',notes:'Imam leads prayers for the couple'},
+    {time:'13:55',event:'Ring exchange (optional)',music:'',notes:'Not traditionally required but common'},
+    {time:'14:00',event:'Walima announcement',music:'',notes:'Reception feast announced'}
+  ]},
+  catholic: {label:'Catholic (Full Mass)',rows:[
+    {time:'14:00',event:'Pre-ceremony music',music:'Organ / choir',notes:'Guests arrive and are seated'},
+    {time:'14:25',event:'Entrance procession',music:'Processional hymn',notes:'Priest, servers, wedding party, bride'},
+    {time:'14:30',event:'Greeting & opening prayer',music:'',notes:'Priest welcomes congregation'},
+    {time:'14:35',event:'Liturgy of the Word',music:'',notes:'Old Testament, Psalm, New Testament readings'},
+    {time:'14:45',event:'Gospel reading',music:'',notes:'Priest or deacon reads Gospel'},
+    {time:'14:50',event:'Homily',music:'',notes:'Priest speaks on marriage and faith'},
+    {time:'15:00',event:'Rite of Marriage — Declaration of consent',music:'',notes:'Couple declares intention to marry'},
+    {time:'15:05',event:'Exchange of vows',music:'',notes:'Traditional Catholic vows'},
+    {time:'15:10',event:'Blessing & exchange of rings',music:'',notes:'Rings blessed and exchanged'},
+    {time:'15:15',event:'Prayer of the Faithful',music:'',notes:'Congregation prays together'},
+    {time:'15:20',event:'Liturgy of the Eucharist',music:'Communion hymn',notes:'Full communion service'},
+    {time:'15:40',event:'Nuptial blessing',music:'',notes:'Special blessing over the married couple'},
+    {time:'15:45',event:'Sign of Peace & Final Blessing',music:'',notes:'Priest gives final blessing'},
+    {time:'15:48',event:'Recessional',music:'Joyful recessional hymn',notes:'Newlyweds lead exit'}
+  ]},
+  nondenominational: {label:'Non-Denominational',rows:[
+    {time:'16:00',event:'Pre-ceremony music',music:'Acoustic / instrumental',notes:'Guests seated'},
+    {time:'16:20',event:'Processional',music:'',notes:'Wedding party enters'},
+    {time:'16:25',event:'Bride\'s entrance',music:'',notes:'All rise'},
+    {time:'16:28',event:'Welcome & opening words',music:'',notes:'Officiant welcomes everyone'},
+    {time:'16:32',event:'Readings',music:'',notes:'Poems, passages, or personal selections'},
+    {time:'16:38',event:'Personal vows',music:'',notes:'Couple reads their own vows'},
+    {time:'16:44',event:'Ring exchange',music:'',notes:'Rings exchanged with promises'},
+    {time:'16:48',event:'Unity ceremony',music:'',notes:'Sand, candle, wine, handfasting, or other'},
+    {time:'16:53',event:'Pronouncement',music:'',notes:'Couple declared married'},
+    {time:'16:55',event:'First kiss',music:'',notes:''},
+    {time:'16:56',event:'Recessional',music:'Upbeat celebratory',notes:'Couple exits to cheers'}
   ]}
 };
 
