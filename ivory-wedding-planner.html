@@ -1288,7 +1288,7 @@ function defaultState() {
     vendors: buildVendors(),
     ceremony: buildCeremony(),
     reception: buildReception(),
-    timeline: buildTimeline(),
+    timeline: [],
     timelineVendors: [],
     ceremonies: [],
     attire: buildAttire(),
@@ -1321,6 +1321,7 @@ function defaultState() {
       genres: [],
     },
     transport: [],
+    itinerarySetupDone: false,
   };
 }
 
@@ -1532,7 +1533,12 @@ function renderTab(id) {
     case "vendors": renderVendors(); break;
     case "ceremony": renderCeremony(); break;
     case "music": renderMusic(); break;
-    case "timeline": renderTimeline(); break;
+    case "timeline":
+      renderTimeline();
+      if (!S.itinerarySetupDone && S.timeline.length === 0 && S.ceremonies.length === 0) {
+        setTimeout(showItinOnboarding, 300);
+      }
+      break;
     case "transport": renderTransport(); break;
     case "floorplan": renderFloorPlan(); break;
     case "attire": renderAttire(); break;
@@ -5399,6 +5405,239 @@ function updateSidebarBadges() {
 }
 
 // ══════════════════════════════════════════════════
+// ITINERARY ONBOARDING WIZARD
+// ══════════════════════════════════════════════════
+let itinObStep = 1;
+let itinObData = { startTime: '07:00', ceremonies: [], reception: [], prep: true };
+
+function showItinOnboarding() {
+  document.getElementById('itin-ob-overlay').classList.add('active');
+  itinObStep = 1;
+  itinObData = { startTime: '07:00', ceremonies: [], reception: [], prep: true };
+  renderItinObStep();
+}
+
+function closeItinOnboarding() {
+  document.getElementById('itin-ob-overlay').classList.remove('active');
+}
+
+function renderItinObStep() {
+  // Update progress dots
+  document.querySelectorAll('#itin-ob-overlay .ob-dot').forEach((d, i) => {
+    d.className = 'ob-dot';
+    if (i + 1 < itinObStep) d.classList.add('done');
+    else if (i + 1 === itinObStep) d.classList.add('current');
+  });
+
+  const con = document.getElementById('itin-ob-content');
+
+  if (itinObStep === 1) {
+    con.innerHTML = `
+      <p class="ob-title">Plan Your Day</p>
+      <p class="ob-sub">Let's build your wedding day itinerary step by step.</p>
+      <div class="ob-field">
+        <label class="ob-label">What time does the day start?</label>
+        <input class="ob-input" type="time" id="itin-start-time" value="${itinObData.startTime}" />
+      </div>
+      <div class="ob-field">
+        <label class="ob-label" style="margin-bottom:12px">Include getting ready?</label>
+        <div style="display:flex;gap:8px">
+          <button class="ob-btn ${itinObData.prep ? 'ob-btn-primary' : 'ob-btn-secondary'}" onclick="itinObData.prep=true;renderItinObStep()" style="flex:1">Yes — Hair, Makeup & Prep</button>
+          <button class="ob-btn ${!itinObData.prep ? 'ob-btn-primary' : 'ob-btn-secondary'}" onclick="itinObData.prep=false;renderItinObStep()" style="flex:1">No</button>
+        </div>
+      </div>
+      <div class="ob-btn-row">
+        <button class="ob-btn ob-btn-primary" onclick="itinObData.startTime=document.getElementById('itin-start-time').value||'07:00';itinObStep=2;renderItinObStep()">Next</button>
+      </div>`;
+  } else if (itinObStep === 2) {
+    const types = [
+      {key:'custom', label:'Custom / Secular'},
+      {key:'christian', label:'Christian'},
+      {key:'catholic', label:'Catholic (Full Mass)'},
+      {key:'hindu', label:'Hindu'},
+      {key:'sikh', label:'Sikh (Anand Karaj)'},
+      {key:'jewish', label:'Jewish'},
+      {key:'muslim', label:'Muslim (Nikah)'},
+      {key:'nondenominational', label:'Non-Denominational'}
+    ];
+    con.innerHTML = `
+      <p class="ob-title">Ceremonies</p>
+      <p class="ob-sub">Select the ceremony types for your wedding day. You can add multiple.</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+        ${types.map(t => `<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms;${itinObData.ceremonies.includes(t.key)?'background:var(--cream);border-color:var(--charcoal)':''}">
+          <input type="checkbox" ${itinObData.ceremonies.includes(t.key)?'checked':''} onchange="if(this.checked){itinObData.ceremonies.push('${t.key}')}else{itinObData.ceremonies=itinObData.ceremonies.filter(c=>c!=='${t.key}')};renderItinObStep()" style="width:16px;height:16px;accent-color:var(--charcoal)" />
+          <span style="font-size:14px;font-weight:500">${t.label}</span>
+        </label>`).join('')}
+      </div>
+      <div class="ob-btn-row">
+        <button class="ob-btn ob-btn-secondary" onclick="itinObStep=1;renderItinObStep()">Back</button>
+        <button class="ob-btn ob-btn-secondary" onclick="itinObData.ceremonies=[];itinObStep=3;renderItinObStep()">Skip</button>
+        <button class="ob-btn ob-btn-primary" onclick="itinObStep=3;renderItinObStep()">Next</button>
+      </div>`;
+  } else if (itinObStep === 3) {
+    const opts = [
+      {key:'cocktail', label:'Cocktail Hour'},
+      {key:'dinner', label:'Dinner / Banquet'},
+      {key:'speeches', label:'Speeches & Toasts'},
+      {key:'dancing', label:'Dancing & Party'},
+      {key:'grandexit', label:'Grand Exit / Send-Off'},
+      {key:'walima', label:'Walima (Feast)'},
+      {key:'langar', label:'Langar (Community Meal)'},
+      {key:'hora', label:'Hora Dance'},
+      {key:'sangeet', label:'Sangeet / Dance Night'},
+      {key:'mehndi', label:'Mehndi / Henna'}
+    ];
+    con.innerHTML = `
+      <p class="ob-title">Reception & Celebrations</p>
+      <p class="ob-sub">Select the events for your reception. You can always add more later.</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+        ${opts.map(o => `<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms;${itinObData.reception.includes(o.key)?'background:var(--cream);border-color:var(--charcoal)':''}">
+          <input type="checkbox" ${itinObData.reception.includes(o.key)?'checked':''} onchange="if(this.checked){itinObData.reception.push('${o.key}')}else{itinObData.reception=itinObData.reception.filter(c=>c!=='${o.key}')};renderItinObStep()" style="width:16px;height:16px;accent-color:var(--charcoal)" />
+          <span style="font-size:14px;font-weight:500">${o.label}</span>
+        </label>`).join('')}
+      </div>
+      <div class="ob-btn-row">
+        <button class="ob-btn ob-btn-secondary" onclick="itinObStep=2;renderItinObStep()">Back</button>
+        <button class="ob-btn ob-btn-secondary" onclick="itinObData.reception=[];itinObStep=4;renderItinObStep()">Skip</button>
+        <button class="ob-btn ob-btn-primary" onclick="itinObStep=4;renderItinObStep()">Next</button>
+      </div>`;
+  } else if (itinObStep === 4) {
+    const cerNames = itinObData.ceremonies.map(k => CEREMONY_TEMPLATES[k]?.label || k).join(', ') || 'None selected';
+    const recNames = itinObData.reception.map(k => {
+      const map = {cocktail:'Cocktail Hour',dinner:'Dinner',speeches:'Speeches & Toasts',dancing:'Dancing',grandexit:'Grand Exit',walima:'Walima',langar:'Langar',hora:'Hora Dance',sangeet:'Sangeet',mehndi:'Mehndi'};
+      return map[k] || k;
+    }).join(', ') || 'None selected';
+    con.innerHTML = `
+      <p class="ob-title">Your Day at a Glance</p>
+      <p class="ob-sub">Here's what we'll add to your itinerary. You can edit everything after.</p>
+      <div style="background:white;border:1px solid var(--border-light);border-radius:12px;padding:16px;margin-bottom:20px">
+        <div style="margin-bottom:12px"><span style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--stone)">Day Starts</span><br/><strong>${time24to12(itinObData.startTime)}</strong></div>
+        ${itinObData.prep ? '<div style="margin-bottom:12px"><span style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--stone)">Getting Ready</span><br/><strong>Hair, Makeup & Prep</strong></div>' : ''}
+        <div style="margin-bottom:12px"><span style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--stone)">Ceremonies</span><br/><strong>${cerNames}</strong></div>
+        <div><span style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--stone)">Reception</span><br/><strong>${recNames}</strong></div>
+      </div>
+      <div class="ob-btn-row">
+        <button class="ob-btn ob-btn-secondary" onclick="itinObStep=3;renderItinObStep()">Back</button>
+        <button class="ob-btn ob-btn-primary" onclick="buildItinFromWizard()">Create Itinerary</button>
+      </div>`;
+  }
+}
+
+function buildItinFromWizard() {
+  S.timeline = [];
+  S.ceremonies = [];
+
+  // Parse start time
+  const startParts = itinObData.startTime.split(':');
+  let currentHour = parseInt(startParts[0]);
+  let currentMin = parseInt(startParts[1] || 0);
+
+  function advanceTime(mins) {
+    currentMin += mins;
+    while (currentMin >= 60) { currentHour++; currentMin -= 60; }
+  }
+  function currentTime24() { return String(currentHour).padStart(2,'0') + ':' + String(currentMin).padStart(2,'0'); }
+  function currentTime12() { return time24to12(currentTime24()); }
+
+  // Step 1: Prep block
+  if (itinObData.prep) {
+    const prepStart = currentTime12();
+    advanceTime(120);
+    S.timeline.push({time:prepStart, end:currentTime12(), activity:'Getting ready', who:'Couple, wedding party', notes:'Hair, makeup & dressing', cat:'prep'});
+    advanceTime(30);
+    const photoStart = currentTime12();
+    advanceTime(90);
+    S.timeline.push({time:photoStart, end:currentTime12(), activity:'First look & photos', who:'Couple, photographer', notes:'Portraits & detail shots', cat:'photos'});
+    advanceTime(30);
+  }
+
+  // Step 2: Ceremonies — build directly from templates (no modal)
+  itinObData.ceremonies.forEach(key => {
+    const tmpl = CEREMONY_TEMPLATES[key];
+    if (!tmpl) return;
+
+    // Remap ceremony template times relative to current clock position
+    const rows = tmpl.rows.map(r => ({...r}));
+    // Calculate offset: difference between first template time and current time
+    if (rows.length > 0 && rows[0].time) {
+      const firstParts = rows[0].time.split(':').map(Number);
+      const offsetMins = (currentHour * 60 + currentMin) - (firstParts[0] * 60 + firstParts[1]);
+      rows.forEach(r => {
+        if (!r.time) return;
+        const [rh, rm] = r.time.split(':').map(Number);
+        let totalMins = rh * 60 + rm + offsetMins;
+        if (totalMins < 0) totalMins = 0;
+        const newH = Math.floor(totalMins / 60) % 24;
+        const newM = totalMins % 60;
+        r.time = String(newH).padStart(2,'0') + ':' + String(newM).padStart(2,'0');
+      });
+    }
+
+    const name = tmpl.label === 'Custom' ? 'Ceremony ' + (S.ceremonies.length + 1) : tmpl.label + ' Ceremony';
+    const cerIdx = S.ceremonies.length;
+    S.ceremonies.push({name, date:'', timeline: rows});
+
+    // Add ceremony events to main schedule
+    rows.forEach((r, ri) => {
+      if (!r.time) return;
+      const nextTime = (ri < rows.length - 1 && rows[ri+1].time) ? rows[ri+1].time : '';
+      const startAMPM = time24to12(r.time);
+      const endAMPM = nextTime ? time24to12(nextTime) : '';
+      S.timeline.push({
+        time: startAMPM,
+        end: endAMPM,
+        activity: r.event,
+        who: r.notes || '',
+        notes: r.music ? 'Music: ' + r.music : '',
+        cat: 'ceremony',
+        cerIdx: cerIdx,
+        cerRowIdx: ri
+      });
+    });
+
+    // Advance current time past the last ceremony event
+    const lastRow = rows[rows.length - 1];
+    if (lastRow && lastRow.time) {
+      const lp = lastRow.time.split(':').map(Number);
+      currentHour = lp[0];
+      currentMin = lp[1];
+      advanceTime(30);
+    }
+  });
+
+  // Step 3: Reception events
+  const receptionMap = {
+    cocktail: {activity:'Cocktail hour', duration:60, notes:'Appetizers & drinks', who:'Guests'},
+    dinner: {activity:'Dinner / banquet', duration:90, notes:'Seated dinner service', who:'Everyone'},
+    speeches: {activity:'Speeches & toasts', duration:30, notes:'Best man, maid of honor, parents', who:'Wedding party'},
+    dancing: {activity:'Dancing & party', duration:120, notes:'DJ takes over, open dance floor', who:'Everyone'},
+    grandexit: {activity:'Grand exit / send-off', duration:15, notes:'Sparklers, confetti, or send-off', who:'Everyone'},
+    walima: {activity:'Walima feast', duration:120, notes:'Traditional wedding feast', who:'Everyone'},
+    langar: {activity:'Langar (community meal)', duration:90, notes:'Communal vegetarian meal', who:'Everyone'},
+    hora: {activity:'Hora dance', duration:20, notes:'Chair dance celebration', who:'Couple, guests'},
+    sangeet: {activity:'Sangeet / dance night', duration:180, notes:'Music, dance performances', who:'Everyone'},
+    mehndi: {activity:'Mehndi / henna', duration:120, notes:'Henna application for bride and guests', who:'Bride, bridesmaids, family'}
+  };
+
+  itinObData.reception.forEach(key => {
+    const r = receptionMap[key];
+    if (!r) return;
+    const start = currentTime12();
+    advanceTime(r.duration);
+    S.timeline.push({time:start, end:currentTime12(), activity:r.activity, who:r.who, notes:r.notes, cat:'reception'});
+    advanceTime(15);
+  });
+
+  // Sort timeline
+  S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
+
+  S.itinerarySetupDone = true;
+  saveState();
+  closeItinOnboarding();
+  renderTlSchedule();
+}
+
+// ══════════════════════════════════════════════════
 // PIN AUTHENTICATION
 // ══════════════════════════════════════════════════
 const PIN_KEY = 'ivory_pin_v1';
@@ -5720,6 +5959,19 @@ if (!S.onboardingDone) {
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Itinerary Onboarding Wizard -->
+<div class="ob-overlay" id="itin-ob-overlay">
+  <div class="ob-modal">
+    <div class="ob-progress">
+      <div class="ob-dot current"></div>
+      <div class="ob-dot"></div>
+      <div class="ob-dot"></div>
+      <div class="ob-dot"></div>
+    </div>
+    <div id="itin-ob-content"></div>
   </div>
 </div>
 
