@@ -518,9 +518,16 @@ table input[type="number"]{text-align:right;width:90px}
 /* ─── Print Area ─── */
 #print-area{display:none}
 @media print{
-  .topbar,.app,.mobile-nav,.ob-overlay,#export-overlay{display:none!important}
+  .topbar,.mobile-nav,.ob-overlay,#export-overlay{display:none!important}
   #print-area{display:block!important;padding:20px;font-family:"Inter",system-ui,sans-serif;color:#1C1917;-webkit-font-smoothing:antialiased}
   #print-area table{border-collapse:collapse;width:100%}
+  /* Schedule print styling */
+  .sidebar,.nav-bar,.sch-view-toggle,#timeline-subtabs,.sch-tag-bar,#sch-ceremony-filter,.btn{display:none!important}
+  .app{display:block!important;margin:0!important;padding:0!important}
+  .main{margin:0!important;padding:20px!important}
+  .tab-panel{display:block!important;padding:0!important}
+  .sch-cal-ev{break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sch-cal-now{display:none!important}
   @page{margin:0.5in}
 }
 </style>
@@ -1013,6 +1020,7 @@ table input[type="number"]{text-align:right;width:90px}
           <button class="btn btn-dark" onclick="addTlBlock()">+ Add Block</button>
           <button class="btn btn-outline" onclick="window.print()">Print</button>
           <button class="btn btn-outline" onclick="if(confirm('Reset schedule to default milestones? This replaces all current events.')){S.timeline=buildTimeline();saveState();renderTlSchedule()}" style="font-size:11px">Reset</button>
+          <button class="btn btn-outline" onclick="if(confirm('Restart the setup wizard? This will replace your current schedule.')){S.itinerarySetupDone=false;delete S.itinObStep;delete S.itinObData;S.timeline=[];S.ceremonies=[];saveState();showItinOnboarding()}" style="font-size:11px">Restart Wizard</button>
           <div class="sch-view-toggle" id="sch-view-toggle">
             <button class="active" onclick="switchSchView('calendar')">Calendar</button>
             <button onclick="switchSchView('agenda')">Agenda</button>
@@ -2382,6 +2390,41 @@ function vendorCatSelect(i, val) {
 
 
 
+function syncVendorArrival(i) {
+  const v = S.vendors[i];
+  if (!v) return;
+  const existing = S.timeline.findIndex(b => b.vendorIdx === i && b.autoVendor);
+  if (v.arrival && v.company) {
+    const t12 = time24to12(v.arrival);
+    if (existing >= 0) {
+      S.timeline[existing].time = t12;
+      S.timeline[existing].activity = v.company + ' arrives';
+      S.timeline[existing].who = v.contact || '';
+    } else {
+      S.timeline.push({time: t12, end:'', activity: v.company+' arrives', who: v.contact||'', notes:'', cat:'prep', vendorIdx:i, autoVendor:true});
+    }
+    S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
+  } else if (existing >= 0) {
+    S.timeline.splice(existing, 1);
+  }
+  saveState();
+}
+
+function deleteVendor(i) {
+  // Clean up timeline blocks linked to this vendor
+  S.timeline = S.timeline.filter(b => !(b.vendorIdx === i && b.autoVendor));
+  S.timeline.forEach(b => {
+    if (b.vendorIdx === i) delete b.vendorIdx;
+    else if (b.vendorIdx !== undefined && b.vendorIdx > i) b.vendorIdx--;
+  });
+  S.vendors.splice(i, 1);
+  expandedVendor = -1;
+  saveState();
+  syncVendorsToBudget();
+  renderVendors();
+  renderBudget();
+}
+
 function renderVendors() {
   // Migrate old estimatedPrice/actualPrice → price
   S.vendors.forEach(v => {
@@ -2429,7 +2472,7 @@ function renderVendors() {
       <td class="currency" onclick="event.stopPropagation()">${eCell(v.price,`S.vendors[${i}].price=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
       <td class="currency" onclick="event.stopPropagation()">${eCell(v.deposit,`S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
       <td onclick="event.stopPropagation()">${eCell(v.due,`S.vendors[${i}].due=this.value;saveState()`,"date")}</td>
-      <td onclick="event.stopPropagation()">${delBtn(`S.vendors.splice(${i},1);expandedVendor=-1;saveState();syncVendorsToBudget();renderVendors();renderBudget()`)}</td>
+      <td onclick="event.stopPropagation()">${delBtn(`deleteVendor(${i})`)}</td>
       <td style="text-align:center;font-size:12px;color:var(--stone)">${isExpanded?'&#9650;':'&#9660;'}</td>
     </tr>`;
 
@@ -2451,7 +2494,7 @@ function renderVendors() {
           <div><label class="ob-label">Ext</label><input class="ob-input" value="${esc(v.ext||'')}" onblur="S.vendors[${i}].ext=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-          <div><label class="ob-label">Arrival Time</label><input class="ob-input" type="time" value="${esc(v.arrival||'')}" onchange="S.vendors[${i}].arrival=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+          <div><label class="ob-label">Arrival Time</label><input class="ob-input" type="time" value="${esc(v.arrival||'')}" onchange="S.vendors[${i}].arrival=this.value;syncVendorArrival(${i})" style="padding:8px 12px;font-size:13px"/></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
           <div><label class="ob-label">Pros</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].pros=this.value;saveState()">${esc(v.pros)}</textarea></div>
@@ -2465,7 +2508,7 @@ function renderVendors() {
           <div><label class="ob-label">&#9888; Hidden Fees to Ask About</label><div style="padding:10px 14px;background:white;border-radius:8px;max-height:240px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--border-light)">${feeHTML}</div></div>
           <div><label class="ob-label">&#9989; Contract Checklist</label><div style="padding:10px 14px;background:white;border-radius:8px;max-height:240px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--border-light)">${checkHTML}</div></div>
         </div>
-        <div style="margin-top:16px;text-align:right"><button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red)" onclick="S.vendors.splice(${i},1);expandedVendor=-1;saveState();syncVendorsToBudget();renderVendors();renderBudget()">Delete Vendor</button></div>
+        <div style="margin-top:16px;text-align:right"><button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red)" onclick="deleteVendor(${i})">Delete Vendor</button></div>
       </div></td></tr>`;
     }
     return row;
@@ -2601,7 +2644,7 @@ function renderVendorCards() {
           <div style="font-weight:600;font-size:15px;margin-bottom:2px">${esc(v.company) || 'Unnamed'}</div>
           <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;border-radius:100px;background:rgba(156,139,122,0.1);color:var(--taupe)">${esc(v.cat) || 'Uncategorized'}</span>
         </div>
-        <button onclick="event.stopPropagation();S.vendors.splice(${i},1);saveState();syncVendorsToBudget();renderVendors();renderBudget()" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:16px;opacity:0.3;padding:0" title="Delete">&times;</button>
+        <button onclick="event.stopPropagation();deleteVendor(${i})" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:16px;opacity:0.3;padding:0" title="Delete">&times;</button>
       </div>
       ${v.contact ? `<div style="font-size:12px;color:var(--charcoal);margin-bottom:4px">&#128100; ${esc(v.contact)}</div>` : ''}
       ${v.email ? `<div style="font-size:12px;color:var(--stone);margin-bottom:4px">&#128231; <a href="mailto:${esc(v.email)}" onclick="event.stopPropagation()" style="color:var(--taupe)">${esc(v.email)}</a></div>` : ''}
@@ -2693,7 +2736,7 @@ function renderVendorDetailView() {
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
       <div><label class="ob-label">Status</label><select class="ob-input" style="padding:8px 12px;font-size:13px" onchange="S.vendors[${i}].status=this.value;saveState();renderVendors()">${["","Researching","Contacted","Contract Sent","Signed","Paid in Full"].map(o=>`<option${o===v.status?' selected':''}>${o}</option>`).join('')}</select></div>
       <div><label class="ob-label">Payment Due</label><input class="ob-input" type="date" value="${esc(v.due||'')}" onchange="S.vendors[${i}].due=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
-      <div><label class="ob-label">Arrival Time</label><input class="ob-input" type="time" value="${esc(v.arrival||'')}" onchange="S.vendors[${i}].arrival=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
+      <div><label class="ob-label">Arrival Time</label><input class="ob-input" type="time" value="${esc(v.arrival||'')}" onchange="S.vendors[${i}].arrival=this.value;syncVendorArrival(${i})" style="padding:8px 12px;font-size:13px"/></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div><label class="ob-label">Pros</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].pros=this.value;saveState()">${esc(v.pros)}</textarea></div>
@@ -2707,7 +2750,7 @@ function renderVendorDetailView() {
       <div><label class="ob-label">&#9888; Hidden Fees to Ask About</label><div style="padding:8px 12px;background:rgba(250,250,247,0.6);border-radius:8px;max-height:200px;overflow-y:auto">${feeHTML}</div></div>
       <div><label class="ob-label">&#9989; Contract Checklist</label><div style="padding:8px 12px;background:rgba(250,250,247,0.6);border-radius:8px;max-height:200px;overflow-y:auto">${checkHTML}</div></div>
     </div>
-    <div style="margin-top:16px;text-align:right"><button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red)" onclick="S.vendors.splice(${i},1);expandedVendor=-1;saveState();syncVendorsToBudget();renderVendors();renderBudget()">Delete Vendor</button></div>`;
+    <div style="margin-top:16px;text-align:right"><button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red)" onclick="deleteVendor(${i})">Delete Vendor</button></div>`;
 }
 
 function addVendor() {
@@ -2958,13 +3001,29 @@ function renderTimeline() {
 // ── Helper: parse time string to minutes from midnight ──
 function tlParseTime(str) {
   if (!str) return null;
+  // Try 12-hour format first: "4:00 PM"
   const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!m) return null;
-  let h = parseInt(m[1]), min = parseInt(m[2]);
-  const ampm = m[3].toUpperCase();
-  if (ampm === 'PM' && h !== 12) h += 12;
-  if (ampm === 'AM' && h === 12) h = 0;
-  return h * 60 + min;
+  if (m) {
+    let h = parseInt(m[1]), min = parseInt(m[2]);
+    const ampm = m[3].toUpperCase();
+    if (ampm === 'PM' && h !== 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    return h * 60 + min;
+  }
+  // Try 24-hour format: "16:00"
+  const m24 = str.match(/^(\d{1,2}):(\d{2})$/);
+  if (m24) {
+    const h = parseInt(m24[1]), min = parseInt(m24[2]);
+    if (h >= 0 && h <= 23 && min >= 0 && min <= 59) return h * 60 + min;
+  }
+  return null;
+}
+// Convert 12h time string to 24h "HH:MM" for time inputs
+function time12to24(str) {
+  const mins = tlParseTime(str);
+  if (mins === null) return '';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
 }
 function tlFormatTime(mins) {
   let h = Math.floor(mins / 60);
@@ -3133,6 +3192,15 @@ function renderSchTagBar() {
 
 // ── RENDER SCHEDULE (dispatches to active view) ──
 function renderTlSchedule() {
+  // Clean up orphaned cerIdx/cerRowIdx references
+  S.timeline.forEach(b => {
+    if (b.cerIdx !== undefined && (!S.ceremonies[b.cerIdx] || !S.ceremonies[b.cerIdx].timeline)) {
+      delete b.cerIdx; delete b.cerRowIdx;
+    }
+    if (b.vendorIdx !== undefined && !S.vendors[b.vendorIdx]) {
+      delete b.vendorIdx;
+    }
+  });
   S.timeline.forEach(b => { if (!b.end) b.end = ''; if (!b.cat) b.cat = 'other'; });
   S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
   updateSchCeremonyDropdown();
@@ -3156,8 +3224,9 @@ function renderSchCalendar() {
   if (!timesEl || !eventsEl) return;
 
   const pxPerHour = 60;
+  const rangeBlocks = getScheduleBlocks();
   let minT = Infinity, maxT = -Infinity;
-  S.timeline.forEach(b => {
+  rangeBlocks.forEach(b => {
     const s = tlParseTime(b.time), e = tlParseTime(b.end);
     if (s !== null && s < minT) minT = s;
     if (e !== null && e > maxT) maxT = e;
@@ -3177,28 +3246,48 @@ function renderSchCalendar() {
   }
   timesEl.innerHTML = timesHtml;
 
-  // Event blocks
+  // Event blocks — with overlap column detection
   const blocks = getScheduleBlocks();
-  let evHtml = linesHtml;
-  blocks.forEach((b, i) => {
+  // Parse times and assign overlap columns
+  const parsed = blocks.map((b, i) => {
     const s = tlParseTime(b.time), e = tlParseTime(b.end);
-    if (s === null) return;
-    const eTime = e !== null ? e : s + 30;
+    return { b, i, s, e: e !== null ? e : (s !== null ? s + 30 : null) };
+  }).filter(p => p.s !== null);
+  // Assign columns: find first non-overlapping column
+  const columns = []; // array of end times per column
+  parsed.forEach(p => {
+    let placed = -1;
+    for (let c = 0; c < columns.length; c++) {
+      if (columns[c] <= p.s) { placed = c; break; }
+    }
+    if (placed >= 0) { columns[placed] = p.e; p.col = placed; }
+    else { p.col = columns.length; columns.push(p.e); }
+  });
+  const totalCols = columns.length || 1;
+  let evHtml = linesHtml;
+  parsed.forEach(p => {
+    const { b, i, s, e: eTime } = p;
     const top = ((s - startHour * 60) / 60) * pxPerHour;
     const height = Math.max(((eTime - s) / 60) * pxPerHour, 26);
     const cat = b.cat || 'other';
-    evHtml += `<div class="sch-cal-ev cat-${cat}" data-block-idx="${i}" style="top:${top}px;height:${height}px">
-      <div class="ce-name"><span class="ce-cat-dot dot-${cat}"></span>${esc(b.activity)}</div>
-      <div class="ce-time">${esc(b.time)}${b.end ? ' – '+esc(b.end) : ''}</div>
-      ${b.who ? `<div class="ce-vendor">${esc(b.who)}</div>` : ''}
-      ${b.vendorIdx !== undefined && S.vendors[b.vendorIdx] ? `<div style="font-size:9px;opacity:0.7;margin-top:1px">&#128188; ${esc(S.vendors[b.vendorIdx].company)}</div>` : ''}
+    const widthPct = (100 / totalCols).toFixed(1);
+    const leftPct = (p.col * 100 / totalCols).toFixed(1);
+    const colStyle = totalCols > 1 ? `width:${widthPct}%;left:${leftPct}%;right:auto;` : '';
+    const isShort = height < 30;
+    evHtml += `<div class="sch-cal-ev cat-${cat}" data-block-idx="${i}" style="top:${top}px;height:${height}px;${colStyle}" title="${esc(b.activity)}${b.time ? ' '+esc(b.time) : ''}${b.end ? ' – '+esc(b.end) : ''}">
+      <div class="ce-name"${isShort ? ' style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"' : ''}><span class="ce-cat-dot dot-${cat}"></span>${esc(b.activity)}</div>
+      ${!isShort ? `<div class="ce-time">${esc(b.time)}${b.end ? ' – '+esc(b.end) : ''}</div>` : ''}
+      ${!isShort && b.who ? `<div class="ce-vendor">${esc(b.who)}</div>` : ''}
+      ${!isShort && b.vendorIdx !== undefined && S.vendors[b.vendorIdx] ? `<div style="font-size:9px;opacity:0.7;margin-top:1px">&#128188; ${esc(S.vendors[b.vendorIdx].company)}</div>` : ''}
     </div>`;
   });
 
-  // Now line
+  // Now line — only show on the wedding day
   const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const isWeddingDay = S.weddingDate && S.weddingDate === todayStr;
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  if (nowMin >= startHour * 60 && nowMin <= endHour * 60) {
+  if (isWeddingDay && nowMin >= startHour * 60 && nowMin <= endHour * 60) {
     const nowTop = ((nowMin - startHour * 60) / 60) * pxPerHour;
     evHtml += `<div class="sch-cal-now" style="top:${nowTop}px"></div>`;
   }
@@ -3323,12 +3412,17 @@ function renderSchCompact() {
   if (!con) return;
 
   const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const isWeddingDay = S.weddingDate && S.weddingDate === todayStr;
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const blocks = S.timeline.filter(b => tlParseTime(b.time) !== null);
   const passed = blocks.filter(b => { const e = tlParseTime(b.end); return e !== null && e <= nowMin; }).length;
   const pct = blocks.length > 0 ? Math.round(passed / blocks.length * 100) : 0;
 
-  let html = `<div class="sch-progress"><div class="pb-label">Day Progress</div><div class="pb-bar"><div class="pb-fill" style="width:${pct}%"></div></div><div class="pb-pct">${pct}%</div></div>`;
+  let html = '';
+  if (isWeddingDay) {
+    html += `<div class="sch-progress"><div class="pb-label">Day Progress</div><div class="pb-bar"><div class="pb-fill" style="width:${pct}%"></div></div><div class="pb-pct">${pct}%</div></div>`;
+  }
   html += `<table><thead><tr><th style="width:110px">Time</th><th>Event</th><th style="width:60px">Duration</th><th>Vendor</th><th>Notes</th></tr></thead><tbody>`;
   const cpBlocks = getScheduleBlocks();
   cpBlocks.forEach((b, i) => {
@@ -3382,9 +3476,9 @@ function editTlBlock(idx) {
     <h3 style="font-family:var(--font-serif);margin-bottom:16px">Edit Block</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Start Time</label>
-        <input id="tl-ed-start" value="${esc(b.time)}" placeholder="e.g. 4:00 PM" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
+        <input id="tl-ed-start" type="time" value="${esc(time12to24(b.time))}" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
       <div><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">End Time</label>
-        <input id="tl-ed-end" value="${esc(b.end||'')}" placeholder="e.g. 5:00 PM" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
+        <input id="tl-ed-end" type="time" value="${esc(time12to24(b.end||''))}" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
     </div>
     <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Activity</label>
       <input id="tl-ed-activity" value="${esc(b.activity)}" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
@@ -3420,9 +3514,12 @@ function editTlBlock(idx) {
 
 function saveTlBlock(idx) {
   const b = S.timeline[idx];
-  const startVal = document.getElementById('tl-ed-start').value.trim();
-  const endVal = document.getElementById('tl-ed-end').value.trim();
+  const startRaw = document.getElementById('tl-ed-start').value.trim();
+  const endRaw = document.getElementById('tl-ed-end').value.trim();
   const errEl = document.getElementById('tl-ed-error');
+  // Convert 24h time input to 12h for storage (type="time" returns "HH:MM")
+  const startVal = startRaw ? time24to12(startRaw) : '';
+  const endVal = endRaw ? time24to12(endRaw) : '';
   // Validate end time is after start time
   const sMin = tlParseTime(startVal), eMin = tlParseTime(endVal);
   if (sMin !== null && eMin !== null && eMin <= sMin) {
@@ -3450,10 +3547,23 @@ function saveTlBlock(idx) {
 }
 
 function deleteTlBlock(idx) {
+  const b = S.timeline[idx];
+  // If block is linked to a ceremony row, remove that row too
+  if (b && b.cerIdx !== undefined && S.ceremonies[b.cerIdx] && b.cerRowIdx !== undefined) {
+    const cer = S.ceremonies[b.cerIdx];
+    if (cer.timeline && cer.timeline[b.cerRowIdx]) {
+      cer.timeline.splice(b.cerRowIdx, 1);
+      // Re-index cerRowIdx for other blocks in the same ceremony
+      S.timeline.forEach(x => {
+        if (x !== b && x.cerIdx === b.cerIdx && x.cerRowIdx > b.cerRowIdx) x.cerRowIdx--;
+      });
+    }
+  }
   S.timeline.splice(idx, 1);
   saveState();
   closeTlModal();
   renderTlSchedule();
+  renderTlCeremonies();
 }
 
 function addTlWhoFromSelect() {
@@ -3497,7 +3607,7 @@ function renderTlVendors() {
     <td style="font-weight:500;white-space:nowrap">${esc(v.cat)}</td>
     <td>${esc(v.company) || '<span style="color:var(--taupe);font-style:italic">Not set</span>'}</td>
     <td>${eCell(v.status,`S.vendors[${i}].status=this.value;saveState()`,"select",statuses)}</td>
-    <td><input type="time" value="${esc(v.arrival||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);font-size:13px" onchange="S.vendors[${i}].arrival=this.value;saveState()"/></td>
+    <td><input type="time" value="${esc(v.arrival||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);font-size:13px" onchange="S.vendors[${i}].arrival=this.value;syncVendorArrival(${i})"/></td>
     <td>${eCell(v.setupLocation||'',`S.vendors[${i}].setupLocation=this.value;saveState()`)}</td>
     <td>${eCell(v.dayNotes||'',`S.vendors[${i}].dayNotes=this.value;saveState()`)}</td>
   </tr>`).join('');
@@ -3584,10 +3694,24 @@ function addCeremonyBlock(ci) {
 
 function deleteTlCeremony() {
   if (S.ceremonies.length <= 1) return;
-  S.ceremonies.splice(selectedCeremonyIdx, 1);
-  selectedCeremonyIdx = 0;
-  saveState();
-  renderTlCeremonies();
+  const ci = selectedCeremonyIdx;
+  const name = (S.ceremonies[ci] && S.ceremonies[ci].name) || 'this ceremony';
+  showInputModal('Delete Ceremony', [
+    {label: `Remove "${name}" and all its linked schedule events?`, id:'del-cer-confirm', type:'text', placeholder:'Type DELETE to confirm'}
+  ], function() {
+    const val = document.getElementById('del-cer-confirm').value.trim();
+    if (val.toUpperCase() !== 'DELETE') { showAlertModal('Error', 'Type DELETE to confirm removal.'); return; }
+    // Remove linked timeline blocks
+    S.timeline = S.timeline.filter(b => b.cerIdx !== ci);
+    // Re-index cerIdx for remaining blocks pointing to shifted ceremonies
+    S.timeline.forEach(b => { if (b.cerIdx !== undefined && b.cerIdx > ci) b.cerIdx--; });
+    S.ceremonies.splice(ci, 1);
+    selectedCeremonyIdx = Math.min(ci, S.ceremonies.length - 1);
+    closeInputModal();
+    saveState();
+    renderTlSchedule();
+    renderTlCeremonies();
+  });
 }
 
 const CEREMONY_TEMPLATES = {
