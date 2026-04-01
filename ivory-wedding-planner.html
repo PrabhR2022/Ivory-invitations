@@ -34,14 +34,18 @@ table{border-collapse:collapse;width:100%}
 
 /* ─── Layout ─── */
 .app{display:flex;min-height:calc(100vh - 49px)}
-.sidebar{width:240px;flex-shrink:0;border-right:1px solid var(--border-light);padding:24px 0;position:sticky;top:49px;height:calc(100vh - 49px);overflow-y:auto;background:var(--ivory)}
-.sidebar-section{padding:0 16px;margin-bottom:24px}
-.sidebar-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:rgba(107,101,96,0.5);margin-bottom:8px;padding:0 8px}
-.sidebar-btn{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border-radius:8px;font-size:13px;color:var(--stone);transition:all 150ms;text-align:left}
+.sidebar{width:56px;flex-shrink:0;border-right:1px solid var(--border-light);padding:24px 0;position:sticky;top:49px;height:calc(100vh - 49px);overflow-y:auto;overflow-x:hidden;background:var(--ivory);transition:width 200ms ease;z-index:20}
+.sidebar:hover{width:240px}
+.sidebar-section{padding:0 8px;margin-bottom:24px}
+.sidebar:hover .sidebar-section{padding:0 16px}
+.sidebar-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:rgba(107,101,96,0.5);margin-bottom:8px;padding:0 8px;white-space:nowrap;opacity:0;height:0;overflow:hidden;margin:0;transition:opacity 200ms}
+.sidebar:hover .sidebar-label{opacity:1;height:auto;margin-bottom:8px}
+.sidebar-btn{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border-radius:8px;font-size:13px;color:var(--stone);transition:all 150ms;text-align:left;white-space:nowrap;overflow:hidden}
 .sidebar-btn:hover{background:var(--cream);color:var(--charcoal)}
 .sidebar-btn.active{background:var(--charcoal);color:var(--ivory)}
-.sidebar-btn .icon{width:20px;text-align:center;font-size:14px;flex-shrink:0}
-.sidebar-btn .badge{margin-left:auto;font-size:10px;background:rgba(156,139,122,0.15);color:var(--taupe);padding:2px 6px;border-radius:100px}
+.sidebar-btn .icon{width:20px;min-width:20px;text-align:center;font-size:14px;flex-shrink:0}
+.sidebar-btn .badge{margin-left:auto;font-size:10px;background:rgba(156,139,122,0.15);color:var(--taupe);padding:2px 6px;border-radius:100px;opacity:0;transition:opacity 200ms}
+.sidebar:hover .sidebar-btn .badge{opacity:1}
 
 .main{flex:1;padding:32px 40px 96px;max-width:960px;min-width:0}
 
@@ -574,14 +578,13 @@ table input[type="number"]{text-align:right;width:90px}
   <!-- Sidebar -->
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-section">
-      <button class="sidebar-btn active" onclick="showTab('notifications')" style="font-weight:600"><span class="icon">&#128276;</span>Notifications<span class="badge" id="notif-badge" style="background:rgba(184,84,80,0.15);color:var(--red)">0</span></button>
+      <button class="sidebar-btn active" onclick="showTab('notifications')" style="font-weight:600"><span class="icon">&#127968;</span>Wedding Central<span class="badge" id="notif-badge" style="background:rgba(184,84,80,0.15);color:var(--red)">0</span></button>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Planning</div>
       <button class="sidebar-btn" onclick="showTab('budget')"><span class="icon">$</span>Budget Tracker</button>
       <button class="sidebar-btn" onclick="showTab('checklist')"><span class="icon">&#10003;</span>Checklist<span class="badge" id="check-badge">0%</span></button>
       <button class="sidebar-btn" onclick="showTab('guests')"><span class="icon">&#9825;</span>Guest List<span class="badge" id="guest-badge">0</span></button>
-      <button class="sidebar-btn" onclick="showTab('guests');setTimeout(()=>showGuestSub('floorplan'),0)" style="padding-left:40px;font-size:12px"><span class="icon">&#9638;</span>Floor Plan</button>
       <button class="sidebar-btn" onclick="showTab('vendors')"><span class="icon">&#9742;</span>Vendors</button>
     </div>
     <div class="sidebar-section">
@@ -595,15 +598,11 @@ table input[type="number"]{text-align:right;width:90px}
       <div class="sidebar-label">Details</div>
       <button class="sidebar-btn" onclick="showTab('attire')"><span class="icon">&#9733;</span>Attire & Beauty</button>
       <button class="sidebar-btn" onclick="showTab('stationery')"><span class="icon">&#9993;</span>Stationery</button>
-      <button class="sidebar-btn" onclick="showTab('honeymoon')"><span class="icon">&#9992;</span>Honeymoon</button>
       <button class="sidebar-btn" onclick="showTab('kit')"><span class="icon">+</span>Emergency Kit</button>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Tools</div>
-      <button class="sidebar-btn" onclick="showTab('notebook')"><span class="icon">&#128221;</span>Notebook</button>
       <button class="sidebar-btn" onclick="showTab('camera')"><span class="icon">&#128247;</span>Disposable Camera<span class="badge" id="camera-badge">0</span></button>
-      <button class="sidebar-btn" onclick="window.open('ivory-wedding-registry.html','_blank')"><span class="icon">&#127873;</span>Gift Registry</button>
-      <button class="sidebar-btn" onclick="showTab('visionboard')"><span class="icon">&#128444;</span>Vision Board</button>
     </div>
   </nav>
 
@@ -612,6 +611,13 @@ table input[type="number"]{text-align:right;width:90px}
 
     <!-- ═══ NOTIFICATIONS ═══ -->
     <div class="tab-content active" id="tab-notifications">
+      <!-- Day countdown hero -->
+      <div id="notif-countdown-hero" style="display:none;text-align:center;margin-bottom:24px;padding:28px 20px;background:linear-gradient(135deg,rgba(237,232,224,0.5),rgba(214,207,195,0.3));border:1px solid var(--border-light);border-radius:14px">
+        <p id="notif-countdown-number" style="font-family:var(--font-serif);font-size:48px;font-weight:700;color:var(--charcoal);margin-bottom:4px;line-height:1"></p>
+        <p id="notif-countdown-label" style="font-size:14px;color:var(--stone);margin-bottom:8px"></p>
+        <p id="notif-countdown-date" style="font-size:12px;color:var(--taupe)"></p>
+      </div>
+
       <!-- Couple welcome banner -->
       <div id="notif-couple-banner" style="display:none;text-align:center;margin-bottom:24px;padding:24px 20px;background:white;border:1px solid var(--border-light);border-radius:14px">
         <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px">
@@ -653,8 +659,8 @@ table input[type="number"]{text-align:right;width:90px}
         </div>
       </div>
 
-      <h1 class="page-title">Notification Centre</h1>
-      <p class="page-desc">Smart alerts from your planning data — never miss a deadline</p>
+      <h1 class="page-title">Wedding Central</h1>
+      <p class="page-desc">Your planning dashboard — countdowns, alerts & progress at a glance</p>
 
       <!-- Stats -->
       <div class="stats">
@@ -1287,20 +1293,17 @@ table input[type="number"]{text-align:right;width:90px}
 
 <!-- Mobile nav -->
 <div class="mobile-nav" id="mobile-nav">
-  <button onclick="showTab('notifications')">&#128276;</button>
+  <button onclick="showTab('notifications')">&#127968;</button>
   <button class="active" onclick="showTab('budget')">Budget</button>
   <button onclick="showTab('checklist')">Checklist</button>
   <button onclick="showTab('guests')">Guests</button>
   <button onclick="showTab('vendors')">Vendors</button>
   <button onclick="showTab('ceremony')">Ceremony</button>
   <button onclick="showTab('timeline')">Timeline</button>
-  <button onclick="showTab('floorplan')">Floor Plan</button>
   <button onclick="showTab('attire')">Attire</button>
   <button onclick="showTab('stationery')">Stationery</button>
-  <button onclick="showTab('honeymoon')">Honeymoon</button>
   <button onclick="showTab('kit')">Kit</button>
-  <button onclick="showTab('visionboard')">Vision</button>
-  <button onclick="showTab('notebook')">Notes</button>
+  <button onclick="showTab('camera')">Camera</button>
 </div>
 
 <script>
@@ -1326,7 +1329,7 @@ function defaultState() {
     ],
     checklist: buildChecklist(),
     guests: [],
-    vendors: buildVendors(),
+    vendors: [],
     ceremony: buildCeremony(),
     reception: buildReception(),
     timeline: [],
@@ -1962,7 +1965,7 @@ function renderGuests() {
     <td><span style="font-size:13px;color:${g.meal?'var(--charcoal)':'var(--border)'}">${g.meal||'—'}</span>${g.dietary?`<div style="font-size:10px;color:var(--taupe);margin-top:2px">${g.dietary}</div>`:''}</td>
     <td>${eCell(g.gift,`S.guests[${i}].gift=this.value;saveState()`,"select",["No","Yes"])}</td>
     <td>${eCell(g.thanks,`S.guests[${i}].thanks=this.value;saveState()`,"select",["No","Yes"])}</td>
-    <td>${delBtn(`S.guests.splice(${i},1);saveState();renderGuests()`)}</td>
+    <td>${delBtn(`if(confirm('Are you sure you want to remove this guest?')){S.guests.splice(${i},1);saveState();renderGuests()}`)}</td>
   </tr>`;
     // Add a sub-row for each plus guest
     plusGuests.forEach((pg, pi) => {
@@ -4254,6 +4257,9 @@ function renderFloorPlan() {
     el.style.left = '0';
     el.style.top = '0';
     el.dataset.idx = idx;
+    // Apply custom dimensions for scalable items
+    if (item.w) el.style.width = item.w + 'px';
+    if (item.h) el.style.height = item.h + 'px';
 
     // Apply rotation
     const rotation = item.rotation || 0;
@@ -4321,18 +4327,35 @@ function renderFloorPlan() {
 
     wrapper.appendChild(el);
 
-    // Double-click to edit table properties
+    // Double-click to edit properties
     el.ondblclick = (e) => {
       e.stopPropagation();
       if (isTable) {
         showInputModal('Edit Table', [
           {id:'fp-name', label:'Table Name', value: item.label, required:true},
-          {id:'fp-seats', label:'Number of Seats', type:'number', value: String(item.seats || 6)}
+          {id:'fp-seats', label:'Number of Seats', type:'number', value: String(item.seats || 6)},
+          {id:'fp-shape', label:'Table Shape', type:'select', opts:['Round','Rectangle'], value: item.type === 'rect' ? 'Rectangle' : 'Round'}
         ], function() {
           const n = document.getElementById('fp-name').value.trim();
           if (n) S.floorPlan[idx].label = n;
           const sc = parseInt(document.getElementById('fp-seats').value) || 6;
           S.floorPlan[idx].seats = Math.max(1, Math.min(20, sc));
+          const shape = document.getElementById('fp-shape').value;
+          S.floorPlan[idx].type = shape === 'Rectangle' ? 'rect' : 'round';
+          saveState(); renderFloorPlan(); closeInputModal();
+        });
+      } else if (item.type === 'dance' || item.type === 'stage') {
+        const curW = item.w || def.w;
+        const curH = item.h || def.h;
+        showInputModal('Edit ' + item.label, [
+          {id:'fp-rename', label:'Name', value: item.label, required:true},
+          {id:'fp-width', label:'Width (px)', type:'number', value: String(curW), placeholder:'60–400'},
+          {id:'fp-height', label:'Height (px)', type:'number', value: String(curH), placeholder:'60–400'}
+        ], function() {
+          const name = document.getElementById('fp-rename').value.trim();
+          if (name) S.floorPlan[idx].label = name;
+          S.floorPlan[idx].w = Math.max(60, Math.min(400, parseInt(document.getElementById('fp-width').value) || curW));
+          S.floorPlan[idx].h = Math.max(60, Math.min(400, parseInt(document.getElementById('fp-height').value) || curH));
           saveState(); renderFloorPlan(); closeInputModal();
         });
       } else {
@@ -4366,8 +4389,10 @@ function renderFloorPlan() {
       const rect = canvas.getBoundingClientRect();
       let nx = e.clientX - fpOffset.x - rect.left;
       let ny = e.clientY - fpOffset.y - rect.top;
-      nx = Math.max(0, Math.min(nx, rect.width - def.w));
-      ny = Math.max(0, Math.min(ny, rect.height - def.h));
+      const itemW = item.w || def.w;
+      const itemH = item.h || def.h;
+      nx = Math.max(0, Math.min(nx, rect.width - itemW));
+      ny = Math.max(0, Math.min(ny, rect.height - itemH));
       wrapper.style.left = nx + 'px';
       wrapper.style.top = ny + 'px';
       S.floorPlan[idx].x = nx;
@@ -4702,6 +4727,32 @@ function renderNotifications() {
 }
 
 function renderNotifCoupleBanner() {
+  // Countdown hero at top
+  const hero = document.getElementById('notif-countdown-hero');
+  if (hero) {
+    if (S.weddingDate) {
+      hero.style.display = 'block';
+      const diff = Math.ceil((new Date(S.weddingDate) - new Date()) / (1000*60*60*24));
+      const numEl = document.getElementById('notif-countdown-number');
+      const lblEl = document.getElementById('notif-countdown-label');
+      const dateEl = document.getElementById('notif-countdown-date');
+      if (diff > 0) {
+        numEl.textContent = diff;
+        lblEl.textContent = diff === 1 ? 'day to go' : 'days to go';
+      } else if (diff === 0) {
+        numEl.textContent = '🎉';
+        lblEl.textContent = 'Today is the day!';
+      } else {
+        numEl.textContent = '💍';
+        lblEl.textContent = 'Congratulations!';
+      }
+      const wd = new Date(S.weddingDate + 'T00:00:00');
+      dateEl.textContent = wd.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+    } else {
+      hero.style.display = 'none';
+    }
+  }
+
   const banner = document.getElementById('notif-couple-banner');
   if (!banner) return;
   if (!S.avatar1 && !S.avatar2 && !S.coupleName1 && !S.coupleName2) { banner.style.display = 'none'; return; }
