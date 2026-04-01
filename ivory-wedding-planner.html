@@ -874,13 +874,6 @@ table input[type="number"]{text-align:right;width:90px}
           <div class="stat-card red"><div class="val" id="rsvp-declined">0</div><div class="lbl">Declined</div></div>
           <div class="stat-card"><div class="val" id="rsvp-pending">0</div><div class="lbl">Pending</div></div>
         </div>
-        <div class="card">
-          <div class="card-title">RSVP Tracker</div>
-          <div class="tbl-wrap">
-            <table><thead><tr><th>#</th><th>Name</th><th>Role</th><th>RSVP</th><th>Meal</th><th>Dietary</th><th>+1 Accepted</th><th>RSVP Date</th></tr></thead>
-            <tbody id="rsvp-body"></tbody></table>
-          </div>
-        </div>
         <!-- Meal count summary -->
         <div class="card" id="rsvp-meal-summary" style="display:none">
           <div class="card-title">Meal Breakdown <span class="count" id="rsvp-meal-total">0 meals</span></div>
@@ -2095,7 +2088,6 @@ function setGuestRole(idx, val) {
 }
 function renderGuestRsvp() {
   const guests = S.guests || [];
-  const mealOpts = S.mealOptions || ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal"];
 
   // Stats
   const total = guests.length;
@@ -2106,32 +2098,6 @@ function renderGuestRsvp() {
   document.getElementById('rsvp-attending').textContent = attending;
   document.getElementById('rsvp-declined').textContent = declined;
   document.getElementById('rsvp-pending').textContent = pending;
-
-  // Table
-  const tbody = document.getElementById('rsvp-body');
-  tbody.innerHTML = '';
-  guests.forEach((g, i) => {
-    // Plus-one info
-    const plusGuests = g.plusGuests || [];
-    let plusAccepted;
-    if (g.allowPlusOne === 0) plusAccepted = 'N/A';
-    else if (plusGuests.length > 0) plusAccepted = plusGuests.length + ' Accepted';
-    else if (g.rsvp === 'Declined') plusAccepted = 'Declined';
-    else plusAccepted = 'Pending';
-
-    const rsvpDate = g.rsvpDate ? new Date(g.rsvpDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-
-    tbody.innerHTML += `<tr>
-      <td>${i+1}</td>
-      <td style="font-weight:500">${g.name || '<span style="color:var(--border)">—</span>'}</td>
-      <td style="font-size:12px;color:var(--stone)">${g.role || 'Guest'}</td>
-      <td><div>${eCell(g.rsvp,`S.guests[${i}].rsvp=this.value;saveState();renderGuestRsvp()`,"select",["Pending","Attending","Declined"])}</div></td>
-      <td><div>${eCell(g.meal,`S.guests[${i}].meal=this.value;saveState();renderGuestRsvp()`,"select",[""].concat(mealOpts))}</div></td>
-      <td>${eCell(g.dietary||'',`S.guests[${i}].dietary=this.value;saveState()`)}</td>
-      <td style="font-size:12px">${plusAccepted}</td>
-      <td style="font-size:12px;color:var(--stone)">${rsvpDate}</td>
-    </tr>`;
-  });
 
   // Meal breakdown
   const mealCard = document.getElementById('rsvp-meal-summary');
