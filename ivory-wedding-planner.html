@@ -596,6 +596,7 @@ table input[type="number"]{text-align:right;width:90px}
       <button class="sidebar-btn" onclick="showTab('music')"><span class="icon">&#9835;</span>Music Planner</button>
       <button class="sidebar-btn" onclick="showTab('timeline')"><span class="icon">&#9200;</span>Itinerary</button>
       <button class="sidebar-btn" onclick="showTab('transport')"><span class="icon">&#128663;</span>Transportation</button>
+      <button class="sidebar-btn" onclick="showTab('preevents')"><span class="icon">&#127881;</span>Pre-Wedding Events</button>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Details</div>
@@ -676,6 +677,33 @@ table input[type="number"]{text-align:right;width:90px}
       <!-- Day-of Packet button (Phase 4.4) -->
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px">
         <button class="btn btn-outline" onclick="printDayOfPacket()">&#128196; Print Day-of Packet</button>
+      </div>
+
+      <!-- Post-Wedding Summary (Phase 5.3) — shows only after wedding date -->
+      <div id="notif-postwed-card" class="card" style="display:none;margin-bottom:16px;background:linear-gradient(135deg,rgba(74,122,91,0.08),rgba(184,150,100,0.06));border:1px solid rgba(74,122,91,0.3)">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>&#127881; Post-Wedding Summary</span>
+          <button class="btn btn-sm btn-outline" onclick="copyPostWeddingSummary(this)">Copy Summary</button>
+        </div>
+        <div id="notif-postwed-content" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;font-size:13px"></div>
+      </div>
+
+      <!-- Weather & Sunset (Phase 2) -->
+      <div id="notif-weather-card" class="card" style="display:none;margin-bottom:16px">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>&#9925; Weather & Sunset</span>
+          <button class="btn btn-sm btn-outline" onclick="refreshWeather(true)">Refresh</button>
+        </div>
+        <div id="notif-weather-content" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px"></div>
+      </div>
+
+      <!-- Activity Log (Phase 3.2) -->
+      <div id="notif-activity-card" class="card" style="margin-bottom:16px">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>&#128339; Recent Activity</span>
+          <button class="btn btn-sm btn-outline" onclick="if(confirm('Clear activity log?')){S.activityLog=[];saveState();renderActivityLog()}">Clear</button>
+        </div>
+        <div id="notif-activity-list" style="max-height:220px;overflow-y:auto;font-size:12px"></div>
       </div>
 
       <!-- Dashboard Widgets -->
@@ -789,7 +817,12 @@ table input[type="number"]{text-align:right;width:90px}
       </div>
 
       <div class="card">
-        <div class="card-title">Budget by Category <button class="btn btn-sm btn-dark" onclick="addBudgetRow()">+ Add Category</button></div>
+        <div class="card-title">Budget by Category
+          <div style="display:inline-flex;gap:6px">
+            <button class="btn btn-sm btn-outline" onclick="exportBudgetCSV()">Export CSV</button>
+            <button class="btn btn-sm btn-dark" onclick="addBudgetRow()">+ Add Category</button>
+          </div>
+        </div>
         <div class="budget-filter">
           <button class="budget-filter-btn active" onclick="setBudgetFilter('all')">All</button>
           <button class="budget-filter-btn" onclick="setBudgetFilter('bride')">Bride</button>
@@ -834,6 +867,7 @@ table input[type="number"]{text-align:right;width:90px}
       <div class="tl-tabs" id="guest-subtabs">
         <button class="tl-tab active" onclick="showGuestSub('list')">Guest List</button>
         <button class="tl-tab" onclick="showGuestSub('rsvp')">RSVP</button>
+        <button class="tl-tab" onclick="showGuestSub('thankyous')">Thank-Yous</button>
         <button class="tl-tab" onclick="showGuestSub('floorplan')">Floor Plan</button>
       </div>
 
@@ -844,6 +878,12 @@ table input[type="number"]{text-align:right;width:90px}
         <div class="stat-card green"><div class="val" id="g-attending">0</div><div class="lbl">Attending</div></div>
         <div class="stat-card red"><div class="val" id="g-declined">0</div><div class="lbl">Declined</div></div>
         <div class="stat-card"><div class="val" id="g-pending">0</div><div class="lbl">Pending</div></div>
+      </div>
+      <div class="stats" style="margin-top:-8px">
+        <div class="stat-card"><div class="val" id="g-adults">0</div><div class="lbl">Adults</div></div>
+        <div class="stat-card"><div class="val" id="g-kids">0</div><div class="lbl">Kids</div></div>
+        <div class="stat-card"><div class="val" id="g-infants">0</div><div class="lbl">Infants</div></div>
+        <div class="stat-card"><div class="val" id="g-households">0</div><div class="lbl">Households</div></div>
       </div>
 
       <!-- Meal Counts -->
@@ -862,7 +902,7 @@ table input[type="number"]{text-align:right;width:90px}
         </div>
         <input type="file" id="guest-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="importGuestFile(this)" />
         <div class="tbl-wrap">
-          <table><thead><tr><th>#</th><th>Name</th><th>Role</th><th>Address</th><th>Table</th><th>+1 Allowed</th><th>RSVP</th><th>+1 Accepted</th><th>Meal</th><th>Gift Recv'd</th><th>Thank You</th><th></th></tr></thead>
+          <table><thead><tr><th>#</th><th>Name</th><th>Role</th><th>Household</th><th>Age</th><th>Address</th><th>Table</th><th>+1 Allowed</th><th>RSVP</th><th>+1 Accepted</th><th>Meal</th><th>Gift Recv'd</th><th>Thank You</th><th></th></tr></thead>
           <tbody id="guest-body"></tbody></table>
         </div>
       </div>
@@ -914,6 +954,30 @@ table input[type="number"]{text-align:right;width:90px}
         </div>
       </div><!-- end guest-sub-rsvp -->
 
+      <!-- Thank-Yous sub-tab (Phase 5.2) -->
+      <div class="tl-section" id="guest-sub-thankyous">
+        <p class="page-desc" style="margin-bottom:16px">Track gifts received and thank-you notes sent</p>
+        <div class="stats">
+          <div class="stat-card"><div class="val" id="ty-gifts">0</div><div class="lbl">Gifts Received</div></div>
+          <div class="stat-card green"><div class="val" id="ty-sent">0</div><div class="lbl">Thank-Yous Sent</div></div>
+          <div class="stat-card red"><div class="val" id="ty-pending">0</div><div class="lbl">Still to Send</div></div>
+          <div class="stat-card"><div class="val" id="ty-pct">0%</div><div class="lbl">Complete</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Gift & Thank-You Tracker
+            <select id="ty-filter" onchange="renderThankYous()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px">
+              <option value="all">Show all</option>
+              <option value="pending">Not sent yet</option>
+              <option value="sent">Sent</option>
+            </select>
+          </div>
+          <div class="tbl-wrap">
+            <table><thead><tr><th>Guest</th><th>Gift Received</th><th>Gift Description</th><th>Thank-You Sent</th><th>Date Sent</th></tr></thead>
+            <tbody id="ty-body"></tbody></table>
+          </div>
+        </div>
+      </div>
+
       <!-- Floor Plan sub-section inside guests -->
       <div class="tl-section" id="guest-sub-floorplan">
         <p class="page-desc" style="margin-bottom:16px">Drag and drop to arrange your venue — tables, stage, dance floor and more</p>
@@ -959,7 +1023,12 @@ table input[type="number"]{text-align:right;width:90px}
       <!-- Unified Table + Inline Detail View -->
       <div id="vendor-table-view">
         <div class="card" id="vendor-table-card">
-          <div class="card-title">Vendors <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button></div>
+          <div class="card-title">Vendors
+            <div style="display:inline-flex;gap:6px">
+              <button class="btn btn-sm btn-outline" onclick="exportVendorsCSV()">Export CSV</button>
+              <button class="btn btn-sm btn-dark" onclick="addVendor()">+ Add Vendor</button>
+            </div>
+          </div>
           <div id="vendor-cat-filter" class="budget-filter" style="margin-bottom:12px"></div>
           <div class="tbl-wrap">
             <table><thead><tr><th style="min-width:120px">Category</th><th style="min-width:100px">Status</th><th style="min-width:130px">Company</th><th style="text-align:right;min-width:80px">Cost</th><th style="text-align:right;min-width:70px">Deposit</th><th style="min-width:110px">Payment Due</th><th style="width:30px"></th><th style="width:30px"></th></tr></thead>
@@ -1089,6 +1158,7 @@ table input[type="number"]{text-align:right;width:90px}
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <button class="btn btn-dark" onclick="addTlBlock()">+ Add Block</button>
           <button class="btn btn-outline" onclick="window.print()">Print</button>
+          <button class="btn btn-outline" onclick="exportTimelineICS()" style="font-size:11px">Export .ics</button>
           <button class="btn btn-outline" onclick="if(confirm('Reset schedule to default milestones? This replaces all current events.')){S.timeline=buildTimeline();saveState();renderTlSchedule()}" style="font-size:11px">Reset</button>
           <button class="btn btn-outline" onclick="if(confirm('Restart the setup wizard? This will replace your current schedule.')){S.itinerarySetupDone=false;delete S.itinObStep;delete S.itinObData;S.timeline=[];S.ceremonies=[];saveState();showItinOnboarding()}" style="font-size:11px">Restart Wizard</button>
           <div class="sch-view-toggle" id="sch-view-toggle">
@@ -1176,6 +1246,15 @@ table input[type="number"]{text-align:right;width:90px}
         </div>
       </div>
 
+      <!-- Phase 7.2 — Hotel Blocks -->
+      <div class="card">
+        <div class="card-title">Hotel Blocks <button class="btn btn-sm btn-dark" onclick="addHotelBlock()">+ Add Hotel</button></div>
+        <div id="hotel-blocks-list"></div>
+        <div id="hotel-blocks-empty" style="text-align:center;padding:24px;color:var(--stone);font-size:13px;display:none">
+          <p style="font-size:28px;margin-bottom:6px;opacity:0.3">&#127976;</p>
+          <p>No hotel blocks yet. Add reserved blocks for out-of-town guests so they can book at your group rate.</p>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ ATTIRE ═══ -->
@@ -1276,6 +1355,39 @@ table input[type="number"]{text-align:right;width:90px}
       <div id="notebook-empty" style="padding:40px 16px;text-align:center">
         <p style="font-size:32px;margin-bottom:8px;opacity:0.3">&#128221;</p>
         <p style="font-size:13px;color:var(--stone)">No notes yet — click "New Note" to start writing</p>
+      </div>
+    </div>
+
+    <!-- ═══ PRE-WEDDING EVENTS (Phase 6) ═══ -->
+    <div class="tab-content" id="tab-preevents">
+      <h1 class="page-title">Pre-Wedding Events</h1>
+      <p class="page-desc">Rehearsal dinner, shower, bachelor/bachelorette, engagement party — mini-planners for the lead-up events</p>
+
+      <!-- Rehearsal Dinner -->
+      <div class="card">
+        <div class="card-title">Rehearsal Dinner</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+          <div><label class="ob-label">Date</label><input id="reh-date" class="ob-input" type="date" style="padding:8px 12px;font-size:13px" onchange="S.rehearsal.date=this.value;saveState()"/></div>
+          <div><label class="ob-label">Time</label><input id="reh-time" class="ob-input" type="time" style="padding:8px 12px;font-size:13px" onchange="S.rehearsal.time=this.value;saveState()"/></div>
+          <div><label class="ob-label">Venue</label><input id="reh-venue" class="ob-input" style="padding:8px 12px;font-size:13px" onblur="S.rehearsal.venue=this.value;saveState()" placeholder="Restaurant / home"/></div>
+        </div>
+        <div style="margin-bottom:12px"><label class="ob-label">Address</label><input id="reh-address" class="ob-input" style="padding:8px 12px;font-size:13px" onblur="S.rehearsal.address=this.value;saveState()" placeholder="Full address"/></div>
+        <div>
+          <label class="ob-label">Attendees <span id="reh-attendee-count" style="color:var(--stone);font-weight:400;margin-left:4px"></span></label>
+          <div id="reh-attendees" style="max-height:240px;overflow-y:auto;padding:8px;border:1px solid var(--border-light);border-radius:8px;background:rgba(250,250,247,0.6);font-size:13px"></div>
+        </div>
+      </div>
+
+      <!-- Other Events -->
+      <div class="card">
+        <div class="card-title">Other Events
+          <button class="btn btn-sm btn-dark" onclick="addPreEvent()">+ Add Event</button>
+        </div>
+        <div id="pre-events-list"></div>
+        <div id="pre-events-empty" style="display:none;padding:32px 16px;text-align:center">
+          <p style="font-size:32px;opacity:0.3;margin-bottom:8px">&#127881;</p>
+          <p style="font-size:13px;color:var(--stone)">No events yet — click + Add Event to plan a shower, bachelorette, engagement party, etc.</p>
+        </div>
       </div>
     </div>
 
@@ -1384,6 +1496,12 @@ function defaultState() {
     taxRate: 0.13,
     applyHST: true,
     hideHiddenCosts: false,
+    venueLat: 43.6532, venueLng: -79.3832, // Toronto default
+    weatherCache: {}, sunsetCache: {},
+    activityLog: [],
+    hotelBlocks: [],
+    rehearsal: {date:'', venue:'', address:'', time:'', attendeeIds:[], timeline:[]},
+    preEvents: [],
     budget: [
       {cat:"Venue",planned:0,actual:0,notes:""},{cat:"Rentals",planned:0,actual:0,notes:""},
       {cat:"Catering",planned:0,actual:0,notes:""},{cat:"Bar",planned:0,actual:0,notes:""},
@@ -1613,11 +1731,14 @@ let guestActiveSub = 'list';
 function showGuestSub(sub) {
   guestActiveSub = sub;
   document.querySelectorAll('#guest-subtabs .tl-tab').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('#guest-subtabs .tl-tab').forEach((b,i) => { if((i===0 && sub==='list') || (i===1 && sub==='rsvp') || (i===2 && sub==='floorplan')) b.classList.add('active'); });
+  const order = ['list','rsvp','thankyous','floorplan'];
+  document.querySelectorAll('#guest-subtabs .tl-tab').forEach((b,i) => { if(order[i] === sub) b.classList.add('active'); });
   document.getElementById('guest-sub-list').classList.toggle('active', sub==='list');
   document.getElementById('guest-sub-rsvp').classList.toggle('active', sub==='rsvp');
+  const tyEl = document.getElementById('guest-sub-thankyous'); if (tyEl) tyEl.classList.toggle('active', sub==='thankyous');
   document.getElementById('guest-sub-floorplan').classList.toggle('active', sub==='floorplan');
   if (sub === 'rsvp') renderGuestRsvp();
+  if (sub === 'thankyous') renderThankYous();
   if (sub === 'floorplan') renderFloorPlan();
 }
 
@@ -1663,6 +1784,7 @@ function renderTab(id) {
     case "visionboard": renderVisionBoard(); break;
     case "notebook": renderNotebook(); break;
     case "camera": renderCamera(); break;
+    case "preevents": renderPreEvents(); break;
   }
 }
 
@@ -1975,6 +2097,16 @@ function saveTotalBudget() {
 // ══════════════════════════════════════════════════
 // CHECKLIST
 // ══════════════════════════════════════════════════
+function getOwnerOptions() {
+  return ['Unassigned', S.coupleName1 || 'Partner 1', S.coupleName2 || 'Partner 2', 'Both', 'Parents', 'Planner'];
+}
+function ownerDisplayName(o) {
+  if (!o || o === 'Unassigned') return 'Unassigned';
+  if (o === 'Partner 1') return S.coupleName1 || 'Partner 1';
+  if (o === 'Partner 2') return S.coupleName2 || 'Partner 2';
+  return o;
+}
+
 function renderChecklist() {
   const done = S.checklist.filter(c=>c.done).length;
   const total = S.checklist.length;
@@ -2002,9 +2134,14 @@ function renderChecklist() {
     ${items.map(item => {
       const idx = S.checklist.indexOf(item);
       const priClass = item.priority==="High"?"priority-high":item.priority==="Medium"?"priority-med":"priority-low";
+      const ownerLabel = ownerDisplayName(item.owner);
+      const ownerOpts = getOwnerOptions();
       return `<div class="check-item ${item.done?'done':''}" style="display:flex;align-items:center;gap:8px">
-        <div class="check-box ${item.done?'checked':''}" onclick="S.checklist[${idx}].done=!S.checklist[${idx}].done;saveState();renderChecklist()"></div>
+        <div class="check-box ${item.done?'checked':''}" onclick="S.checklist[${idx}].done=!S.checklist[${idx}].done;logActivity('Checklist',S.checklist[${idx}].done?'completed':'reopened',S.checklist[${idx}].task);saveState();renderChecklist()"></div>
         <span class="check-label" style="flex:1">${item.task}</span>
+        <select onchange="S.checklist[${idx}].owner=this.value;logActivity('Checklist','assigned',S.checklist[${idx}].task+' → '+this.value);saveState();renderChecklist()" style="font-size:10px;padding:2px 4px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);color:var(--stone);cursor:pointer" title="Assign">
+          ${ownerOpts.map(o => `<option value="${esc(o)}" ${(item.owner||'Unassigned')===o?'selected':''}>${esc(ownerDisplayName(o))}</option>`).join('')}
+        </select>
         <span class="priority-tag ${priClass}" style="cursor:pointer" onclick="event.stopPropagation();cyclePriority(${idx})" title="Click to change">${item.priority}</span>
         <button onclick="S.checklist.splice(${idx},1);saveState();renderChecklist()" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:14px;opacity:0.4;padding:2px 4px" title="Remove">&times;</button>
       </div>`;
@@ -2059,6 +2196,19 @@ function renderGuests() {
   document.getElementById("g-declined").textContent=d;
   document.getElementById("g-pending").textContent=pendingCount;
   document.getElementById("guest-badge").textContent=t;
+  // Phase 3.3 — age & household stats
+  const adults = S.guests.filter(g => (g.ageGroup||'Adult') === 'Adult').length;
+  const kids = S.guests.filter(g => g.ageGroup === 'Kid').length;
+  const infants = S.guests.filter(g => g.ageGroup === 'Infant').length;
+  const households = new Set(S.guests.map(g => (g.household||'').trim()).filter(h => h)).size;
+  const adultsEl = document.getElementById("g-adults");
+  if (adultsEl) adultsEl.textContent = adults;
+  const kidsEl = document.getElementById("g-kids");
+  if (kidsEl) kidsEl.textContent = kids;
+  const infantsEl = document.getElementById("g-infants");
+  if (infantsEl) infantsEl.textContent = infants;
+  const hhEl = document.getElementById("g-households");
+  if (hhEl) hhEl.textContent = households;
 
   // Build table options from floor plan
   const fpTables = (S.floorPlan||[]).filter(f => {const d=FP_TYPES[f.type];return d&&d.isTable;});
@@ -2096,14 +2246,16 @@ function renderGuests() {
     <td style="width:36px;text-align:center;color:var(--stone)">${i+1}</td>
     <td>${eCell(g.name,`S.guests[${i}].name=this.value;saveState()`)}</td>
     <td>${eCell(g.role||'',`setGuestRole(${i},this.value)`,"select",[...GUEST_ROLES,...(g.role && !GUEST_ROLES.includes(g.role)?[g.role]:[])])}</td>
+    <td style="min-width:110px">${eCell(g.household||'',`S.guests[${i}].household=this.value;saveState();renderGuests()`)}</td>
+    <td>${eCell(g.ageGroup||'Adult',`S.guests[${i}].ageGroup=this.value;saveState();renderGuests()`,"select",["Adult","Kid","Infant"])}</td>
     <td>${eCell(g.address,`S.guests[${i}].address=this.value;saveState()`)}</td>
     <td style="min-width:100px;position:relative">${tableCell}</td>
     <td><input type="number" min="0" max="10" value="${g.allowPlusOne}" style="width:60px;text-align:center" onchange="S.guests[${i}].allowPlusOne=+this.value;saveState()" /></td>
     <td><div>${eCell(g.rsvp,`S.guests[${i}].rsvp=this.value;saveState();renderGuests()`,"select",["Pending","Attending","Declined"])}</div>${rsvpInfo}</td>
     <td><div style="font-size:13px;font-weight:500;color:${plusAcceptedColor}">${plusAccepted}</div></td>
     <td><span style="font-size:13px;color:${g.meal?'var(--charcoal)':'var(--border)'}">${g.meal||'—'}</span>${g.dietary?`<div style="font-size:10px;color:var(--taupe);margin-top:2px">${g.dietary}</div>`:''}</td>
-    <td>${eCell(g.gift,`S.guests[${i}].gift=this.value;saveState()`,"select",["No","Yes"])}</td>
-    <td>${eCell(g.thanks,`S.guests[${i}].thanks=this.value;saveState()`,"select",["No","Yes"])}</td>
+    <td>${eCell(g.gift,`S.guests[${i}].gift=this.value;saveState();renderGuests()`,"select",["No","Yes"])}</td>
+    <td>${eCell(g.thanks,`S.guests[${i}].thanks=this.value;saveState();renderGuests()`,"select",["No","Yes"])}</td>
     <td>${delBtn(`if(confirm('Are you sure you want to remove this guest?')){S.guests.splice(${i},1);saveState();renderGuests()}`)}</td>
   </tr>`;
     // Add a sub-row for each plus guest
@@ -2111,6 +2263,8 @@ function renderGuests() {
       row += `<tr style="background:rgba(237,232,224,0.18)">
         <td></td>
         <td style="padding-left:28px;font-size:12px;color:var(--stone)"><span style="color:var(--taupe);margin-right:6px">+${pi+1}</span>${pg.name}</td>
+        <td></td>
+        <td style="font-size:11px;color:var(--stone);font-style:italic">${esc(g.household||'')}</td>
         <td></td>
         <td style="font-size:11px;color:var(--stone);font-style:italic">Guest of ${g.name.split(' ')[0]}</td>
         <td></td>
@@ -2203,6 +2357,41 @@ function setGuestRole(idx, val) {
   } else { S.guests[idx].role = val; }
   saveState(); renderGuests();
 }
+// ─── Phase 5: Thank-You Tracker ──────────────────────
+function renderThankYous() {
+  const body = document.getElementById('ty-body');
+  if (!body) return;
+  const filt = (document.getElementById('ty-filter')||{}).value || 'all';
+  const all = (S.guests||[]);
+  const withGifts = all.filter(g => g.gift === 'Yes' || (g.giftDesc && g.giftDesc.trim()));
+  const sent = withGifts.filter(g => g.thanks === 'Yes').length;
+  const pending = withGifts.length - sent;
+  const pct = withGifts.length ? Math.round(sent/withGifts.length*100) : 0;
+  document.getElementById('ty-gifts').textContent = withGifts.length;
+  document.getElementById('ty-sent').textContent = sent;
+  document.getElementById('ty-pending').textContent = pending;
+  document.getElementById('ty-pct').textContent = pct + '%';
+
+  let list = withGifts;
+  if (filt === 'pending') list = list.filter(g => g.thanks !== 'Yes');
+  if (filt === 'sent') list = list.filter(g => g.thanks === 'Yes');
+
+  if (!list.length) {
+    body.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--stone)">${withGifts.length === 0 ? 'No gifts marked received yet — update the Gift Received column on the Guest List tab.' : 'Nothing to show with this filter.'}</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.map(g => {
+    const i = S.guests.indexOf(g);
+    return `<tr>
+      <td style="font-weight:500">${esc(g.name || '—')}</td>
+      <td>${eCell(g.gift || 'No', `S.guests[${i}].gift=this.value;saveState();renderThankYous()`, 'select', ['No','Yes'])}</td>
+      <td>${eCell(g.giftDesc || '', `S.guests[${i}].giftDesc=this.value;saveState()`)}</td>
+      <td>${eCell(g.thanks || 'No', `if(this.value==='Yes'&&!S.guests[${i}].thanksDate){S.guests[${i}].thanksDate=new Date().toISOString().slice(0,10)}S.guests[${i}].thanks=this.value;logActivity('Thank-yous','marked ' + this.value, S.guests[${i}].name);saveState();renderThankYous()`, 'select', ['No','Yes'])}</td>
+      <td>${g.thanks === 'Yes' ? eCell(g.thanksDate || '', `S.guests[${i}].thanksDate=this.value;saveState()`, 'date') : '<span style="color:var(--stone);font-size:11px">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
 function renderGuestRsvp() {
   const guests = S.guests || [];
 
@@ -2233,7 +2422,7 @@ function renderGuestRsvp() {
   } else { mealCard.style.display = 'none'; }
 }
 
-function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No",table:"",role:"Guest"}); saveState(); renderGuests(); }
+function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",giftDesc:"",thanks:"No",thanksDate:"",table:"",role:"Guest",household:"",ageGroup:"Adult"}); saveState(); renderGuests(); }
 
 function assignGuestTable(guestIdx, tableName) {
   const guest = S.guests[guestIdx];
@@ -2690,11 +2879,123 @@ function renderVendors() {
           <div><label class="ob-label">&#9888; Hidden Fees to Ask About</label><div style="padding:10px 14px;background:white;border-radius:8px;max-height:240px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--border-light)">${feeHTML}</div></div>
           <div><label class="ob-label">&#9989; Contract Checklist</label><div style="padding:10px 14px;background:white;border-radius:8px;max-height:240px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--border-light)">${checkHTML}</div></div>
         </div>
+
+        <!-- Phase 8 — Cancellation Policy -->
+        <div style="margin-top:16px">
+          <label class="ob-label">Cancellation Policy${(v.status==='Signed' && !v.cancellationPolicy)?` <span style="color:var(--red);font-weight:400">&#9888; Missing — contract is signed</span>`:''}</label>
+          <textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].cancellationPolicy=this.value;saveState();renderVendors()" placeholder="e.g. 30 days full refund; 15-29 days 50%; &lt;15 days non-refundable">${esc(v.cancellationPolicy||'')}</textarea>
+        </div>
+
+        <!-- Phase 8 — Meeting Log -->
+        <div style="margin-top:16px">
+          <label class="ob-label">Meeting Log <button class="btn btn-sm btn-outline" style="margin-left:8px;padding:2px 8px;font-size:10px" onclick="addVendorMeetingNote(${i})">+ Add Note</button></label>
+          <div id="vendor-meetings-${i}" style="padding:8px 12px;background:white;border-radius:8px;border:1px solid var(--border-light);max-height:180px;overflow-y:auto">
+            ${(v.meetingLog||[]).length === 0 ? '<p style="font-size:11px;color:var(--stone);margin:4px 0">No meeting notes yet.</p>' : (v.meetingLog||[]).map((m,mi) => `
+              <div style="padding:6px 0;border-bottom:1px solid var(--border-light);font-size:12px;display:flex;justify-content:space-between;gap:8px">
+                <div style="flex:1"><strong style="font-size:10px;color:var(--taupe);text-transform:uppercase">${esc(m.date||'')}</strong> — ${esc(m.note||'')}</div>
+                <button onclick="S.vendors[${i}].meetingLog.splice(${mi},1);saveState();renderVendors()" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:12px;opacity:0.5">&times;</button>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Phase 8 — Contract File -->
+        <div style="margin-top:16px">
+          <label class="ob-label">Contract File (max 2MB)</label>
+          ${v.contractFile ? `
+            <div style="padding:10px 14px;background:white;border-radius:8px;border:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center;font-size:12px">
+              <div>&#128196; <strong>${esc(v.contractFile.name)}</strong> <span style="color:var(--stone)">(${Math.round(v.contractFile.size/1024)} KB)</span></div>
+              <div style="display:flex;gap:6px">
+                <a href="${v.contractFile.dataUrl}" download="${esc(v.contractFile.name)}" class="btn btn-sm btn-outline" style="text-decoration:none">Download</a>
+                <button class="btn btn-sm btn-outline" style="color:var(--red);border-color:var(--red)" onclick="if(confirm('Remove this contract file?')){delete S.vendors[${i}].contractFile;saveState();renderVendors()}">Remove</button>
+              </div>
+            </div>
+          ` : `
+            <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onchange="uploadVendorContract(${i}, this)" style="font-size:12px"/>
+          `}
+        </div>
+
         <div style="margin-top:16px;text-align:right"><button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red)" onclick="deleteVendor(${i})">Delete Vendor</button></div>
       </div></td></tr>`;
     }
     return row;
   }).join("");
+  // Show regional pricing card on Vendors tab
+  renderRegionalPricing();
+}
+
+// Phase 8 helpers
+function addVendorMeetingNote(i) {
+  if (!S.vendors[i].meetingLog) S.vendors[i].meetingLog = [];
+  showInputModal('Add Meeting Note', [
+    {id:'mn-date', label:'Date', type:'date', value: new Date().toISOString().slice(0,10), required:true},
+    {id:'mn-note', label:'Note', required:true, placeholder:'Discussed menu, confirmed deposit, requested tasting...'}
+  ], function() {
+    const date = document.getElementById('mn-date').value;
+    const note = document.getElementById('mn-note').value.trim();
+    if (!note) return;
+    S.vendors[i].meetingLog.push({date, note});
+    logActivity('Vendors','meeting note', S.vendors[i].company + ': ' + note.slice(0,50));
+    saveState();
+    renderVendors();
+    closeInputModal();
+  });
+}
+function uploadVendorContract(i, input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    alert('File is too large. Max 2MB.');
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    S.vendors[i].contractFile = { name: file.name, size: file.size, dataUrl: e.target.result };
+    logActivity('Vendors','uploaded contract', S.vendors[i].company + ': ' + file.name);
+    try { saveState(); } catch (err) { alert('Storage full — try removing other files first.'); return; }
+    renderVendors();
+  };
+  reader.readAsDataURL(file);
+}
+
+// Phase 8.4 — Ontario Regional Pricing Card
+const ONTARIO_PRICING = [
+  {cat:'Venue', gta:'$10–25k', niagara:'$8–18k', muskoka:'$12–30k', ottawa:'$7–15k'},
+  {cat:'Catering (per head)', gta:'$120–250', niagara:'$100–200', muskoka:'$140–260', ottawa:'$90–180'},
+  {cat:'Photography', gta:'$4–10k', niagara:'$3–8k', muskoka:'$4–9k', ottawa:'$2.5–7k'},
+  {cat:'Florals', gta:'$3–10k', niagara:'$2–7k', muskoka:'$3–8k', ottawa:'$2–6k'},
+  {cat:'DJ', gta:'$1.5–3.5k', niagara:'$1.2–3k', muskoka:'$1.5–3k', ottawa:'$1–2.5k'},
+  {cat:'Live band', gta:'$4–12k', niagara:'$3–9k', muskoka:'$4–10k', ottawa:'$3–8k'},
+  {cat:'Hair & Makeup', gta:'$200–500/person', niagara:'$150–400/person', muskoka:'$200–450/person', ottawa:'$150–350/person'}
+];
+function renderRegionalPricing() {
+  // Inject card only once
+  let card = document.getElementById('ont-pricing-card');
+  const anchor = document.getElementById('vendor-table-view');
+  if (!anchor) return;
+  if (S.hideOntPricing) { if (card) card.style.display = 'none'; return; }
+  if (!card) {
+    card = document.createElement('div');
+    card.id = 'ont-pricing-card';
+    card.className = 'card';
+    card.style.background = 'rgba(237,232,224,0.3)';
+    card.style.border = '1px dashed var(--taupe)';
+    anchor.parentNode.insertBefore(card, anchor);
+  }
+  card.style.display = 'block';
+  card.innerHTML = `
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>&#128205; Ontario Regional Pricing Guide</span>
+      <button class="btn btn-sm btn-outline" onclick="S.hideOntPricing=true;saveState();document.getElementById('ont-pricing-card').style.display='none'">Dismiss</button>
+    </div>
+    <p style="font-size:12px;color:var(--stone);margin-bottom:10px">Typical 2025 price ranges for Ontario — use these as sanity checks when reviewing quotes.</p>
+    <div class="tbl-wrap">
+      <table style="font-size:12px">
+        <thead><tr><th>Category</th><th>GTA</th><th>Niagara</th><th>Muskoka</th><th>Ottawa</th></tr></thead>
+        <tbody>${ONTARIO_PRICING.map(p => `<tr><td><strong>${p.cat}</strong></td><td>${p.gta}</td><td>${p.niagara}</td><td>${p.muskoka}</td><td>${p.ottawa}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 function toggleVendorDetail(idx) {
@@ -3035,7 +3336,46 @@ function toggleMusicGenre(genre) {
 // ══════════════════════════════════════════════════
 // TRANSPORTATION
 // ══════════════════════════════════════════════════
+// ─── Phase 7.2: Hotel Blocks ──────────────────────
+function renderHotelBlocks() {
+  if (!S.hotelBlocks) S.hotelBlocks = [];
+  const list = document.getElementById('hotel-blocks-list');
+  const empty = document.getElementById('hotel-blocks-empty');
+  if (!list || !empty) return;
+  if (S.hotelBlocks.length === 0) { list.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = S.hotelBlocks.map((h, i) => `
+    <div style="border:1px solid var(--border-light);border-radius:12px;padding:16px;margin-bottom:12px;background:white">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:20px">&#127976;</span>
+          <input style="font-size:15px;font-weight:600;border:none;background:none;outline:none;width:240px" value="${esc(h.hotel)}" placeholder="Hotel name" onblur="S.hotelBlocks[${i}].hotel=this.value;saveState()"/>
+        </div>
+        ${delBtn(`S.hotelBlocks.splice(${i},1);saveState();renderHotelBlocks()`)}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:13px">
+        <div><label class="ob-label">Address</label>${eCell(h.address,`S.hotelBlocks[${i}].address=this.value;saveState()`)}</div>
+        <div><label class="ob-label">Phone</label>${eCell(h.phone,`S.hotelBlocks[${i}].phone=this.value;saveState()`,'tel')}</div>
+        <div><label class="ob-label">Block Code</label>${eCell(h.blockCode,`S.hotelBlocks[${i}].blockCode=this.value;saveState()`)}</div>
+        <div><label class="ob-label">Group Rate</label>${eCell(h.rate,`S.hotelBlocks[${i}].rate=this.value;saveState()`)}</div>
+        <div><label class="ob-label">Check-in</label>${eCell(h.checkIn,`S.hotelBlocks[${i}].checkIn=this.value;saveState()`,'date')}</div>
+        <div><label class="ob-label">Check-out</label>${eCell(h.checkOut,`S.hotelBlocks[${i}].checkOut=this.value;saveState()`,'date')}</div>
+      </div>
+      <div style="margin-top:10px"><label class="ob-label">Notes</label><textarea onblur="S.hotelBlocks[${i}].notes=this.value;saveState()" style="width:100%;padding:8px 10px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:40px">${esc(h.notes||'')}</textarea></div>
+    </div>
+  `).join('');
+}
+function addHotelBlock() {
+  if (!S.hotelBlocks) S.hotelBlocks = [];
+  S.hotelBlocks.push({hotel:'', address:'', phone:'', blockCode:'', rate:'', checkIn:'', checkOut:'', notes:''});
+  saveState();
+  renderHotelBlocks();
+  logActivity('Transportation','added','hotel block');
+  saveState();
+}
+
 function renderTransport() {
+  renderHotelBlocks();
   if (!S.transport) S.transport = [];
   const list = document.getElementById('transport-list');
   const empty = document.getElementById('transport-empty');
@@ -3510,6 +3850,84 @@ function printDayOfPacket() {
       <scr`+`ipt>setTimeout(()=>window.print(), 300)<\/scr`+`ipt>
     </body></html>`);
   w.document.close();
+}
+
+// ─── Phase 4.2: iCal Export ──────────────────────
+function icsEscape(s) { return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n'); }
+function tlTimeToDate(dateStr, timeStr) {
+  // dateStr = 'YYYY-MM-DD', timeStr = e.g. '4:00 PM'
+  if (!dateStr || !timeStr) return null;
+  const mins = tlParseTime(timeStr);
+  if (mins === null) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setMinutes(d.getMinutes() + mins);
+  return d;
+}
+function toIcsDate(d) {
+  const pad = n => String(n).padStart(2,'0');
+  return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + 'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
+}
+function exportTimelineICS() {
+  if (!S.weddingDate) { alert('Set a wedding date first.'); return; }
+  const blocks = (S.timeline||[]).slice().sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
+  if (!blocks.length) { alert('No timeline blocks to export.'); return; }
+  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Ivory Planner//EN','CALSCALE:GREGORIAN'];
+  const now = new Date();
+  blocks.forEach((b, idx) => {
+    const start = tlTimeToDate(S.weddingDate, b.time);
+    const end = tlTimeToDate(S.weddingDate, b.end) || (start ? new Date(start.getTime()+30*60000) : null);
+    if (!start || !end) return;
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:ivory-' + S.weddingDate + '-' + idx + '@ivory');
+    lines.push('DTSTAMP:' + toIcsDate(now));
+    lines.push('DTSTART:' + toIcsDate(start));
+    lines.push('DTEND:' + toIcsDate(end));
+    lines.push('SUMMARY:' + icsEscape(b.activity||'Wedding Event'));
+    const desc = [b.who, b.notes].filter(Boolean).join(' — ');
+    if (desc) lines.push('DESCRIPTION:' + icsEscape(desc));
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  const blob = new Blob([lines.join('\r\n')], {type:'text/calendar'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ivory-wedding-timeline.ics'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+  logActivity('Itinerary','exported','timeline as .ics');
+  saveState();
+}
+
+// ─── Phase 4.3: CSV Exports ──────────────────────
+function csvEscape(v) { const s = String(v==null?'':v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+function downloadCSV(filename, rows) {
+  const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+function exportBudgetCSV() {
+  const rows = [['Category','Planned','Actual','Difference','Notes']];
+  (S.budget||[]).forEach(r => {
+    const diff = (r.planned||0) - (r.actual||0);
+    rows.push([r.cat, r.planned||0, r.actual||0, diff, r.notes||'']);
+    (r.subs||[]).forEach(s => {
+      rows.push(['  – ' + (s.name||''), s.planned||0, s.actual||0, (s.planned||0)-(s.actual||0), s.notes||'']);
+    });
+  });
+  downloadCSV('ivory-budget.csv', rows);
+  logActivity('Budget','exported','CSV'); saveState();
+}
+function exportVendorsCSV() {
+  const rows = [['Category','Company','Contact','Email','Phone','Status','Price','Deposit','Due','Arrival','Tip %','Tip Amount','Notes']];
+  (S.vendors||[]).forEach(v => {
+    const tipPct = (typeof v.tipPercent==='number') ? v.tipPercent : (TIP_DEFAULTS[v.cat]||0);
+    const tipAmt = (v.price||0) * tipPct / 100;
+    rows.push([v.cat||'', v.company||'', v.contact||'', v.email||'', v.phone||'', v.status||'', v.price||0, v.deposit||0, v.due||'', v.arrival||'', tipPct, tipAmt, v.packageNotes||'']);
+  });
+  downloadCSV('ivory-vendors.csv', rows);
+  logActivity('Vendors','exported','CSV'); saveState();
 }
 
 function renderTlSchedule() {
@@ -5006,7 +5424,169 @@ function generateNotifications() {
   return notifs;
 }
 
+// ─── Phase 2: Weather & Sunset ──────────────────────
+async function refreshWeather(force) {
+  if (!S.weddingDate) return;
+  const lat = S.venueLat || 43.6532, lng = S.venueLng || -79.3832;
+  const key = `${S.weddingDate}:${lat.toFixed(3)},${lng.toFixed(3)}`;
+  if (!force && S.weatherCache && S.weatherCache.key === key && (Date.now() - (S.weatherCache.ts||0) < 6*3600*1000)) {
+    renderWeatherCard();
+    return;
+  }
+  const d = new Date(S.weddingDate + 'T12:00:00');
+  const daysOut = Math.ceil((d - new Date()) / (1000*60*60*24));
+  try {
+    // Sunset
+    const sunResp = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&date=${S.weddingDate}&formatted=0`);
+    const sunJson = await sunResp.json();
+    const sunset = sunJson && sunJson.results ? new Date(sunJson.results.sunset) : null;
+    const sunrise = sunJson && sunJson.results ? new Date(sunJson.results.sunrise) : null;
+
+    // Weather
+    let weatherText = '';
+    if (daysOut >= 0 && daysOut <= 14) {
+      const wResp = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&start_date=${S.weddingDate}&end_date=${S.weddingDate}`);
+      const wJson = await wResp.json();
+      if (wJson && wJson.daily && wJson.daily.time && wJson.daily.time.length) {
+        const tmax = wJson.daily.temperature_2m_max[0];
+        const tmin = wJson.daily.temperature_2m_min[0];
+        const pp = wJson.daily.precipitation_probability_max[0];
+        weatherText = `Forecast: ${Math.round(tmin)}°C – ${Math.round(tmax)}°C · ${pp}% rain chance`;
+      }
+    } else if (daysOut > 14) {
+      // Historical climate for same month/day
+      const mm = S.weddingDate.slice(5,7);
+      const dd = S.weddingDate.slice(8,10);
+      const year = new Date().getFullYear() - 3;
+      try {
+        const hResp = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${year}-${mm}-${dd}&end_date=${year}-${mm}-${dd}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`);
+        const hJson = await hResp.json();
+        if (hJson && hJson.daily && hJson.daily.time && hJson.daily.time.length) {
+          const tmax = hJson.daily.temperature_2m_max[0];
+          const tmin = hJson.daily.temperature_2m_min[0];
+          const ps = hJson.daily.precipitation_sum[0];
+          weatherText = `Historical (${year}): ${Math.round(tmin)}°C – ${Math.round(tmax)}°C · ${ps||0}mm rain`;
+        }
+      } catch(e) {}
+    }
+
+    S.weatherCache = {
+      key, ts: Date.now(),
+      sunset: sunset ? sunset.toISOString() : null,
+      sunrise: sunrise ? sunrise.toISOString() : null,
+      weatherText
+    };
+    saveState();
+    renderWeatherCard();
+  } catch (e) {
+    const card = document.getElementById('notif-weather-content');
+    if (card) card.innerHTML = '<div style="color:var(--stone)">Weather API unavailable — please retry later.</div>';
+  }
+}
+
+function renderWeatherCard() {
+  const card = document.getElementById('notif-weather-card');
+  const content = document.getElementById('notif-weather-content');
+  if (!card || !content) return;
+  if (!S.weddingDate) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const wc = S.weatherCache || {};
+  const sunset = wc.sunset ? new Date(wc.sunset) : null;
+  const sunrise = wc.sunrise ? new Date(wc.sunrise) : null;
+  const fmt = d => d ? d.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}) : '—';
+  content.innerHTML = `
+    <div>
+      <div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Weather</div>
+      <div>${wc.weatherText || '<span style="color:var(--stone)">Click Refresh to fetch forecast</span>'}</div>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Sun</div>
+      <div>&#127774; Sunrise ${fmt(sunrise)} &nbsp; &#127769; Sunset <strong>${fmt(sunset)}</strong></div>
+      ${sunset ? `<div style="font-size:11px;color:var(--stone);margin-top:2px">Plan golden-hour photos ~${new Date(sunset.getTime()-45*60*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>` : ''}
+    </div>
+  `;
+}
+
+// ─── Phase 3.2: Activity Log ──────────────────────
+function logActivity(area, action, detail) {
+  if (!S.activityLog) S.activityLog = [];
+  S.activityLog.unshift({ts: Date.now(), area, action, detail});
+  if (S.activityLog.length > 200) S.activityLog.length = 200;
+  // Note: caller should saveState() after this
+}
+function renderActivityLog() {
+  const el = document.getElementById('notif-activity-list');
+  if (!el) return;
+  const log = (S.activityLog || []).slice(0, 20);
+  if (log.length === 0) {
+    el.innerHTML = '<p style="padding:12px;color:var(--stone);text-align:center">No activity yet — changes you make will appear here.</p>';
+    return;
+  }
+  el.innerHTML = log.map(e => {
+    const d = new Date(e.ts);
+    const rel = timeAgo(e.ts);
+    return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-light)">
+      <div><strong style="font-size:11px;color:var(--taupe);text-transform:uppercase;letter-spacing:0.06em">${esc(e.area)}</strong> <span style="color:var(--stone)">${esc(e.action)}</span>${e.detail?` — ${esc(e.detail)}`:''}</div>
+      <span style="color:var(--stone);white-space:nowrap;margin-left:8px">${rel}</span>
+    </div>`;
+  }).join('');
+}
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return Math.floor(s/86400) + 'd ago';
+}
+
+// ─── Phase 5.3: Post-Wedding Summary ──────────────────────
+function renderPostWeddingSummary() {
+  const card = document.getElementById('notif-postwed-card');
+  const content = document.getElementById('notif-postwed-content');
+  if (!card || !content) return;
+  if (!S.weddingDate) { card.style.display = 'none'; return; }
+  const weddingT = new Date(S.weddingDate + 'T23:59:00').getTime();
+  if (Date.now() < weddingT) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const attending = (S.guests||[]).filter(g => g.rsvp === 'Attending').length + (S.guests||[]).reduce((s,g) => s + ((g.plusGuests||[]).length), 0);
+  const plannedTotal = (S.budget||[]).reduce((s,r) => s + (r.planned||0) + (r.subs||[]).reduce((s2,sb) => s2 + (sb.planned||0), 0), 0);
+  const actualTotal = (S.budget||[]).reduce((s,r) => s + (r.actual||0) + (r.subs||[]).reduce((s2,sb) => s2 + (sb.actual||0), 0), 0);
+  const variance = actualTotal - plannedTotal;
+  const vendorCost = (S.vendors||[]).reduce((s,v) => s + (v.price||0), 0);
+  const photoCount = (S.cameraPhotos||[]).length;
+  const ratings = (S.vendors||[]).filter(v => (v.rating||0) > 0);
+  const avgRating = ratings.length ? (ratings.reduce((s,v) => s + v.rating, 0) / ratings.length).toFixed(1) : '—';
+  const topVendor = ratings.slice().sort((a,b) => (b.rating||0)-(a.rating||0))[0];
+  const thanksSent = (S.guests||[]).filter(g => g.thanks === 'Yes').length;
+  const thanksPending = (S.guests||[]).filter(g => (g.gift === 'Yes' || g.giftDesc) && g.thanks !== 'Yes').length;
+
+  content.innerHTML = `
+    <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Attended</div><div style="font-family:var(--font-serif);font-size:22px">${attending}</div></div>
+    <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Final spend</div><div style="font-family:var(--font-serif);font-size:22px">${money(actualTotal)}</div><div style="font-size:10px;color:${variance > 0 ? 'var(--red)' : 'var(--green)'}">${variance > 0 ? '+' : ''}${money(variance)} vs planned</div></div>
+    <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Vendor cost</div><div style="font-family:var(--font-serif);font-size:22px">${money(vendorCost)}</div></div>
+    <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Guest photos</div><div style="font-family:var(--font-serif);font-size:22px">${photoCount}</div></div>
+    <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Avg vendor rating</div><div style="font-family:var(--font-serif);font-size:22px">${avgRating}</div>${topVendor ? `<div style="font-size:10px;color:var(--stone)">&#11088; ${esc(topVendor.company)}</div>` : ''}</div>
+    <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Thank-yous</div><div style="font-family:var(--font-serif);font-size:22px">${thanksSent}<span style="font-size:14px;color:var(--stone)"> / ${thanksSent+thanksPending}</span></div>${thanksPending ? `<div style="font-size:10px;color:var(--red)">${thanksPending} to send</div>` : ''}</div>
+  `;
+}
+function copyPostWeddingSummary(btn) {
+  const attending = (S.guests||[]).filter(g => g.rsvp === 'Attending').length + (S.guests||[]).reduce((s,g) => s + ((g.plusGuests||[]).length), 0);
+  const actualTotal = (S.budget||[]).reduce((s,r) => s + (r.actual||0) + (r.subs||[]).reduce((s2,sb) => s2 + (sb.actual||0), 0), 0);
+  const vendorCost = (S.vendors||[]).reduce((s,v) => s + (v.price||0), 0);
+  const txt = `${(S.coupleName1||'')} & ${(S.coupleName2||'')} — ${S.weddingDate}\nGuests: ${attending}\nFinal spend: ${money(actualTotal)}\nVendor cost: ${money(vendorCost)}`;
+  navigator.clipboard.writeText(txt).then(() => {
+    if (btn) { const t = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = t, 1200); }
+  });
+}
+
 function renderNotifications() {
+  renderPostWeddingSummary();
+  renderWeatherCard();
+  renderActivityLog();
+  if (S.weddingDate && (!S.weatherCache || S.weatherCache.key !== `${S.weddingDate}:${(S.venueLat||43.6532).toFixed(3)},${(S.venueLng||-79.3832).toFixed(3)}`)) {
+    refreshWeather(false);
+  }
   cachedNotifications = generateNotifications();
   const filtered = currentNotifFilter === 'all' ? cachedNotifications : cachedNotifications.filter(n => n.source === currentNotifFilter || n.type === currentNotifFilter);
 
@@ -5350,6 +5930,84 @@ const CAMERA_KEY = "ivory_camera_v1";
 
 function loadCameraData() {
   try { const d = localStorage.getItem(CAMERA_KEY); return d ? JSON.parse(d) : null; } catch(e) { return null; }
+}
+
+// ─── Phase 6: Pre-Wedding Events ──────────────────────
+function renderPreEvents() {
+  // Rehearsal
+  if (!S.rehearsal) S.rehearsal = {date:'', venue:'', address:'', time:'', attendeeIds:[], timeline:[]};
+  const r = S.rehearsal;
+  if (document.getElementById('reh-date')) document.getElementById('reh-date').value = r.date || '';
+  if (document.getElementById('reh-time')) document.getElementById('reh-time').value = r.time || '';
+  if (document.getElementById('reh-venue')) document.getElementById('reh-venue').value = r.venue || '';
+  if (document.getElementById('reh-address')) document.getElementById('reh-address').value = r.address || '';
+  const attEl = document.getElementById('reh-attendees');
+  if (attEl) {
+    if (!r.attendeeIds) r.attendeeIds = [];
+    const guests = S.guests || [];
+    if (guests.length === 0) {
+      attEl.innerHTML = '<p style="color:var(--stone);padding:12px;text-align:center">Add guests to the Guest List first</p>';
+    } else {
+      attEl.innerHTML = guests.map((g, idx) => `
+        <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
+          <input type="checkbox" ${r.attendeeIds.includes(idx)?'checked':''} onchange="toggleRehAttendee(${idx})" style="width:14px;height:14px"/>
+          <span>${esc(g.name || 'Guest ' + (idx+1))}</span>
+          <span style="color:var(--stone);font-size:11px">${esc(g.role||'')}</span>
+        </label>
+      `).join('');
+    }
+    document.getElementById('reh-attendee-count').textContent = `(${r.attendeeIds.length} invited)`;
+  }
+
+  // Other pre-events
+  if (!S.preEvents) S.preEvents = [];
+  const list = document.getElementById('pre-events-list');
+  const empty = document.getElementById('pre-events-empty');
+  if (list && empty) {
+    if (S.preEvents.length === 0) {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      list.innerHTML = S.preEvents.map((e, i) => `
+        <div style="padding:12px;border:1px solid var(--border-light);border-radius:10px;margin-bottom:8px;background:white">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;flex:1">
+              <span style="font-size:18px">${e.type === 'shower' ? '🎀' : e.type === 'bach' ? '🎉' : e.type === 'engagement' ? '💍' : '📅'}</span>
+              <input value="${esc(e.name)}" style="font-size:14px;font-weight:600;border:none;background:none;outline:none;flex:1" onblur="S.preEvents[${i}].name=this.value;saveState()" placeholder="Event name"/>
+            </div>
+            ${delBtn(`if(confirm('Delete this event?')){S.preEvents.splice(${i},1);saveState();renderPreEvents()}`)}
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;font-size:12px">
+            <div><label class="ob-label">Type</label><select onchange="S.preEvents[${i}].type=this.value;saveState();renderPreEvents()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px">
+              ${['engagement','shower','bach','rehearsal','other'].map(t => `<option value="${t}" ${e.type===t?'selected':''}>${t === 'bach' ? 'Bachelor/Bachelorette' : t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}
+            </select></div>
+            <div><label class="ob-label">Date</label><input type="date" value="${esc(e.date||'')}" onchange="S.preEvents[${i}].date=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
+            <div><label class="ob-label">Time</label><input type="time" value="${esc(e.time||'')}" onchange="S.preEvents[${i}].time=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
+            <div><label class="ob-label">Venue</label><input value="${esc(e.venue||'')}" onblur="S.preEvents[${i}].venue=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
+            <div><label class="ob-label">Host</label><input value="${esc(e.host||'')}" onblur="S.preEvents[${i}].host=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
+          </div>
+          <div style="margin-top:10px"><label class="ob-label">Notes</label><textarea onblur="S.preEvents[${i}].notes=this.value;saveState()" style="width:100%;padding:8px 10px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:40px">${esc(e.notes||'')}</textarea></div>
+        </div>
+      `).join('');
+    }
+  }
+}
+function toggleRehAttendee(idx) {
+  if (!S.rehearsal.attendeeIds) S.rehearsal.attendeeIds = [];
+  const pos = S.rehearsal.attendeeIds.indexOf(idx);
+  if (pos >= 0) S.rehearsal.attendeeIds.splice(pos, 1);
+  else S.rehearsal.attendeeIds.push(idx);
+  saveState();
+  document.getElementById('reh-attendee-count').textContent = `(${S.rehearsal.attendeeIds.length} invited)`;
+}
+function addPreEvent() {
+  if (!S.preEvents) S.preEvents = [];
+  S.preEvents.push({type:'shower', name:'New Event', date:'', time:'', venue:'', host:'', notes:''});
+  saveState();
+  renderPreEvents();
+  logActivity('Pre-Wedding Events','added','new event');
+  saveState();
 }
 
 function renderCamera() {
