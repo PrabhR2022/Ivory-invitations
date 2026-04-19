@@ -673,6 +673,11 @@ table input[type="number"]{text-align:right;width:90px}
         <div class="stat-card"><div class="val" id="notif-total-count">0</div><div class="lbl">Total</div></div>
       </div>
 
+      <!-- Day-of Packet button (Phase 4.4) -->
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px">
+        <button class="btn btn-outline" onclick="printDayOfPacket()">&#128196; Print Day-of Packet</button>
+      </div>
+
       <!-- Dashboard Widgets -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
         <!-- Budget Pie Chart -->
@@ -746,6 +751,17 @@ table input[type="number"]{text-align:right;width:90px}
     <div class="tab-content" id="tab-budget">
       <h1 class="page-title">Budget Tracker</h1>
       <p class="page-desc">Track planned vs. actual costs across all categories</p>
+
+      <!-- Hidden Cost Reminders -->
+      <div class="card" id="hidden-cost-card" style="background:rgba(237,232,224,0.4);border:1px dashed var(--taupe)">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>&#128161; Don't forget these hidden costs</span>
+          <button class="btn btn-sm btn-outline" onclick="S.hideHiddenCosts=!S.hideHiddenCosts;saveState();renderHiddenCosts()" id="hidden-cost-toggle">Hide</button>
+        </div>
+        <div id="hidden-cost-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <!-- Summary Stats -->
       <div class="stats">
         <div class="stat-card" style="cursor:pointer" onclick="editTotalBudget()" title="Click to edit">
           <div class="val" id="b-total">$50,000</div>
@@ -755,6 +771,23 @@ table input[type="number"]{text-align:right;width:90px}
         <div class="stat-card"><div class="val" id="b-actual">$0</div><div class="lbl">Actual</div></div>
         <div class="stat-card green"><div class="val" id="b-remaining">$50,000</div><div class="lbl">Remaining</div></div>
       </div>
+
+      <!-- HST & Tips Summary -->
+      <div class="card" style="padding:14px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="hst-toggle" onchange="S.applyHST=this.checked;saveState();renderBudget()" style="width:16px;height:16px"/>
+            <span>Apply <strong>HST (13%)</strong> to budget totals — <span style="color:var(--stone);font-size:11px">Ontario</span></span>
+          </label>
+          <div style="display:flex;gap:24px;font-size:13px">
+            <div><span style="color:var(--stone)">Subtotal:</span> <strong id="b-subtotal">$0</strong></div>
+            <div><span style="color:var(--stone)">HST:</span> <strong id="b-hst">$0</strong></div>
+            <div><span style="color:var(--stone)">Tips:</span> <strong id="b-tips">$0</strong></div>
+            <div><span style="color:var(--stone)">Grand Total:</span> <strong id="b-grand">$0</strong></div>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">Budget by Category <button class="btn btn-sm btn-dark" onclick="addBudgetRow()">+ Add Category</button></div>
         <div class="budget-filter">
@@ -1042,6 +1075,17 @@ table input[type="number"]{text-align:right;width:90px}
 
       <!-- ── Schedule sub-tab ── -->
       <div class="tl-section active" id="tl-schedule">
+        <!-- Emergency Contacts (Phase 4.1) -->
+        <div class="card" id="emergency-contacts-card" style="background:rgba(184,84,80,0.04);border:1px solid rgba(184,84,80,0.2);margin-bottom:16px">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>&#128222; Emergency Contacts</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm btn-outline" onclick="printEmergencyContacts()">Print</button>
+              <button class="btn btn-sm btn-outline" onclick="document.getElementById('emergency-contacts-list').style.display=document.getElementById('emergency-contacts-list').style.display==='none'?'block':'none'">Toggle</button>
+            </div>
+          </div>
+          <div id="emergency-contacts-list" style="display:block"></div>
+        </div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <button class="btn btn-dark" onclick="addTlBlock()">+ Add Block</button>
           <button class="btn btn-outline" onclick="window.print()">Print</button>
@@ -1336,6 +1380,10 @@ let S = loadState();
 function defaultState() {
   return {
     totalBudget: 50000,
+    region: 'ON',
+    taxRate: 0.13,
+    applyHST: true,
+    hideHiddenCosts: false,
     budget: [
       {cat:"Venue",planned:0,actual:0,notes:""},{cat:"Rentals",planned:0,actual:0,notes:""},
       {cat:"Catering",planned:0,actual:0,notes:""},{cat:"Bar",planned:0,actual:0,notes:""},
@@ -1395,14 +1443,14 @@ function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(S)); }
 // ── Data builders ──
 function buildChecklist() {
   const phases = {
-    "12+ Months Before": [["Set the wedding date","High"],["Determine overall budget","High"],["Choose wedding vision / theme","Medium"],["Research & book venue","High"],["Start guest list draft","Medium"],["Hire wedding planner","Medium"],["Book officiant","High"]],
+    "12+ Months Before": [["Set the wedding date","High"],["Determine overall budget","High"],["Choose wedding vision / theme","Medium"],["Research & book venue","High"],["Start guest list draft","Medium"],["Hire wedding planner","Medium"],["Book officiant","High"],["Research marriage licence requirements (ON ~$140, valid 3 months)","Medium"]],
     "9-11 Months Before": [["Book photographer & videographer","High"],["Book caterer / arrange tasting","High"],["Book florist","High"],["Book entertainment (DJ / band)","Medium"],["Shop for wedding attire","High"],["Create wedding website","Medium"]],
     "6-8 Months Before": [["Send save-the-dates","High"],["Book hair & makeup artist","Medium"],["Book transportation","Medium"],["Finalize guest list","High"],["Register for gifts","Medium"],["Book hotel room blocks","Medium"],["Order cake / dessert","Medium"],["Plan honeymoon & book flights","Medium"]],
-    "3-5 Months Before": [["Order & mail invitations","High"],["Book rehearsal dinner venue","High"],["Purchase wedding bands","High"],["Plan ceremony readings & vows","Medium"],["Arrange attire fittings","Medium"],["Create day-of timeline","Medium"]],
-    "1-2 Months Before": [["Confirm all vendor details & payments","High"],["Final dress / suit fitting","High"],["Apply for marriage license","High"],["Create seating chart","High"],["Finalize ceremony & reception music","Medium"],["Prepare vows","Medium"],["Hair & makeup trial","Medium"],["Assemble emergency kit","Low"]],
-    "1-2 Weeks Before": [["Confirm final guest count with caterer","High"],["Provide final timeline to all vendors","High"],["Break in wedding shoes","Low"],["Pack for honeymoon","Medium"],["Prepare tips & final payments","High"],["Rehearsal & rehearsal dinner","High"]],
-    "Wedding Day": [["Eat breakfast & hydrate","High"],["Hair & makeup as scheduled","High"],["Take getting-ready photos","Medium"],["Get married!","High"]],
-    "Post-Wedding": [["Send thank-you cards (within 3 months)","High"],["Preserve dress / attire","Medium"],["Change name (if applicable)","Medium"],["Review photos & leave vendor reviews","Low"],["Order wedding album","Low"]],
+    "3-5 Months Before": [["Order & mail invitations","High"],["Book rehearsal dinner venue","High"],["Purchase wedding bands","High"],["Plan ceremony readings & vows","Medium"],["Arrange attire fittings","Medium"],["Create day-of timeline","Medium"],["Apply for marriage licence at any ON municipal office (both parties w/ valid ID)","High"],["Purchase event liability insurance (~$150–300, often required by venue)","High"]],
+    "1-2 Months Before": [["Confirm all vendor details & payments","High"],["Final dress / suit fitting","High"],["Apply for Special Occasion Permit (SOP) via AGCO — 30+ days before event, if self-catered bar","High"],["Create seating chart","High"],["Finalize ceremony & reception music","Medium"],["Prepare vows","Medium"],["Hair & makeup trial","Medium"],["Assemble emergency kit","Low"],["Confirm 2 witnesses (18+) for ceremony — Ontario requires two","High"]],
+    "1-2 Weeks Before": [["Confirm final guest count with caterer","High"],["Provide final timeline to all vendors","High"],["Break in wedding shoes","Low"],["Pack for honeymoon","Medium"],["Prepare tips & final payments","High"],["Rehearsal & rehearsal dinner","High"],["Purchase bar supply at LCBO under SOP, keep all receipts","Medium"]],
+    "Wedding Day": [["Eat breakfast & hydrate","High"],["Hair & makeup as scheduled","High"],["Take getting-ready photos","Medium"],["Bring marriage licence to ceremony location","High"],["Get married!","High"]],
+    "Post-Wedding": [["Submit signed marriage licence within 48h (officiant usually does this)","High"],["Send thank-you cards (within 3 months)","High"],["Preserve dress / attire","Medium"],["Change name (if applicable)","Medium"],["Review photos & leave vendor reviews","Low"],["Order wedding album","Low"]],
   };
   const out = [];
   Object.entries(phases).forEach(([phase, tasks]) => {
@@ -1725,6 +1773,32 @@ function renderBudget() {
   document.getElementById("b-actual").textContent = money(actual);
   document.getElementById("b-remaining").textContent = money(S.totalBudget - actual);
 
+  // HST + Tips + Grand Total summary
+  const taxable = S.budget.reduce((sum, r) => {
+    if (r.taxExempt) return sum;
+    if (r.subs && r.subs.length > 0) return sum + r.subs.filter(s => !s.taxExempt).reduce((s2, sub) => s2 + (sub.actual || sub.planned || 0), 0);
+    return sum + (r.actual || r.planned || 0);
+  }, 0);
+  const tipsTotal = (S.vendors || []).reduce((sum, v) => {
+    const base = (v.price || 0);
+    const pct = (typeof v.tipPercent === 'number') ? v.tipPercent : 0;
+    return sum + (base * pct / 100);
+  }, 0);
+  const hstAmt = S.applyHST ? taxable * (S.taxRate || 0.13) : 0;
+  const subtotalEl = document.getElementById("b-subtotal");
+  const hstEl = document.getElementById("b-hst");
+  const tipsEl = document.getElementById("b-tips");
+  const grandEl = document.getElementById("b-grand");
+  if (subtotalEl) subtotalEl.textContent = money(planned + actual - planned); // show actual-based if present, else planned
+  if (subtotalEl) subtotalEl.textContent = money(actual || planned);
+  if (hstEl) hstEl.textContent = money(hstAmt);
+  if (tipsEl) tipsEl.textContent = money(tipsTotal);
+  if (grandEl) grandEl.textContent = money((actual || planned) + hstAmt + tipsTotal);
+  const hstChk = document.getElementById("hst-toggle");
+  if (hstChk) hstChk.checked = !!S.applyHST;
+
+  renderHiddenCosts();
+
   const tb = document.getElementById("budget-body");
   let html = '';
 
@@ -1818,6 +1892,49 @@ function addSubItem(catIdx) {
   if (!S.budget[catIdx].subs) S.budget[catIdx].subs = [];
   S.budget[catIdx].subs.push({name:'',planned:0,actual:0,notes:'',tag:''});
   expandedCategories[catIdx] = true;
+  saveState();
+  renderBudget();
+}
+
+// ─── Hidden Cost Reminders (Phase 1.4) ──────────────────────
+const HIDDEN_COSTS = [
+  {name:'Marriage licence (ON ~$140)', cost:140},
+  {name:'Event liability insurance', cost:200},
+  {name:'Special Occasion Permit (AGCO)', cost:150},
+  {name:'Alterations', cost:400},
+  {name:'Delivery & setup fees', cost:300},
+  {name:'Vendor overtime charges', cost:500},
+  {name:'Gratuities (tips)', cost:0},
+  {name:'Day-of emergency kit', cost:100},
+  {name:'Welcome bags', cost:250},
+  {name:'Postage for invitations', cost:120},
+  {name:'Vendor parking / meals', cost:150},
+  {name:'Cleaning / damage deposit', cost:500}
+];
+function renderHiddenCosts() {
+  const card = document.getElementById('hidden-cost-card');
+  const list = document.getElementById('hidden-cost-list');
+  const tog = document.getElementById('hidden-cost-toggle');
+  if (!card || !list) return;
+  if (S.hideHiddenCosts) {
+    list.style.display = 'none';
+    if (tog) tog.textContent = 'Show';
+  } else {
+    list.style.display = 'flex';
+    if (tog) tog.textContent = 'Hide';
+  }
+  list.innerHTML = HIDDEN_COSTS.map(hc => {
+    const added = S.budget.some(r => r.cat === hc.name);
+    return `<div style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:white;border:1px solid var(--border-light);border-radius:100px;font-size:12px">
+      <span>${hc.name}${hc.cost ? ` <span style="color:var(--stone)">(~${money(hc.cost)})</span>` : ''}</span>
+      ${added
+        ? `<span style="color:var(--green);font-size:11px;font-weight:600">&#10003; Added</span>`
+        : `<button onclick="addHiddenCostToBudget('${hc.name.replace(/'/g,"\\'")}',${hc.cost||0})" style="background:var(--charcoal);color:var(--ivory);border:none;border-radius:100px;padding:3px 9px;font-size:11px;cursor:pointer">+ Add</button>`}
+    </div>`;
+  }).join('');
+}
+function addHiddenCostToBudget(name, planned) {
+  S.budget.push({cat:name, planned:planned||0, actual:0, notes:'Hidden cost reminder', subs:[]});
   saveState();
   renderBudget();
 }
@@ -2409,6 +2526,14 @@ let vendorViewMode = 'table';
 let expandedVendor = -1;
 let vendorCatFilter = 'all';
 const VENDOR_CATS_DEFAULT = ["Venue","Rentals","Catering","Bar","Photography & Video","Photography","Video","Florals","Decor","Entertainment","DJ","MC","Officiants","Transportation","Wedding Attire","Hair & Makeup","Stationery","Planner / Coordinator","Honeymoon","Gifts & Favors","Miscellaneous"];
+// Phase 1.2 — default gratuity % by vendor category (ON market)
+const TIP_DEFAULTS = {
+  "Catering":15, "Bar":18, "Hair & Makeup":18, "DJ":10, "MC":10,
+  "Entertainment":10, "Transportation":15, "Photography":10, "Video":10,
+  "Photography & Video":10, "Officiants":50, "Planner / Coordinator":15,
+  "Florals":10, "Decor":10, "Venue":0, "Rentals":0, "Wedding Attire":0,
+  "Stationery":0, "Honeymoon":0, "Gifts & Favors":0, "Miscellaneous":0
+};
 
 function getVendorCats() {
   const custom = S.customVendorCats || [];
@@ -2548,8 +2673,10 @@ function renderVendors() {
           <div><label class="ob-label">Phone</label><input class="ob-input" type="tel" value="${esc(formatPhoneDisplay(v.phone))}" onblur="S.vendors[${i}].phone=this.value;saveState()" oninput="formatPhone(this)" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Ext</label><input class="ob-input" value="${esc(v.ext||'')}" onblur="S.vendors[${i}].ext=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
           <div><label class="ob-label">Arrival Time</label><input class="ob-input" type="time" value="${esc(v.arrival||'')}" onchange="S.vendors[${i}].arrival=this.value;syncVendorArrival(${i})" style="padding:8px 12px;font-size:13px"/></div>
+          <div><label class="ob-label">Tip %</label><input class="ob-input" type="number" min="0" max="50" value="${(typeof v.tipPercent==='number')?v.tipPercent:(TIP_DEFAULTS[v.cat]||0)}" onchange="S.vendors[${i}].tipPercent=+this.value;saveState();renderVendors();renderBudget()" placeholder="0" style="padding:8px 12px;font-size:13px"/></div>
+          <div><label class="ob-label">Tip Amount</label><input class="ob-input" value="${money((v.price||0)*((typeof v.tipPercent==='number'?v.tipPercent:(TIP_DEFAULTS[v.cat]||0))/100))}" disabled style="padding:8px 12px;font-size:13px;background:rgba(237,232,224,0.3);color:var(--stone)"/></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
           <div><label class="ob-label">Pros</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].pros=this.value;saveState()">${esc(v.pros)}</textarea></div>
@@ -3246,7 +3373,147 @@ function renderSchTagBar() {
 }
 
 // ── RENDER SCHEDULE (dispatches to active view) ──
+// Phase 4.1 — Emergency Contacts quick-view
+function collectEmergencyContacts() {
+  const out = [];
+  // Couple
+  if (S.coupleName1 || S.couplePhone1) out.push({role:'Partner', name:S.coupleName1||'Partner 1', phone:S.couplePhone1||''});
+  if (S.coupleName2 || S.couplePhone2) out.push({role:'Partner', name:S.coupleName2||'Partner 2', phone:S.couplePhone2||''});
+  // Key guest roles
+  const keyRoles = ['Officiant','Maid of Honor','Best Man','Planner / Coordinator'];
+  (S.guests||[]).forEach(g => {
+    if (keyRoles.includes(g.role) && g.name) out.push({role:g.role, name:g.name, phone:g.phone||''});
+  });
+  // Vendors with a phone
+  (S.vendors||[]).forEach(v => {
+    if (v.company && v.phone) out.push({role:v.cat||'Vendor', name:v.company, contact:v.contact, phone:v.phone});
+  });
+  return out;
+}
+function renderEmergencyContacts() {
+  const el = document.getElementById('emergency-contacts-list');
+  if (!el) return;
+  const contacts = collectEmergencyContacts();
+  if (contacts.length === 0) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--stone);padding:8px 0">Add phone numbers to vendors and the couple profile to see emergency contacts here.</p>';
+    return;
+  }
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">${
+    contacts.map(c => `
+      <div style="padding:10px 12px;background:white;border:1px solid var(--border-light);border-radius:8px">
+        <div style="font-size:10px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">${esc(c.role)}</div>
+        <div style="font-size:13px;font-weight:600">${esc(c.name)}</div>
+        ${c.contact ? `<div style="font-size:11px;color:var(--stone)">${esc(c.contact)}</div>` : ''}
+        ${c.phone ? `<a href="tel:${esc(c.phone.replace(/\\D/g,''))}" style="display:inline-block;margin-top:4px;font-size:12px;color:var(--charcoal);text-decoration:none">&#128222; ${esc(formatPhoneDisplay(c.phone))}</a>` : ''}
+      </div>
+    `).join('')
+  }</div>`;
+}
+function printEmergencyContacts() {
+  const contacts = collectEmergencyContacts();
+  const w = window.open('', '_blank');
+  const rows = contacts.map(c => `<tr><td>${esc(c.role)}</td><td>${esc(c.name)}</td><td>${esc(c.contact||'')}</td><td>${esc(formatPhoneDisplay(c.phone||''))}</td></tr>`).join('');
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Emergency Contacts — ${esc((S.coupleName1||'')+' & '+(S.coupleName2||''))}</title>
+    <style>body{font-family:Georgia,serif;padding:40px;max-width:720px;margin:auto}h1{font-size:24px;margin-bottom:4px}p.sub{color:#666;font-size:13px;margin-top:0;margin-bottom:24px}
+      table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #e5e5e0}th{background:#faf8f4;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;font-size:11px}</style>
+    </head><body>
+    <h1>Emergency Contacts</h1>
+    <p class="sub">${esc((S.coupleName1||'')+(S.coupleName2?' & '+S.coupleName2:''))} ${S.weddingDate?' · '+new Date(S.weddingDate+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}):''}</p>
+    <table><thead><tr><th>Role</th><th>Name</th><th>Contact</th><th>Phone</th></tr></thead><tbody>${rows}</tbody></table>
+    <scr`+`ipt>window.print()<\/scr`+`ipt>
+    </body></html>`);
+  w.document.close();
+}
+
+// Phase 4.4 — All-in-one Day-of Packet
+function printDayOfPacket() {
+  const w = window.open('', '_blank');
+  const date = S.weddingDate ? new Date(S.weddingDate+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) : '';
+  const couple = [S.coupleName1, S.coupleName2].filter(Boolean).join(' & ') || 'The Wedding';
+  const contacts = collectEmergencyContacts();
+
+  // Timeline
+  const blocks = (S.timeline||[]).slice().sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
+  const tlRows = blocks.map(b => `<tr>
+    <td style="white-space:nowrap;width:120px">${esc(b.time||'')}${b.end?' – '+esc(b.end):''}</td>
+    <td><strong>${esc(b.activity||'')}</strong>${b.who?`<div style="font-size:11px;color:#666">${esc(b.who)}</div>`:''}${b.notes?`<div style="font-size:11px;color:#666">${esc(b.notes)}</div>`:''}</td>
+  </tr>`).join('');
+
+  // Vendor arrivals
+  const arrivals = (S.vendors||[]).filter(v => v.arrival).sort((a,b) => a.arrival.localeCompare(b.arrival));
+  const arrRows = arrivals.map(v => `<tr>
+    <td style="width:80px">${esc(v.arrival)}</td>
+    <td>${esc(v.cat||'')}</td>
+    <td><strong>${esc(v.company||'')}</strong>${v.contact?` — ${esc(v.contact)}`:''}</td>
+    <td>${esc(formatPhoneDisplay(v.phone||''))}</td>
+  </tr>`).join('');
+
+  // Emergency contacts
+  const contactRows = contacts.map(c => `<tr>
+    <td style="width:140px">${esc(c.role)}</td>
+    <td><strong>${esc(c.name)}</strong>${c.contact?` — ${esc(c.contact)}`:''}</td>
+    <td>${esc(formatPhoneDisplay(c.phone||''))}</td>
+  </tr>`).join('');
+
+  // Meal breakdown
+  const mealCounts = {};
+  (S.guests||[]).forEach(g => {
+    if (g.meal && g.rsvp === 'Attending') mealCounts[g.meal] = (mealCounts[g.meal]||0)+1;
+    (g.plusGuests||[]).forEach(pg => { if(pg.meal) mealCounts[pg.meal] = (mealCounts[pg.meal]||0)+1; });
+  });
+  const mealRows = Object.entries(mealCounts).map(([m,c]) => `<li>${esc(m)}: <strong>${c}</strong></li>`).join('');
+  const attendingCount = (S.guests||[]).filter(g => g.rsvp === 'Attending').length + (S.guests||[]).reduce((s,g) => s + ((g.plusGuests||[]).length), 0);
+
+  // Key addresses
+  const venueAddr = (S.vendors||[]).find(v => v.cat === 'Venue');
+  const addresses = [];
+  if (venueAddr) addresses.push({label:'Venue', val:`${venueAddr.company||''}${venueAddr.notes?' · '+venueAddr.notes:''}`});
+
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Day-of Packet — ${esc(couple)}</title>
+    <style>
+      body{font-family:Georgia,serif;padding:40px;max-width:760px;margin:auto;color:#1c1917}
+      h1{font-size:28px;margin:0 0 4px;font-family:'Playfair Display',serif}
+      h2{font-size:18px;margin:32px 0 12px;font-family:'Playfair Display',serif;border-bottom:2px solid #1c1917;padding-bottom:4px}
+      p.sub{color:#666;font-size:13px;margin-top:0;margin-bottom:24px}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}
+      th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #e5e5e0;vertical-align:top}
+      th{background:#faf8f4;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;font-size:10px}
+      ul{padding-left:20px;font-size:13px}
+      .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+      @media print{body{padding:20px}h2{page-break-after:avoid}table{page-break-inside:auto}tr{page-break-inside:avoid}}
+    </style>
+    </head><body>
+      <h1>${esc(couple)}</h1>
+      <p class="sub">${esc(date)} · Day-of Packet</p>
+
+      <h2>Timeline</h2>
+      ${tlRows ? `<table><tbody>${tlRows}</tbody></table>` : '<p style="font-size:12px;color:#666">No timeline blocks yet.</p>'}
+
+      ${arrRows ? `<h2>Vendor Arrivals</h2>
+      <table><thead><tr><th>Time</th><th>Category</th><th>Vendor</th><th>Phone</th></tr></thead><tbody>${arrRows}</tbody></table>` : ''}
+
+      <h2>Emergency Contacts</h2>
+      ${contactRows ? `<table><tbody>${contactRows}</tbody></table>` : '<p style="font-size:12px;color:#666">No contacts saved.</p>'}
+
+      <div class="grid2">
+        <div>
+          <h2>Meal Count</h2>
+          <p style="font-size:12px;color:#666;margin:0 0 8px">Attending: <strong>${attendingCount}</strong></p>
+          ${mealRows ? `<ul>${mealRows}</ul>` : '<p style="font-size:12px;color:#666">No meals set.</p>'}
+        </div>
+        <div>
+          <h2>Key Addresses</h2>
+          ${addresses.length ? addresses.map(a => `<p style="font-size:12px;margin:0 0 6px"><strong>${esc(a.label)}:</strong> ${esc(a.val)}</p>`).join('') : '<p style="font-size:12px;color:#666">No venue set.</p>'}
+        </div>
+      </div>
+
+      <scr`+`ipt>setTimeout(()=>window.print(), 300)<\/scr`+`ipt>
+    </body></html>`);
+  w.document.close();
+}
+
 function renderTlSchedule() {
+  renderEmergencyContacts();
   // Clean up orphaned cerIdx/cerRowIdx references
   S.timeline.forEach(b => {
     if (b.cerIdx !== undefined && (!S.ceremonies[b.cerIdx] || !S.ceremonies[b.cerIdx].timeline)) {
