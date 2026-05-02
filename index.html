@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet"/>
+<!-- Phase 9A — Supabase auth + cloud sync -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -7085,17 +7088,321 @@ function updateTopbarAvatars() {
 }
 
 // ══════════════════════════════════════════════════
+// PHASE 9A — Supabase Auth + Cloud Sync
+// ══════════════════════════════════════════════════
+let supa = null;
+let currentWeddingId = null;
+let currentUser = null;
+let cloudSyncTimer = null;
+let cloudDirty = false;
+let cloudHydrated = false;
+
+async function ivoryAuthInit() {
+  if (!window.IVORY_CONFIG || !window.supabase) {
+    console.warn('[Ivory] No Supabase config detected — running in local-only mode');
+    return false;
+  }
+  try {
+    supa = window.supabase.createClient(IVORY_CONFIG.supabaseUrl, IVORY_CONFIG.supabaseAnonKey);
+  } catch (e) {
+    console.error('[Ivory] Supabase init failed:', e);
+    return false;
+  }
+
+  // Wire auth state changes (handles magic-link / OAuth return)
+  supa.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session && !cloudHydrated) {
+      hideAuthModal();
+      currentUser = session.user;
+      hydrateFromCloud(session.user);
+    }
+    if (event === 'SIGNED_OUT') {
+      currentWeddingId = null;
+      currentUser = null;
+      cloudHydrated = false;
+      showAuthModal();
+    }
+  });
+
+  const { data: { session } } = await supa.auth.getSession();
+  if (!session) {
+    showAuthModal();
+    return false;
+  }
+  currentUser = session.user;
+  await hydrateFromCloud(session.user);
+  return true;
+}
+
+async function hydrateFromCloud(user) {
+  setSyncStatus('syncing');
+  // Find existing wedding membership (limit 1 — multi-wedding picker is later phase)
+  const { data: memberships, error: mErr } = await supa
+    .from('wedding_members')
+    .select('wedding_id, role')
+    .eq('user_id', user.id)
+    .limit(1);
+
+  if (mErr) {
+    console.error('[Ivory] Membership lookup error:', mErr);
+    setSyncStatus('error');
+    return;
+  }
+
+  if (!memberships || memberships.length === 0) {
+    await createNewWeddingForUser(user);
+    return;
+  }
+
+  currentWeddingId = memberships[0].wedding_id;
+
+  const { data: wedding, error: wErr } = await supa
+    .from('weddings')
+    .select('state, wedding_date, name')
+    .eq('id', currentWeddingId)
+    .single();
+
+  if (wErr) {
+    console.error('[Ivory] Wedding fetch error:', wErr);
+    setSyncStatus('error');
+    return;
+  }
+
+  // Merge cloud state with default to ensure all keys present
+  const cloudState = wedding.state || {};
+  S = Object.assign({}, defaultState(), cloudState);
+  localStorage.setItem(STATE_KEY, JSON.stringify(S));
+  cloudHydrated = true;
+  setSyncStatus('synced');
+
+  // Re-render the currently active tab so cloud data shows
+  const activeTab = document.querySelector('.tab-content.active');
+  if (activeTab && typeof renderTab === 'function') {
+    const tabId = activeTab.id.replace('tab-', '');
+    try { renderTab(tabId); } catch(e) { console.warn('Re-render failed:', e); }
+  }
+  if (typeof updateSidebarBadges === 'function') updateSidebarBadges();
+  if (typeof updateTopbarAvatars === 'function') updateTopbarAvatars();
+
+  // Show onboarding if user hasn't completed it yet
+  if (!S.onboardingDone && typeof showOnboarding === 'function') {
+    setTimeout(showOnboarding, 300);
+  }
+}
+
+async function createNewWeddingForUser(user) {
+  setSyncStatus('syncing');
+  // Use existing localStorage state as initial cloud state — preserves any data
+  // the user added before signing in.
+  const initialState = (typeof S === 'object' && S) ? S : defaultState();
+  const weddingName = ((initialState.coupleName1 || '') +
+    (initialState.coupleName2 ? ' & ' + initialState.coupleName2 : '')).trim() || null;
+
+  const { data: wed, error: wErr } = await supa
+    .from('weddings')
+    .insert({
+      created_by: user.id,
+      name: weddingName,
+      wedding_date: initialState.weddingDate || null,
+      state: initialState
+    })
+    .select('id')
+    .single();
+
+  if (wErr) {
+    console.error('[Ivory] Create wedding error:', wErr);
+    setSyncStatus('error');
+    return;
+  }
+
+  currentWeddingId = wed.id;
+
+  const { error: mErr } = await supa
+    .from('wedding_members')
+    .insert({
+      wedding_id: wed.id,
+      user_id: user.id,
+      role: 'partner',
+      display_name: initialState.coupleName1 || (user.email || '').split('@')[0]
+    });
+
+  if (mErr) {
+    console.error('[Ivory] Create membership error:', mErr);
+    setSyncStatus('error');
+    return;
+  }
+
+  cloudHydrated = true;
+  setSyncStatus('synced');
+
+  // Show onboarding for brand-new users
+  if (!S.onboardingDone && typeof showOnboarding === 'function') {
+    setTimeout(showOnboarding, 300);
+  }
+}
+
+// Wrap saveState() — keep localStorage write, add debounced cloud sync
+const _origSaveState_phase9a = saveState;
+saveState = function() {
+  _origSaveState_phase9a();
+  if (!supa || !currentWeddingId) return;
+  cloudDirty = true;
+  setSyncStatus('dirty');
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(flushCloudSync, 1000);
+};
+
+async function flushCloudSync() {
+  if (!cloudDirty || !currentWeddingId || !supa) return;
+  cloudDirty = false;
+  setSyncStatus('syncing');
+  const { error } = await supa
+    .from('weddings')
+    .update({
+      state: S,
+      wedding_date: S.weddingDate || null,
+      name: ((S.coupleName1 || '') + (S.coupleName2 ? ' & ' + S.coupleName2 : '')).trim() || null
+    })
+    .eq('id', currentWeddingId);
+  if (error) {
+    cloudDirty = true;
+    console.error('[Ivory] Cloud sync error:', error);
+    setSyncStatus('error');
+  } else {
+    setSyncStatus('synced');
+  }
+}
+
+// Flush on tab hide / page unload (best-effort save)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) flushCloudSync();
+});
+window.addEventListener('beforeunload', () => { try { flushCloudSync(); } catch(e){} });
+
+// Sync status chip
+function setSyncStatus(status) {
+  const chip = document.getElementById('sync-chip');
+  if (!chip) return;
+  const map = {
+    syncing: { text: 'Syncing…',  color: '#9C8B7A', icon: '↻' },
+    synced:  { text: 'Synced',    color: '#4A7A5B', icon: '✓' },
+    dirty:   { text: 'Pending…',  color: '#C4A035', icon: '○' },
+    error:   { text: 'Sync error',color: '#B85450', icon: '⚠' },
+    offline: { text: 'Offline',   color: '#6B6560', icon: '⊘' }
+  };
+  const s = map[status] || map.synced;
+  chip.style.display = 'inline-flex';
+  chip.style.borderColor = s.color;
+  chip.style.color = s.color;
+  const iconEl = chip.querySelector('.sync-chip-icon');
+  const textEl = chip.querySelector('.sync-chip-text');
+  if (iconEl) iconEl.textContent = s.icon;
+  if (textEl) textEl.textContent = s.text;
+  if (status === 'synced') setTimeout(() => { if (chip) chip.style.display = 'none'; }, 2500);
+}
+
+// Auth modal show/hide
+function showAuthModal() {
+  const m = document.getElementById('ivory-auth-overlay');
+  if (m) { m.style.display = 'flex'; m.classList.add('active'); }
+}
+function hideAuthModal() {
+  const m = document.getElementById('ivory-auth-overlay');
+  if (m) { m.classList.remove('active'); m.style.display = 'none'; }
+}
+
+// Auth UI handlers
+async function authSendOtp() {
+  const email = (document.getElementById('auth-email').value || '').trim();
+  if (!email) return authMsg('Enter your email first', 'error');
+  authMsg('Sending code…', 'info');
+  const { error } = await supa.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true }
+  });
+  if (error) return authMsg(error.message, 'error');
+  authMsg('We emailed a 6-digit code to ' + email + '. Check your inbox.', 'info');
+  document.getElementById('auth-pin-row').style.display = 'flex';
+  setTimeout(() => { const p = document.getElementById('auth-pin'); if (p) p.focus(); }, 100);
+}
+async function authVerifyOtp() {
+  const email = (document.getElementById('auth-email').value || '').trim();
+  const token = (document.getElementById('auth-pin').value || '').trim();
+  if (!token) return authMsg('Enter the 6-digit code', 'error');
+  authMsg('Verifying…', 'info');
+  const { error } = await supa.auth.verifyOtp({ email, token, type: 'email' });
+  if (error) return authMsg(error.message, 'error');
+  authMsg('Signed in. Loading your wedding…', 'info');
+  // onAuthStateChange handler completes the flow
+}
+async function authPasswordIn() {
+  const email = (document.getElementById('auth-email').value || '').trim();
+  const pwd = document.getElementById('auth-pwd').value || '';
+  if (!email || !pwd) return authMsg('Email and password required', 'error');
+  authMsg('Signing in…', 'info');
+  const { error } = await supa.auth.signInWithPassword({ email, password: pwd });
+  if (error) {
+    // Try sign up if account doesn't exist
+    const { error: e2 } = await supa.auth.signUp({ email, password: pwd });
+    if (e2) return authMsg(e2.message, 'error');
+    authMsg('Account created — check your email to verify, then sign in.', 'info');
+  }
+}
+async function authGoogle() {
+  if (!supa) return authMsg('Auth not initialized', 'error');
+  authMsg('Redirecting to Google…', 'info');
+  const { error } = await supa.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+  if (error) authMsg(error.message + ' (configure Google in Supabase → Authentication → Providers)', 'error');
+}
+async function authApple() {
+  if (!supa) return authMsg('Auth not initialized', 'error');
+  authMsg('Redirecting to Apple…', 'info');
+  const { error } = await supa.auth.signInWithOAuth({
+    provider: 'apple',
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+  if (error) authMsg(error.message + ' (configure Apple in Supabase → Authentication → Providers)', 'error');
+}
+async function authSignOut() {
+  if (!supa) return;
+  await supa.auth.signOut();
+  location.reload();
+}
+function authMsg(text, type) {
+  const el = document.getElementById('auth-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = type === 'error' ? 'var(--red)' : type === 'info' ? 'var(--stone)' : 'var(--green)';
+}
+
+// ══════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════
 renderNotifications();
 updateSidebarBadges();
 updateTopbarAvatars();
-checkPinOnLoad();
 
-// First-login detection: show onboarding if never completed
-if (!S.onboardingDone) {
+// PIN auth replaced by Supabase Auth in Phase 9A.
+// Only run PIN check in local-only mode (no Supabase config).
+if (!window.IVORY_CONFIG) {
+  checkPinOnLoad();
+}
+
+// First-login detection: show onboarding if never completed.
+// In Supabase mode, defer onboarding until AFTER auth + cloud hydration
+// (handled inside hydrateFromCloud / createNewWeddingForUser) so the user
+// doesn't see two modals stacked on top of each other.
+if (!window.IVORY_CONFIG && !S.onboardingDone) {
   setTimeout(showOnboarding, 400);
 }
+
+// Phase 9A: kick off Supabase auth + cloud hydration (async — non-blocking)
+(async () => {
+  try { await ivoryAuthInit(); } catch (e) { console.error('[Ivory] Auth init failed:', e); }
+})();
 </script>
 
 <!-- ═══ EXPORT PDF MODAL ═══ -->
@@ -7276,5 +7583,70 @@ if (!S.onboardingDone) {
 <!-- Itinerary overlay removed — wizard is now inline -->
 
 <div id="print-area"></div>
+
+<!-- Phase 9A — Auth modal (shown when no Supabase session) -->
+<div class="ob-overlay" id="ivory-auth-overlay" style="display:none">
+  <div class="ob-modal" style="max-width:440px;padding:36px 32px 28px">
+    <h1 style="font-family:var(--font-serif);font-size:32px;text-align:center;margin-bottom:6px">Welcome to Ivory</h1>
+    <p style="text-align:center;color:var(--stone);font-size:14px;margin-bottom:28px">Plan your wedding together. Sign in to sync your data across devices.</p>
+
+    <!-- OAuth buttons -->
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
+      <button onclick="authGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:11px 16px;border:1px solid var(--border);border-radius:10px;background:white;font-size:14px;cursor:pointer;font-weight:500">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.04a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.48a4.8 4.8 0 0 1 0-3.04V5.37H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.72c1.16 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.37L4.5 7.44a4.8 4.8 0 0 1 4.48-2.72z"/></svg>
+        Continue with Google
+      </button>
+      <button onclick="authApple()" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:11px 16px;border:1px solid var(--border);border-radius:10px;background:white;font-size:14px;cursor:pointer;font-weight:500">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="#000"><path d="M11.18 8.5c-.02-2 1.64-3 1.7-3.04-.93-1.36-2.38-1.55-2.9-1.57-1.23-.13-2.4.72-3.03.72-.62 0-1.59-.7-2.61-.69-1.34.02-2.59.78-3.28 1.97-1.4 2.43-.36 6.02 1.01 7.99.67.96 1.46 2.05 2.49 2.01 1-.04 1.38-.65 2.59-.65s1.55.65 2.6.62c1.08-.02 1.76-.98 2.42-1.95.76-1.12 1.07-2.21 1.09-2.27-.02-.01-2.08-.8-2.1-3.18zM9.32 2.55C9.86 1.88 10.23 1 10.13 0 9.3.04 8.27.56 7.7 1.21c-.51.58-.96 1.5-.84 2.36.93.07 1.89-.47 2.46-1.02z"/></svg>
+        Continue with Apple
+      </button>
+    </div>
+
+    <!-- Divider -->
+    <div style="display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--stone);font-size:11px;text-transform:uppercase;letter-spacing:0.08em">
+      <div style="flex:1;height:1px;background:var(--border-light)"></div>
+      <span>or with email</span>
+      <div style="flex:1;height:1px;background:var(--border-light)"></div>
+    </div>
+
+    <!-- Email + OTP -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input id="auth-email" type="email" placeholder="you@email.com" autocomplete="email"
+        style="padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"/>
+      <button onclick="authSendOtp()" style="padding:11px 16px;background:var(--charcoal);color:var(--ivory);border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer">
+        Email me a 6-digit code
+      </button>
+      <div id="auth-pin-row" style="display:none;gap:8px">
+        <input id="auth-pin" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code"
+          style="flex:1;padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;text-align:center;letter-spacing:0.3em"/>
+        <button onclick="authVerifyOtp()" style="padding:11px 18px;background:var(--green);color:white;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer">Verify</button>
+      </div>
+    </div>
+
+    <!-- Password fallback -->
+    <details style="margin-top:18px">
+      <summary style="cursor:pointer;font-size:12px;color:var(--stone);text-align:center">Use password instead</summary>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input id="auth-pwd" type="password" placeholder="Password" autocomplete="current-password"
+          style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit"/>
+        <button onclick="authPasswordIn()" style="padding:10px 16px;background:var(--taupe);color:white;border:none;border-radius:10px;font-size:13px;cursor:pointer">Sign in</button>
+      </div>
+      <p style="font-size:11px;color:var(--stone);margin-top:6px">If no account exists, one will be created.</p>
+    </details>
+
+    <p id="auth-msg" style="text-align:center;font-size:12px;margin-top:16px;min-height:16px"></p>
+
+    <p style="text-align:center;font-size:11px;color:var(--stone);margin-top:14px">
+      By signing in you agree to keep your wedding data in our secure cloud. We never share your data with vendors or third parties.
+    </p>
+  </div>
+</div>
+
+<!-- Phase 9A — Sync status chip (bottom right) -->
+<div id="sync-chip" style="display:none;position:fixed;bottom:16px;right:16px;padding:6px 12px;border-radius:100px;background:white;border:1px solid var(--border);font-size:11px;font-weight:500;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.06);z-index:200;font-family:var(--font-sans)">
+  <span class="sync-chip-icon"></span>
+  <span class="sync-chip-text"></span>
+</div>
+
 </body>
 </html>
