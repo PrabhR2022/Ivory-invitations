@@ -677,9 +677,24 @@ table input[type="number"]{text-align:right;width:90px}
         <div class="stat-card"><div class="val" id="notif-total-count">0</div><div class="lbl">Total</div></div>
       </div>
 
-      <!-- Day-of Packet button (Phase 4.4) -->
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px">
-        <button class="btn btn-outline" onclick="printDayOfPacket()">&#128196; Print Day-of Packet</button>
+      <!-- Top action row (Phase 4.4 + 9B) -->
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <div id="auth-user-chip" style="display:none;font-size:12px;color:var(--stone)">
+          Signed in as <strong id="auth-user-email">—</strong>
+          <button onclick="authSignOut()" style="margin-left:8px;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;color:var(--stone)">Sign out</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-left:auto">
+          <button class="btn btn-outline" onclick="printDayOfPacket()">&#128196; Print Day-of Packet</button>
+        </div>
+      </div>
+
+      <!-- Phase 9B — Members card -->
+      <div id="notif-members-card" class="card" style="display:none;margin-bottom:16px">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>&#128101; Wedding Members</span>
+          <button class="btn btn-sm btn-dark" onclick="showInvitePartnerModal()">+ Invite Partner</button>
+        </div>
+        <div id="notif-members-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px"></div>
       </div>
 
       <!-- Post-Wedding Summary (Phase 5.3) — shows only after wedding date -->
@@ -7110,16 +7125,27 @@ async function ivoryAuthInit() {
   }
 
   // Wire auth state changes (handles magic-link / OAuth return)
-  supa.auth.onAuthStateChange((event, session) => {
+  supa.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session && !cloudHydrated) {
       hideAuthModal();
       currentUser = session.user;
-      hydrateFromCloud(session.user);
+      updateAuthUserChip();
+      // Phase 9B: check for invite token in URL first; if present, accept it.
+      // Otherwise fall through to normal hydrate.
+      const handledInvite = await checkUrlForInvite();
+      if (!handledInvite) {
+        hydrateFromCloud(session.user);
+      }
     }
     if (event === 'SIGNED_OUT') {
       currentWeddingId = null;
       currentUser = null;
       cloudHydrated = false;
+      updateAuthUserChip();
+      if (realtimeChannel) {
+        try { supa.removeChannel(realtimeChannel); } catch(e) {}
+        realtimeChannel = null;
+      }
       showAuthModal();
     }
   });
@@ -7130,7 +7156,12 @@ async function ivoryAuthInit() {
     return false;
   }
   currentUser = session.user;
-  await hydrateFromCloud(session.user);
+  updateAuthUserChip();
+  // Phase 9B: handle invite token if present
+  const handledInvite = await checkUrlForInvite();
+  if (!handledInvite) {
+    await hydrateFromCloud(session.user);
+  }
   return true;
 }
 
@@ -7174,6 +7205,7 @@ async function hydrateFromCloud(user) {
   localStorage.setItem(STATE_KEY, JSON.stringify(S));
   cloudHydrated = true;
   setSyncStatus('synced');
+  lastSyncedStateHash = JSON.stringify(S).length + '_synced';
 
   // Re-render the currently active tab so cloud data shows
   const activeTab = document.querySelector('.tab-content.active');
@@ -7183,6 +7215,11 @@ async function hydrateFromCloud(user) {
   }
   if (typeof updateSidebarBadges === 'function') updateSidebarBadges();
   if (typeof updateTopbarAvatars === 'function') updateTopbarAvatars();
+
+  // Phase 9B: realtime subscription + members card + cloud activity log
+  subscribeToRealtimeUpdates();
+  fetchAndRenderMembers();
+  fetchAndRenderCloudActivityLog();
 
   // Show onboarding if user hasn't completed it yet
   if (!S.onboardingDone && typeof showOnboarding === 'function') {
@@ -7234,6 +7271,11 @@ async function createNewWeddingForUser(user) {
 
   cloudHydrated = true;
   setSyncStatus('synced');
+  lastSyncedStateHash = JSON.stringify(S).length + '_synced';
+
+  // Phase 9B: realtime subscription + members card
+  subscribeToRealtimeUpdates();
+  fetchAndRenderMembers();
 
   // Show onboarding for brand-new users
   if (!S.onboardingDone && typeof showOnboarding === 'function') {
@@ -7256,19 +7298,24 @@ async function flushCloudSync() {
   if (!cloudDirty || !currentWeddingId || !supa) return;
   cloudDirty = false;
   setSyncStatus('syncing');
-  const { error } = await supa
+  const stateSnapshot = S;
+  const { data, error } = await supa
     .from('weddings')
     .update({
-      state: S,
-      wedding_date: S.weddingDate || null,
-      name: ((S.coupleName1 || '') + (S.coupleName2 ? ' & ' + S.coupleName2 : '')).trim() || null
+      state: stateSnapshot,
+      wedding_date: stateSnapshot.weddingDate || null,
+      name: ((stateSnapshot.coupleName1 || '') + (stateSnapshot.coupleName2 ? ' & ' + stateSnapshot.coupleName2 : '')).trim() || null
     })
-    .eq('id', currentWeddingId);
+    .eq('id', currentWeddingId)
+    .select('updated_at')
+    .single();
   if (error) {
     cloudDirty = true;
     console.error('[Ivory] Cloud sync error:', error);
     setSyncStatus('error');
   } else {
+    // Track this update so the realtime echo is ignored
+    lastSyncedStateHash = JSON.stringify(stateSnapshot).length + '_' + (data?.updated_at || '');
     setSyncStatus('synced');
   }
 }
@@ -7376,6 +7423,295 @@ function authMsg(text, type) {
   if (!el) return;
   el.textContent = text;
   el.style.color = type === 'error' ? 'var(--red)' : type === 'info' ? 'var(--stone)' : 'var(--green)';
+}
+
+// ══════════════════════════════════════════════════
+// PHASE 9B — Multi-user (invite, accept, realtime)
+// ══════════════════════════════════════════════════
+let realtimeChannel = null;
+let lastSyncedStateHash = null;
+
+function showInvitePartnerModal() {
+  const m = document.getElementById('invite-partner-overlay');
+  if (m) { m.style.display = 'flex'; m.classList.add('active'); }
+  document.getElementById('invite-msg').textContent = '';
+  setTimeout(() => { const e = document.getElementById('invite-email'); if (e) e.focus(); }, 100);
+}
+function hideInvitePartnerModal() {
+  const m = document.getElementById('invite-partner-overlay');
+  if (m) { m.classList.remove('active'); m.style.display = 'none'; }
+}
+function inviteMsg(text, type) {
+  const el = document.getElementById('invite-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = type === 'error' ? 'var(--red)' : type === 'success' ? 'var(--green)' : 'var(--stone)';
+}
+
+async function sendPartnerInvite() {
+  if (!supa || !currentWeddingId) return inviteMsg('Not signed in', 'error');
+  const email = (document.getElementById('invite-email').value || '').trim().toLowerCase();
+  const name = (document.getElementById('invite-name').value || '').trim();
+  if (!email) return inviteMsg('Enter an email address', 'error');
+  if (!email.includes('@')) return inviteMsg('That doesn\'t look like a valid email', 'error');
+
+  inviteMsg('Sending invite…', 'info');
+
+  // 1) Insert wedding_invites row
+  const { data: invite, error: iErr } = await supa
+    .from('wedding_invites')
+    .insert({
+      wedding_id: currentWeddingId,
+      email,
+      role: 'partner'
+    })
+    .select('token')
+    .single();
+
+  if (iErr) {
+    console.error('Invite insert error:', iErr);
+    return inviteMsg('Could not create invite: ' + iErr.message, 'error');
+  }
+
+  // 2) Send sign-in link with invite token in redirect URL
+  const redirectTo = `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(invite.token)}`;
+  const { error: oErr } = await supa.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo, shouldCreateUser: true }
+  });
+
+  if (oErr) {
+    console.error('Invite email error:', oErr);
+    return inviteMsg('Email failed: ' + oErr.message, 'error');
+  }
+
+  inviteMsg('✓ Invite sent to ' + email + '. They\'ll get an email shortly.', 'success');
+  logActivity('Members', 'invited', email + ' as partner');
+  saveState();
+  setTimeout(hideInvitePartnerModal, 2500);
+}
+
+// Check URL for invite token + handle acceptance
+async function checkUrlForInvite() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('invite');
+  if (!token) return false;
+
+  // Need to be signed in to accept
+  if (!currentUser) {
+    console.log('[Ivory] Invite token in URL but no auth session yet — waiting for sign-in');
+    return false;
+  }
+
+  setSyncStatus('syncing');
+
+  // Validate the invite
+  const { data: invite, error: iErr } = await supa
+    .from('wedding_invites')
+    .select('wedding_id, email, role, expires_at, accepted_at')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (iErr || !invite) {
+    console.error('Invite lookup error:', iErr);
+    setSyncStatus('error');
+    return false;
+  }
+
+  if (invite.accepted_at) {
+    console.warn('Invite already accepted');
+    // Strip token from URL and continue normal flow
+    history.replaceState(null, '', window.location.pathname);
+    return false;
+  }
+
+  if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+    alert('This invite has expired. Ask your partner for a new one.');
+    history.replaceState(null, '', window.location.pathname);
+    return false;
+  }
+
+  // Check if user is already a member of this wedding
+  const { data: existingMember } = await supa
+    .from('wedding_members')
+    .select('wedding_id')
+    .eq('wedding_id', invite.wedding_id)
+    .eq('user_id', currentUser.id)
+    .maybeSingle();
+
+  if (!existingMember) {
+    // Add user to wedding_members
+    const { error: mErr } = await supa
+      .from('wedding_members')
+      .insert({
+        wedding_id: invite.wedding_id,
+        user_id: currentUser.id,
+        role: invite.role || 'partner',
+        display_name: (currentUser.email || '').split('@')[0]
+      });
+    if (mErr) {
+      console.error('Could not accept invite:', mErr);
+      setSyncStatus('error');
+      return false;
+    }
+  }
+
+  // Mark invite accepted
+  await supa.from('wedding_invites')
+    .update({ accepted_at: new Date().toISOString() })
+    .eq('token', token);
+
+  // Strip the token from the URL so refreshes don't re-process
+  history.replaceState(null, '', window.location.pathname);
+
+  // Now hydrate from THIS wedding (not whatever the user had before)
+  currentWeddingId = invite.wedding_id;
+  const { data: wedding } = await supa
+    .from('weddings')
+    .select('state, wedding_date, name')
+    .eq('id', currentWeddingId)
+    .single();
+  if (wedding) {
+    S = Object.assign({}, defaultState(), wedding.state || {});
+    localStorage.setItem(STATE_KEY, JSON.stringify(S));
+    cloudHydrated = true;
+    setSyncStatus('synced');
+    if (typeof renderTab === 'function') renderTab('notifications');
+    if (typeof updateSidebarBadges === 'function') updateSidebarBadges();
+    if (typeof updateTopbarAvatars === 'function') updateTopbarAvatars();
+    subscribeToRealtimeUpdates();
+    fetchAndRenderMembers();
+  }
+  return true;
+}
+
+// Realtime subscription — Partner B's edits show up live for Partner A
+function subscribeToRealtimeUpdates() {
+  if (!supa || !currentWeddingId) return;
+  if (realtimeChannel) {
+    try { supa.removeChannel(realtimeChannel); } catch(e) {}
+  }
+  realtimeChannel = supa
+    .channel('wedding-' + currentWeddingId)
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'weddings',
+      filter: 'id=eq.' + currentWeddingId
+    }, (payload) => {
+      handleRealtimeWeddingUpdate(payload.new);
+    })
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'activity_log',
+      filter: 'wedding_id=eq.' + currentWeddingId
+    }, () => {
+      // New activity from partner — refresh activity log card
+      fetchAndRenderCloudActivityLog();
+    })
+    .subscribe();
+}
+
+function handleRealtimeWeddingUpdate(newRow) {
+  if (!newRow || !newRow.state) return;
+  // Skip if this is our own update echoing back
+  const incomingHash = JSON.stringify(newRow.state).length + '_' + (newRow.updated_at || '');
+  if (incomingHash === lastSyncedStateHash) return;
+  // Replace local state with cloud version
+  S = Object.assign({}, defaultState(), newRow.state);
+  localStorage.setItem(STATE_KEY, JSON.stringify(S));
+  // Re-render whatever tab is active
+  const activeTab = document.querySelector('.tab-content.active');
+  if (activeTab && typeof renderTab === 'function') {
+    const tabId = activeTab.id.replace('tab-', '');
+    try { renderTab(tabId); } catch(e) { console.warn('Realtime re-render failed:', e); }
+  }
+  if (typeof updateSidebarBadges === 'function') updateSidebarBadges();
+  setSyncStatus('synced');
+}
+
+// Members list rendering
+async function fetchAndRenderMembers() {
+  if (!supa || !currentWeddingId) return;
+  const card = document.getElementById('notif-members-card');
+  const list = document.getElementById('notif-members-list');
+  if (!card || !list) return;
+  const { data: members, error } = await supa
+    .from('wedding_members')
+    .select('user_id, role, display_name, joined_at')
+    .eq('wedding_id', currentWeddingId);
+  if (error || !members) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  list.innerHTML = members.map(m => {
+    const isMe = currentUser && m.user_id === currentUser.id;
+    return `<div style="padding:10px 12px;background:white;border:1px solid var(--border-light);border-radius:10px">
+      <div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">${esc(m.role)}${isMe ? ' · you' : ''}</div>
+      <div style="font-size:13px;font-weight:600">${esc(m.display_name || 'Unnamed')}</div>
+      <div style="font-size:10px;color:var(--stone);margin-top:2px">Joined ${new Date(m.joined_at).toLocaleDateString()}</div>
+    </div>`;
+  }).join('');
+}
+
+// Cloud activity log
+async function fetchAndRenderCloudActivityLog() {
+  if (!supa || !currentWeddingId) return;
+  const el = document.getElementById('notif-activity-list');
+  if (!el) return;
+  const { data: entries, error } = await supa
+    .from('activity_log')
+    .select('user_id, area, action, detail, created_at')
+    .eq('wedding_id', currentWeddingId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error || !entries || entries.length === 0) {
+    // Fall back to local activity log
+    if (typeof renderActivityLog === 'function') renderActivityLog();
+    return;
+  }
+  // Get member display names for attribution
+  const { data: members } = await supa
+    .from('wedding_members')
+    .select('user_id, display_name')
+    .eq('wedding_id', currentWeddingId);
+  const nameMap = {};
+  (members || []).forEach(m => { nameMap[m.user_id] = m.display_name || 'Member'; });
+  el.innerHTML = entries.map(e => {
+    const who = nameMap[e.user_id] || 'Someone';
+    const rel = timeAgo(new Date(e.created_at).getTime());
+    return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-light)">
+      <div><strong style="font-size:11px;color:var(--taupe);text-transform:uppercase;letter-spacing:0.06em">${esc(e.area)}</strong> <span style="color:var(--stone)">${esc(e.action)}</span>${e.detail?` — ${esc(e.detail)}`:''} <span style="color:var(--stone);font-size:10px">· ${esc(who)}</span></div>
+      <span style="color:var(--stone);white-space:nowrap;margin-left:8px">${rel}</span>
+    </div>`;
+  }).join('');
+}
+
+// Wrap logActivity to also push to cloud (fire-and-forget)
+const _origLogActivity_phase9b = (typeof logActivity === 'function') ? logActivity : null;
+if (_origLogActivity_phase9b) {
+  logActivity = function(area, action, detail) {
+    _origLogActivity_phase9b(area, action, detail);
+    if (supa && currentWeddingId && currentUser) {
+      supa.from('activity_log').insert({
+        wedding_id: currentWeddingId,
+        user_id: currentUser.id,
+        area, action, detail: detail || null
+      }).then(() => {}, e => console.warn('Cloud activity log write failed:', e));
+    }
+  };
+}
+
+// Show user email in header chip
+function updateAuthUserChip() {
+  const chip = document.getElementById('auth-user-chip');
+  const emailEl = document.getElementById('auth-user-email');
+  if (!chip || !emailEl) return;
+  if (currentUser && currentUser.email) {
+    chip.style.display = 'block';
+    emailEl.textContent = currentUser.email;
+  } else {
+    chip.style.display = 'none';
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -7646,6 +7982,33 @@ if (!window.IVORY_CONFIG && !S.onboardingDone) {
 <div id="sync-chip" style="display:none;position:fixed;bottom:16px;right:16px;padding:6px 12px;border-radius:100px;background:white;border:1px solid var(--border);font-size:11px;font-weight:500;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.06);z-index:200;font-family:var(--font-sans)">
   <span class="sync-chip-icon"></span>
   <span class="sync-chip-text"></span>
+</div>
+
+<!-- Phase 9B — Invite partner modal -->
+<div class="ob-overlay" id="invite-partner-overlay" style="display:none">
+  <div class="ob-modal" style="max-width:440px;padding:32px 28px 24px">
+    <h2 style="font-family:var(--font-serif);font-size:24px;text-align:center;margin-bottom:6px">Invite your partner</h2>
+    <p style="text-align:center;color:var(--stone);font-size:13px;margin-bottom:22px">They'll get a sign-in link to join your wedding planner. Both of you can edit the same wedding live.</p>
+
+    <label style="display:block;font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Partner's email</label>
+    <input id="invite-email" type="email" placeholder="them@email.com" autocomplete="email"
+      style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:16px"/>
+
+    <label style="display:block;font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Their name (shown in activity log)</label>
+    <input id="invite-name" type="text" placeholder="e.g. Jordan"
+      style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:18px"/>
+
+    <p id="invite-msg" style="font-size:12px;min-height:18px;margin-bottom:14px;color:var(--stone);text-align:center"></p>
+
+    <div style="display:flex;gap:8px">
+      <button onclick="hideInvitePartnerModal()" style="flex:1;padding:11px 16px;background:white;color:var(--charcoal);border:1px solid var(--border);border-radius:10px;font-size:14px;cursor:pointer">Cancel</button>
+      <button onclick="sendPartnerInvite()" style="flex:2;padding:11px 16px;background:var(--charcoal);color:var(--ivory);border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer">Send invite</button>
+    </div>
+
+    <p style="text-align:center;font-size:11px;color:var(--stone);margin-top:14px">
+      They'll receive an email from <strong>noreply@ivoryinvitations.ca</strong> with a one-click sign-in link.
+    </p>
+  </div>
 </div>
 
 </body>
