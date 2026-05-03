@@ -2285,7 +2285,7 @@ function renderGuests() {
     <td><input type="number" min="0" max="10" value="${g.allowPlusOne}" style="width:60px;text-align:center" onchange="S.guests[${i}].allowPlusOne=+this.value;saveState()" /></td>
     <td><div>${eCell(g.rsvp,`S.guests[${i}].rsvp=this.value;saveState();renderGuests()`,"select",["Pending","Attending","Declined"])}</div>${rsvpInfo}</td>
     <td><div style="font-size:13px;font-weight:500;color:${plusAcceptedColor}">${plusAccepted}</div></td>
-    <td><span style="font-size:13px;color:${g.meal?'var(--charcoal)':'var(--border)'}">${g.meal||'—'}</span>${g.dietary?`<div style="font-size:10px;color:var(--taupe);margin-top:2px">${g.dietary}</div>`:''}</td>
+    <td><span style="font-size:13px;color:${g.meal?'var(--charcoal)':'var(--border)'}">${esc(g.meal||'—')}</span>${g.dietary?`<div style="font-size:10px;color:var(--taupe);margin-top:2px">${esc(g.dietary)}</div>`:''}</td>
     <td>${eCell(g.gift,`S.guests[${i}].gift=this.value;saveState();renderGuests()`,"select",["No","Yes"])}</td>
     <td>${eCell(g.thanks,`S.guests[${i}].thanks=this.value;saveState();renderGuests()`,"select",["No","Yes"])}</td>
     <td>${delBtn(`if(confirm('Are you sure you want to remove this guest?')){S.guests.splice(${i},1);saveState();renderGuests()}`)}</td>
@@ -2294,16 +2294,16 @@ function renderGuests() {
     plusGuests.forEach((pg, pi) => {
       row += `<tr style="background:rgba(237,232,224,0.18)">
         <td></td>
-        <td style="padding-left:28px;font-size:12px;color:var(--stone)"><span style="color:var(--taupe);margin-right:6px">+${pi+1}</span>${pg.name}</td>
+        <td style="padding-left:28px;font-size:12px;color:var(--stone)"><span style="color:var(--taupe);margin-right:6px">+${pi+1}</span>${esc(pg.name)}</td>
         <td></td>
         <td style="font-size:11px;color:var(--stone);font-style:italic">${esc(g.household||'')}</td>
         <td></td>
-        <td style="font-size:11px;color:var(--stone);font-style:italic">Guest of ${g.name.split(' ')[0]}</td>
+        <td style="font-size:11px;color:var(--stone);font-style:italic">Guest of ${esc((g.name||'').split(' ')[0])}</td>
         <td></td>
         <td></td>
         <td></td>
         <td style="font-size:12px;font-weight:500;color:var(--green)">Accepted</td>
-        <td style="font-size:12px;color:var(--stone)">${pg.meal||'—'}</td>
+        <td style="font-size:12px;color:var(--stone)">${esc(pg.meal||'—')}</td>
         <td></td><td></td><td></td>
       </tr>`;
     });
@@ -2323,10 +2323,10 @@ function renderGuests() {
     document.getElementById('plus-ones-count').textContent = allPlusGuests.length;
     document.getElementById('plus-ones-list').innerHTML = allPlusGuests.map(g =>
       `<div class="po-row">
-        <span class="po-invited">${g.invitee}</span>
+        <span class="po-invited">${esc(g.invitee)}</span>
         <span class="po-arrow">&rarr;</span>
-        <span class="po-name">${g.name}</span>
-        <span class="po-meal">${g.meal || '—'}</span>
+        <span class="po-name">${esc(g.name)}</span>
+        <span class="po-meal">${esc(g.meal || '—')}</span>
       </div>`
     ).join('');
   } else {
@@ -2634,23 +2634,23 @@ function exportGuestPDF() {
     const rsvpColor = g.rsvp === 'Attending' ? '#4A7A5B' : g.rsvp === 'Declined' ? '#B85450' : '#6B6560';
 
     let td = `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;color:#6B6560">${i+1}</td>`;
-    if (cols.name) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:13px;font-weight:500">${g.name||''}</td>`;
-    if (cols.address) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;color:#6B6560">${g.address||''}</td>`;
-    if (cols.plusone) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;text-align:center">${g.allowPlusOne}</td>`;
-    if (cols.rsvp) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;font-weight:500;color:${rsvpColor}">${g.rsvp||'Pending'}</td>`;
-    if (cols.plusaccepted) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px">${plusAccepted}</td>`;
-    if (cols.meal) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px">${g.meal||'—'}</td>`;
+    if (cols.name) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:13px;font-weight:500">${esc(g.name||'')}</td>`;
+    if (cols.address) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;color:#6B6560">${esc(g.address||'')}</td>`;
+    if (cols.plusone) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;text-align:center">${esc(String(g.allowPlusOne||0))}</td>`;
+    if (cols.rsvp) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px;font-weight:500;color:${rsvpColor}">${esc(g.rsvp||'Pending')}</td>`;
+    if (cols.plusaccepted) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px">${esc(String(plusAccepted))}</td>`;
+    if (cols.meal) td += `<td style="padding:8px 12px;border-bottom:1px solid #E8E4DE;font-size:12px">${esc(g.meal||'—')}</td>`;
     rowsHTML += `<tr>${td}</tr>`;
 
     // Plus guest sub-rows
     plusGuests.forEach((pg, pi) => {
       let sub = `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3"></td>`;
-      if (cols.name) sub += `<td style="padding:6px 12px 6px 28px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:12px;color:#6B6560">+${pi+1} ${pg.name}</td>`;
-      if (cols.address) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:11px;color:#9C8B7A;font-style:italic">Guest of ${(g.name||'').split(' ')[0]}</td>`;
+      if (cols.name) sub += `<td style="padding:6px 12px 6px 28px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:12px;color:#6B6560">+${pi+1} ${esc(pg.name||'')}</td>`;
+      if (cols.address) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:11px;color:#9C8B7A;font-style:italic">Guest of ${esc((g.name||'').split(' ')[0])}</td>`;
       if (cols.plusone) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3"></td>`;
       if (cols.rsvp) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3"></td>`;
       if (cols.plusaccepted) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:12px;color:#4A7A5B">Accepted</td>`;
-      if (cols.meal) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:12px">${pg.meal||'—'}</td>`;
+      if (cols.meal) sub += `<td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;background:#F7F6F3;font-size:12px">${esc(pg.meal||'—')}</td>`;
       rowsHTML += `<tr>${sub}</tr>`;
     });
   });
@@ -3062,7 +3062,7 @@ function renderVendorDetail() {
   }).join('') : '<p style="color:var(--stone);font-size:12px">Select a vendor category to see contract items.</p>';
 
   panel.innerHTML = `
-    <div class="card-title">${v.company || v.cat || 'Vendor'} — Details <span style="font-size:12px;color:var(--stone);font-weight:400;cursor:pointer" onclick="expandedVendor=-1;renderVendorDetail()">&#10005; Close</span></div>
+    <div class="card-title">${esc(v.company || v.cat || 'Vendor')} — Details <span style="font-size:12px;color:var(--stone);font-weight:400;cursor:pointer" onclick="expandedVendor=-1;renderVendorDetail()">&#10005; Close</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div>
         <div style="margin-bottom:16px">
@@ -3125,7 +3125,7 @@ function renderVendorCompare() {
         <div><span style="color:var(--stone)">Estimated:</span> <strong>${money(v.estimatedPrice||0)}</strong></div>
         <div><span style="color:var(--stone)">Actual:</span> <strong>${money(v.actualPrice||0)}</strong></div>
         <div><span style="color:var(--stone)">Deposit:</span> ${money(v.deposit||0)}</div>
-        <div><span style="color:var(--stone)">Status:</span> ${v.status||'—'}</div>
+        <div><span style="color:var(--stone)">Status:</span> ${esc(v.status||'—')}</div>
       </div>
       ${v.pros ? `<div style="margin-bottom:8px"><span style="font-size:11px;font-weight:600;color:var(--green)">PROS</span><p style="font-size:12px;margin-top:2px">${esc(v.pros)}</p></div>` : ''}
       ${v.cons ? `<div style="margin-bottom:8px"><span style="font-size:11px;font-weight:600;color:var(--red)">CONS</span><p style="font-size:12px;margin-top:2px">${esc(v.cons)}</p></div>` : ''}
@@ -5655,12 +5655,12 @@ function renderNotifications() {
   filtered.sort((a,b) => (order[a.type]||9) - (order[b.type]||9));
 
   list.innerHTML = filtered.map(n => `
-    <div class="notif-item ${n.type}">
-      <div class="notif-icon ${n.type}">${n.icon}</div>
+    <div class="notif-item ${esc(n.type||'')}">
+      <div class="notif-icon ${esc(n.type||'')}">${n.icon}</div>
       <div class="notif-body">
-        <div class="notif-title">${n.title}</div>
-        <div class="notif-desc">${n.desc}</div>
-        <span class="notif-source ${n.source}">${n.source}</span>
+        <div class="notif-title">${esc(n.title||'')}</div>
+        <div class="notif-desc">${esc(n.desc||'')}</div>
+        <span class="notif-source ${esc(n.source||'')}">${esc(n.source||'')}</span>
       </div>
     </div>
   `).join('');
@@ -6083,12 +6083,12 @@ function renderCamera() {
     const time = new Date(p.timestamp);
     const timeStr = time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     return `<div class="cam-thumb" onclick="openCamLightbox(${i})">
-      <img src="${p.dataUrl}" alt="Photo by ${p.name}" loading="lazy"/>
+      <img src="${esc(p.dataUrl||'')}" alt="Photo by ${esc(p.name||'')}" loading="lazy"/>
       <div class="cam-actions">
         <button class="cam-act-btn" title="Download" onclick="event.stopPropagation();downloadCamPhoto(${i})">&#11015;</button>
         <button class="cam-act-btn del" title="Delete" onclick="event.stopPropagation();deleteCamPhoto(${i})">&#128465;</button>
       </div>
-      <div class="cam-by">${p.name} · ${timeStr}</div>
+      <div class="cam-by">${esc(p.name||'')} · ${esc(timeStr)}</div>
     </div>`;
   }).join('');
 
