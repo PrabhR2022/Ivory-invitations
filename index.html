@@ -314,7 +314,13 @@ table input[type="number"]{text-align:right;width:90px}
 
 /* ─── Floor Plan ─── */
 .fp-canvas-wrap{position:relative;background:white;border:1px solid var(--border-light);border-radius:12px;overflow:hidden;min-height:500px;touch-action:none}
-.fp-canvas{position:relative;width:100%;height:500px;background-image:radial-gradient(circle,rgba(214,208,200,0.3) 1px,transparent 1px);background-size:24px 24px}
+.fp-canvas-viewport{position:relative;width:100%;height:500px;overflow:auto;background-image:radial-gradient(circle,rgba(214,208,200,0.3) 1px,transparent 1px);background-size:24px 24px;cursor:grab}
+.fp-canvas-viewport.panning{cursor:grabbing}
+.fp-canvas{position:relative;width:1600px;height:1200px;transform-origin:0 0;transition:transform 80ms ease-out}
+.fp-zoom-controls{position:absolute;bottom:12px;right:12px;display:flex;flex-direction:column;gap:4px;background:white;border:1px solid var(--border-light);border-radius:10px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,0.06);z-index:5}
+.fp-zoom-controls button{width:30px;height:30px;border:none;background:white;color:var(--charcoal);cursor:pointer;font-size:16px;font-weight:600;border-radius:6px;display:flex;align-items:center;justify-content:center;line-height:1}
+.fp-zoom-controls button:hover{background:var(--cream)}
+.fp-zoom-controls .fp-zoom-pct{font-size:10px;color:var(--stone);text-align:center;padding:2px 0}
 .fp-item{position:absolute;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:center;transition:box-shadow 150ms}
 .fp-item:hover{box-shadow:0 4px 16px rgba(0,0,0,0.12)}
 .fp-item.dragging{cursor:grabbing;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:10;opacity:0.9}
@@ -729,15 +735,6 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
         <div id="notif-weather-content" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px"></div>
       </div>
 
-      <!-- Activity Log (Phase 3.2) -->
-      <div id="notif-activity-card" class="card" style="margin-bottom:16px">
-        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-          <span>&#128339; Recent Activity</span>
-          <button class="btn btn-sm btn-outline" onclick="if(confirm('Clear activity log?')){S.activityLog=[];saveState();renderActivityLog()}">Clear</button>
-        </div>
-        <div id="notif-activity-list" style="max-height:220px;overflow-y:auto;font-size:12px"></div>
-      </div>
-
       <!-- Dashboard Widgets -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
         <!-- Budget Pie Chart -->
@@ -790,21 +787,6 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
         </div>
       </div>
 
-      <!-- Share panel -->
-      <div class="card">
-        <div class="card-title">Share Summary</div>
-        <p style="font-size:12px;color:var(--stone);margin-bottom:12px">Copy a summary of current alerts to share with your partner or wedding planner</p>
-        <div class="notif-share-box">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-            <p style="font-size:14px;font-weight:500">Planning Update</p>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="generateNotifSummary()">Generate</button>
-              <button class="btn btn-sm" style="background:var(--ivory);color:var(--charcoal)" onclick="copyNotifSummary(this)">Copy</button>
-            </div>
-          </div>
-          <textarea id="notif-summary" placeholder="Click 'Generate' to create a shareable summary of your current alerts..." readonly></textarea>
-        </div>
-      </div>
     </div>
 
     <!-- ═══ BUDGET ═══ -->
@@ -1024,9 +1006,18 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
             <button class="fp-tool-btn" onclick="addFpItem('entrance')">&#128682; Entrance</button>
             <button class="fp-tool-btn" onclick="addFpItem('exit')">&#128682; Exit</button>
             <button class="fp-tool-btn" onclick="addFpItem('custom')">+ Custom</button>
+            <button class="fp-tool-btn" onclick="printFloorPlan()" title="Open a printable view to share with vendors">&#128424; Print / Share</button>
             <button class="fp-tool-btn" style="margin-left:auto;color:var(--red)" onclick="clearFloorPlan()">&#128465; Clear All</button>
           </div>
-          <div class="fp-canvas" id="fp-canvas"></div>
+          <div class="fp-canvas-viewport" id="fp-canvas-viewport">
+            <div class="fp-canvas" id="fp-canvas"></div>
+          </div>
+          <div class="fp-zoom-controls">
+            <button onclick="fpZoom(0.1)" title="Zoom in">+</button>
+            <div class="fp-zoom-pct" id="fp-zoom-pct">100%</div>
+            <button onclick="fpZoom(-0.1)" title="Zoom out">−</button>
+            <button onclick="fpZoomReset()" title="Reset zoom &amp; centre" style="font-size:11px">⤢</button>
+          </div>
         </div>
         <!-- Seat assignments -->
         <div class="card" style="margin-top:16px">
@@ -1181,11 +1172,21 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
           <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
             <span>&#128222; Emergency Contacts</span>
             <div style="display:flex;gap:6px">
+              <button class="btn btn-sm btn-outline" onclick="showAddCustomEmergencyContact()">+ Add</button>
               <button class="btn btn-sm btn-outline" onclick="printEmergencyContacts()">Print</button>
               <button class="btn btn-sm btn-outline" onclick="document.getElementById('emergency-contacts-list').style.display=document.getElementById('emergency-contacts-list').style.display==='none'?'block':'none'">Toggle</button>
             </div>
           </div>
           <div id="emergency-contacts-list" style="display:block"></div>
+          <div id="emergency-add-form" style="display:none;margin-top:12px;padding:12px;background:white;border:1px dashed rgba(184,84,80,0.3);border-radius:10px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;align-items:center">
+              <input id="ec-name" placeholder="Name" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit"/>
+              <input id="ec-role" placeholder="Role (e.g. Mom, Doctor)" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit"/>
+              <input id="ec-phone" placeholder="Phone" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit"/>
+              <button class="btn btn-sm btn-dark" onclick="addCustomEmergencyContact()" style="padding:8px 14px">Save</button>
+              <button class="btn btn-sm btn-outline" onclick="hideAddCustomEmergencyContact()" style="padding:8px 14px">Cancel</button>
+            </div>
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <button class="btn btn-dark" onclick="addTlBlock()">+ Add Block</button>
@@ -1531,6 +1532,7 @@ function defaultState() {
     venueLat: 43.6532, venueLng: -79.3832, // Toronto default
     weatherCache: {}, sunsetCache: {},
     activityLog: [],
+    customEmergencyContacts: [],
     hotelBlocks: [],
     rehearsal: {date:'', venue:'', address:'', time:'', attendeeIds:[], timeline:[]},
     preEvents: [],
@@ -3751,6 +3753,10 @@ function collectEmergencyContacts() {
   // Couple
   if (S.coupleName1 || S.couplePhone1) out.push({role:'Partner', name:S.coupleName1||'Partner 1', phone:S.couplePhone1||''});
   if (S.coupleName2 || S.couplePhone2) out.push({role:'Partner', name:S.coupleName2||'Partner 2', phone:S.couplePhone2||''});
+  // Custom contacts (manually added — anyone, any role)
+  (S.customEmergencyContacts||[]).forEach(c => {
+    if (c.name || c.phone) out.push({role:c.role||'Contact', name:c.name||'(unnamed)', phone:c.phone||'', _custom:true, _id:c.id});
+  });
   // Key guest roles
   const keyRoles = ['Officiant','Maid of Honor','Best Man','Planner / Coordinator'];
   (S.guests||[]).forEach(g => {
@@ -3762,6 +3768,36 @@ function collectEmergencyContacts() {
   });
   return out;
 }
+
+function showAddCustomEmergencyContact() {
+  const f = document.getElementById('emergency-add-form');
+  if (!f) return;
+  f.style.display = 'block';
+  setTimeout(() => { const n = document.getElementById('ec-name'); if (n) n.focus(); }, 50);
+}
+function hideAddCustomEmergencyContact() {
+  const f = document.getElementById('emergency-add-form');
+  if (!f) return;
+  f.style.display = 'none';
+  ['ec-name','ec-role','ec-phone'].forEach(id => { const e = document.getElementById(id); if (e) e.value=''; });
+}
+function addCustomEmergencyContact() {
+  const name = (document.getElementById('ec-name').value || '').trim();
+  const role = (document.getElementById('ec-role').value || '').trim() || 'Contact';
+  const phone = (document.getElementById('ec-phone').value || '').trim();
+  if (!name && !phone) return alert('Enter at least a name or phone number.');
+  if (!Array.isArray(S.customEmergencyContacts)) S.customEmergencyContacts = [];
+  S.customEmergencyContacts.push({ id: 'ec-' + Date.now(), name, role, phone });
+  saveState();
+  hideAddCustomEmergencyContact();
+  renderEmergencyContacts();
+}
+function removeCustomEmergencyContact(id) {
+  if (!Array.isArray(S.customEmergencyContacts)) return;
+  S.customEmergencyContacts = S.customEmergencyContacts.filter(c => c.id !== id);
+  saveState();
+  renderEmergencyContacts();
+}
 function renderEmergencyContacts() {
   const el = document.getElementById('emergency-contacts-list');
   if (!el) return;
@@ -3772,8 +3808,9 @@ function renderEmergencyContacts() {
   }
   el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">${
     contacts.map(c => `
-      <div style="padding:10px 12px;background:white;border:1px solid var(--border-light);border-radius:8px">
-        <div style="font-size:10px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">${esc(c.role)}</div>
+      <div style="position:relative;padding:10px 12px;background:white;border:1px solid var(--border-light);border-radius:8px">
+        ${c._custom ? `<button onclick="if(confirm('Remove ${esc(c.name).replace(/'/g,"\\'")}?'))removeCustomEmergencyContact('${esc(c._id)}')" title="Remove" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--stone);font-size:14px;cursor:pointer;line-height:1">&times;</button>` : ''}
+        <div style="font-size:10px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">${esc(c.role)}${c._custom?' · custom':''}</div>
         <div style="font-size:13px;font-weight:600">${esc(c.name)}</div>
         ${c.contact ? `<div style="font-size:11px;color:var(--stone)">${esc(c.contact)}</div>` : ''}
         ${c.phone ? `<a href="tel:${esc(c.phone.replace(/\\D/g,''))}" style="display:inline-block;margin-top:4px;font-size:12px;color:var(--charcoal);text-decoration:none">&#128222; ${esc(formatPhoneDisplay(c.phone))}</a>` : ''}
@@ -5159,24 +5196,28 @@ function renderFloorPlan() {
       if (e.target.classList.contains('fp-delete')) return;
       if (e.target.classList.contains('fp-rotate')) return;
       if (e.target.closest('.fp-edit-seats')) return;
+      e.stopPropagation(); // prevent viewport pan from kicking in
       fpDragging = idx;
       wrapper.style.zIndex = 10;
       el.classList.add('dragging');
       const rect = canvas.getBoundingClientRect();
-      fpOffset.x = e.clientX - item.x - rect.left;
-      fpOffset.y = e.clientY - item.y - rect.top;
+      // Convert cursor screen position to canvas logical coords (account for zoom)
+      fpOffset.x = (e.clientX - rect.left) / fpZoomLevel - item.x;
+      fpOffset.y = (e.clientY - rect.top) / fpZoomLevel - item.y;
       el.setPointerCapture(e.pointerId);
     };
 
     el.onpointermove = (e) => {
       if (fpDragging !== idx) return;
       const rect = canvas.getBoundingClientRect();
-      let nx = e.clientX - fpOffset.x - rect.left;
-      let ny = e.clientY - fpOffset.y - rect.top;
+      let nx = (e.clientX - rect.left) / fpZoomLevel - fpOffset.x;
+      let ny = (e.clientY - rect.top) / fpZoomLevel - fpOffset.y;
       const itemW = item.w || def.w;
       const itemH = item.h || def.h;
-      nx = Math.max(0, Math.min(nx, rect.width - itemW));
-      ny = Math.max(0, Math.min(ny, rect.height - itemH));
+      // Bounds in canvas logical coords (unscaled)
+      const canvasW = canvas.offsetWidth, canvasH = canvas.offsetHeight;
+      nx = Math.max(0, Math.min(nx, canvasW - itemW));
+      ny = Math.max(0, Math.min(ny, canvasH - itemH));
       wrapper.style.left = nx + 'px';
       wrapper.style.top = ny + 'px';
       S.floorPlan[idx].x = nx;
@@ -5196,6 +5237,8 @@ function renderFloorPlan() {
   });
 
   renderSeatAssignments();
+  initFpPan();
+  applyFpZoom();
 }
 
 function changeFpSeats(idx, delta) {
@@ -5256,7 +5299,20 @@ function renderSeatAssignments() {
   }
 
   empty.style.display = 'none';
-  const availableGuests = S.guests.filter(g => g.rsvp === 'Attending' && !allSeated.includes(g.name)).map(g => g.name);
+
+  // Build seatable list = all primary guests (non-declined) + their plus-ones (non-declined)
+  const seatable = [];
+  (S.guests||[]).forEach(g => {
+    if (!g.name) return;
+    if (g.rsvp === 'Declined') return;
+    seatable.push({ name: g.name, label: g.name + (g.rsvp === 'Pending' ? ' (pending)' : '') });
+    const plusGuests = (g.plusGuests && g.plusGuests.length > 0) ? g.plusGuests.filter(p=>p.name) :
+                       (g.plusOne === 'Yes' && g.plusOneName) ? [{name:g.plusOneName}] : [];
+    plusGuests.forEach(pg => {
+      seatable.push({ name: pg.name, label: pg.name + ' (+1 of ' + g.name + ')' });
+    });
+  });
+  const availableGuests = seatable.filter(s => !allSeated.includes(s.name));
 
   container.innerHTML = tables.map(t => {
     const seated = S.seatAssignments[t.id] || [];
@@ -5265,19 +5321,151 @@ function renderSeatAssignments() {
     const capacityColor = isFull ? 'var(--red)' : seated.length > 0 ? 'var(--green)' : 'var(--stone)';
     return `<div class="fp-seat-row">
       <div class="fp-seat-table">
-        ${t.label}
+        ${esc(t.label)}
         <div style="font-size:10px;font-weight:400;color:${capacityColor}">${seated.length}/${maxSeats} seats</div>
       </div>
       <div class="fp-seat-guests">
-        ${seated.map((name, si) => `<span class="fp-seat-tag">${name} <span style="cursor:pointer;margin-left:2px;color:var(--red)" onclick="removeSeat('${t.id}',${si})">&times;</span></span>`).join('')}
+        ${seated.map((name, si) => `<span class="fp-seat-tag">${esc(name)} <span style="cursor:pointer;margin-left:2px;color:var(--red)" onclick="removeSeat('${esc(t.id)}',${si})">&times;</span></span>`).join('')}
         ${isFull ? '<span style="font-size:10px;color:var(--red);font-weight:600">FULL</span>' : ''}
       </div>
-      ${!isFull ? `<select style="width:140px;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:white" onchange="assignSeat('${t.id}',this.value);this.selectedIndex=0">
-        <option value="">+ Assign guest</option>
-        ${availableGuests.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('')}
+      ${!isFull ? `<select style="width:200px;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:white" onchange="assignSeat('${esc(t.id)}',this.value);this.selectedIndex=0">
+        <option value="">+ Add guest (${availableGuests.length} available)</option>
+        ${availableGuests.map(g => `<option value="${esc(g.name)}">${esc(g.label)}</option>`).join('')}
       </select>` : ''}
     </div>`;
   }).join('');
+}
+
+// ─── Floor Plan: zoom + pan + print ─────────────────────────────
+let fpZoomLevel = 1;
+function fpZoom(delta) {
+  fpZoomLevel = Math.max(0.3, Math.min(2, fpZoomLevel + delta));
+  applyFpZoom();
+}
+function fpZoomReset() {
+  fpZoomLevel = 1;
+  applyFpZoom();
+  const vp = document.getElementById('fp-canvas-viewport');
+  if (vp) { vp.scrollLeft = 0; vp.scrollTop = 0; }
+}
+function applyFpZoom() {
+  const canvas = document.getElementById('fp-canvas');
+  const pctEl = document.getElementById('fp-zoom-pct');
+  if (canvas) canvas.style.transform = `scale(${fpZoomLevel})`;
+  if (pctEl) pctEl.textContent = Math.round(fpZoomLevel * 100) + '%';
+}
+
+// Drag-to-pan inside the viewport (only when starting on empty canvas, not on items)
+function initFpPan() {
+  const vp = document.getElementById('fp-canvas-viewport');
+  if (!vp || vp.dataset.panBound) return;
+  vp.dataset.panBound = '1';
+  let isDown = false, startX = 0, startY = 0, startScrollLeft = 0, startScrollTop = 0;
+  vp.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.fp-item')) return; // let items handle their own drag
+    isDown = true;
+    vp.classList.add('panning');
+    startX = e.clientX; startY = e.clientY;
+    startScrollLeft = vp.scrollLeft; startScrollTop = vp.scrollTop;
+    vp.setPointerCapture(e.pointerId);
+  });
+  vp.addEventListener('pointermove', (e) => {
+    if (!isDown) return;
+    vp.scrollLeft = startScrollLeft - (e.clientX - startX);
+    vp.scrollTop = startScrollTop - (e.clientY - startY);
+  });
+  const stop = () => { isDown = false; vp.classList.remove('panning'); };
+  vp.addEventListener('pointerup', stop);
+  vp.addEventListener('pointercancel', stop);
+  // Cmd/Ctrl+wheel = zoom; plain wheel = scroll (default)
+  vp.addEventListener('wheel', (e) => {
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      fpZoom(e.deltaY > 0 ? -0.1 : 0.1);
+    }
+  }, { passive: false });
+}
+
+function printFloorPlan() {
+  const tables = (S.floorPlan||[]).filter(f => FP_TYPES[f.type]?.isTable);
+  const items = (S.floorPlan||[]);
+  if (items.length === 0) return alert('Add some items to the floor plan first.');
+
+  // Compute bounding box so the print fits the actual layout
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  items.forEach(it => {
+    const def = FP_TYPES[it.type] || {w:80, h:80};
+    const w = it.w || def.w, h = it.h || def.h;
+    minX = Math.min(minX, it.x); minY = Math.min(minY, it.y);
+    maxX = Math.max(maxX, it.x + w); maxY = Math.max(maxY, it.y + h);
+  });
+  const pad = 60;
+  const offX = pad - minX, offY = pad - minY;
+  const planW = (maxX - minX) + pad * 2;
+  const planH = (maxY - minY) + pad * 2;
+
+  const couple = [S.coupleName1, S.coupleName2].filter(Boolean).join(' & ') || 'Wedding';
+  const date = S.weddingDate ? new Date(S.weddingDate+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) : '';
+  const venue = S.venue || '';
+  const totalSeats = tables.reduce((sum, t) => sum + (t.seats||0), 0);
+  const totalAssigned = Object.values(S.seatAssignments||{}).flat().length;
+
+  const itemHtml = items.map(it => {
+    const def = FP_TYPES[it.type] || {};
+    const w = it.w || def.w || 80;
+    const h = it.h || def.h || 80;
+    const isTable = def.isTable;
+    const isRound = it.type === 'round';
+    let bg='#f5f0e8', border='#9c8b7a', radius='6px';
+    if (isTable) { bg='rgba(156,139,122,0.15)'; border='#9c8b7a'; radius = isRound ? '50%' : '6px'; }
+    else if (it.type === 'stage') { bg='rgba(74,122,91,0.12)'; border='#4a7a5b'; radius='8px'; }
+    else if (it.type === 'dj') { bg='rgba(196,160,53,0.12)'; border='#c4a035'; radius='8px'; }
+    else if (it.type === 'dance') { bg='rgba(184,84,80,0.08)'; border='#b85450'; radius='12px'; }
+    else if (it.type === 'bar') { bg='rgba(156,139,122,0.12)'; border='#6b6560'; radius='6px'; }
+    else if (it.type === 'entrance') { bg='rgba(74,122,91,0.15)'; border='#4a7a5b'; radius='4px'; }
+    else if (it.type === 'exit') { bg='rgba(184,84,80,0.10)'; border='#b85450'; radius='4px'; }
+    const seats = isTable ? (it.seats||0) : 0;
+    const assigned = isTable ? ((S.seatAssignments?.[it.id])||[]).length : 0;
+    const seatLine = isTable && seats > 0 ? `<br><span style="font-size:9px;color:#666">${assigned}/${seats}</span>` : '';
+    const rotation = it.rotation || 0;
+    return `<div style="position:absolute;left:${(it.x+offX)}px;top:${(it.y+offY)}px;width:${w}px;height:${h}px;background:${bg};border:2px solid ${border};border-radius:${radius};display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;font-weight:600;color:#333;transform:rotate(${rotation}deg);box-sizing:border-box">${esc(it.label||'')}${seatLine}</div>`;
+  }).join('');
+
+  const tableRows = tables.map(t => {
+    const seats = t.seats || 0;
+    const assigned = (S.seatAssignments?.[t.id]) || [];
+    return `<tr><td>${esc(t.label||'')}</td><td>${assigned.length}/${seats}</td><td style="font-size:11px">${assigned.map(esc).join(', ')||'<em style="color:#999">unassigned</em>'}</td></tr>`;
+  }).join('');
+
+  const w = window.open('', '_blank');
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Floor Plan — ${esc(couple)}</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:Georgia,'Times New Roman',serif;padding:32px;color:#1c1917;background:#faf9f7}
+  h1{font-size:26px;margin:0 0 4px}
+  .meta{color:#666;font-size:13px;margin-bottom:24px}
+  .stats{display:flex;gap:24px;font-size:13px;margin-bottom:20px;color:#444}
+  .stats strong{color:#1c1917}
+  .plan-wrap{position:relative;width:${planW}px;height:${planH}px;background:white;background-image:radial-gradient(circle,rgba(214,208,200,0.3) 1px,transparent 1px);background-size:24px 24px;border:1px solid #e5e0da;border-radius:8px;margin-bottom:32px;page-break-inside:avoid}
+  table{width:100%;border-collapse:collapse;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #e5e5e0;vertical-align:top}
+  th{background:#faf8f4;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;font-size:11px}
+  @media print{body{padding:16px;background:white}.no-print{display:none}}
+</style>
+</head><body>
+<h1>Floor Plan</h1>
+<div class="meta">${esc(couple)}${date?' · '+esc(date):''}${venue?' · '+esc(venue):''}</div>
+<div class="stats">
+  <div><strong>${tables.length}</strong> tables</div>
+  <div><strong>${totalSeats}</strong> seats</div>
+  <div><strong>${totalAssigned}</strong> assigned · <strong>${totalSeats-totalAssigned}</strong> open</div>
+</div>
+<div class="plan-wrap">${itemHtml}</div>
+<h2 style="font-size:16px;margin-bottom:8px">Seating Chart</h2>
+<table><thead><tr><th>Table</th><th>Filled</th><th>Guests</th></tr></thead><tbody>${tableRows||'<tr><td colspan="3" style="color:#999"><em>No tables yet</em></td></tr>'}</tbody></table>
+<scr`+`ipt>setTimeout(()=>window.print(),300)<\/scr`+`ipt>
+</body></html>`);
+  w.document.close();
 }
 
 function assignSeat(tableId, guestName) {
@@ -5655,7 +5843,7 @@ function renderNotifications() {
   filtered.sort((a,b) => (order[a.type]||9) - (order[b.type]||9));
 
   list.innerHTML = filtered.map(n => `
-    <div class="notif-item ${esc(n.type||'')}">
+    <div class="notif-item ${esc(n.type||'')}" data-source="${esc(n.source||'')}" onclick="goToNotifSource('${esc(n.source||'')}')" style="cursor:pointer">
       <div class="notif-icon ${esc(n.type||'')}">${n.icon}</div>
       <div class="notif-body">
         <div class="notif-title">${esc(n.title||'')}</div>
@@ -5670,6 +5858,25 @@ function renderNotifications() {
   renderNotifBudgetPie();
   renderNotifGuestRing();
   renderNotifUpcoming();
+}
+
+// Map notification source → tab id, for click-through navigation
+const NOTIF_SOURCE_TAB = {
+  general: 'timeline',
+  budget: 'budget',
+  vendor: 'vendors',
+  vendors: 'vendors',
+  checklist: 'checklist',
+  guest: 'guests',
+  guests: 'guests',
+  camera: 'camera',
+  music: 'music',
+  attire: 'attire',
+  honeymoon: 'honeymoon'
+};
+function goToNotifSource(source) {
+  const tab = NOTIF_SOURCE_TAB[source];
+  if (tab && typeof showTab === 'function') showTab(tab);
 }
 
 function renderNotifCoupleBanner() {
