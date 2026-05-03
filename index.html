@@ -7334,6 +7334,23 @@ let cloudSyncTimer = null;
 let cloudDirty = false;
 let cloudHydrated = false;
 
+// Phase 9F+ — feature flags (read-only on the client; managed in admin portal)
+let _featureFlagsCache = {};
+async function loadFeatureFlags() {
+  if (!supa) return;
+  const { data, error } = await supa.from('feature_flags').select('key, enabled, enabled_for_wedding_ids');
+  if (error) { console.warn('[Ivory] feature_flags read failed:', error.message); return; }
+  _featureFlagsCache = {};
+  (data || []).forEach(f => { _featureFlagsCache[f.key] = f; });
+}
+function isFeatureEnabled(key) {
+  const f = _featureFlagsCache[key];
+  if (!f) return false;
+  if (f.enabled) return true;
+  if (Array.isArray(f.enabled_for_wedding_ids) && currentWeddingId && f.enabled_for_wedding_ids.includes(currentWeddingId)) return true;
+  return false;
+}
+
 async function ivoryAuthInit() {
   if (!window.IVORY_CONFIG || !window.supabase) {
     console.warn('[Ivory] No Supabase config detected — running in local-only mode');
@@ -7381,6 +7398,8 @@ async function ivoryAuthInit() {
   }
   currentUser = session.user;
   updateAuthUserChip();
+  // Load feature flags (best-effort, fire-and-forget)
+  loadFeatureFlags();
   // Phase 9B: handle invite token if present
   const handledInvite = await checkUrlForInvite();
   if (!handledInvite) {

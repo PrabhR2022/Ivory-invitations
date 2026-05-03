@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="robots" content="noindex,nofollow"/>
+<title>Ivory · Admin</title>
+<style>
+  :root{
+    --ivory:#faf9f7; --cream:#f3efe8; --charcoal:#1c1917; --stone:#78716c; --taupe:#9c8b7a;
+    --border:#d6d0c8; --border-light:#ede9e3; --red:#b85450; --green:#4a7a5b; --gold:#b89664;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:var(--ivory);color:var(--charcoal);font-size:14px;line-height:1.5}
+  a{color:var(--charcoal)}
+  button{font-family:inherit;cursor:pointer}
+  .layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+  .sidebar{background:#1c1917;color:var(--ivory);padding:24px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+  .brand{font-family:Georgia,'Times New Roman',serif;font-size:24px;letter-spacing:0.02em;margin-bottom:4px}
+  .brand-sub{font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#a8a29e;margin-bottom:24px}
+  .nav-btn{background:none;border:none;color:#d6d3d1;text-align:left;padding:9px 12px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:10px;transition:background 120ms,color 120ms}
+  .nav-btn:hover{background:#27272a;color:var(--ivory)}
+  .nav-btn.active{background:var(--ivory);color:var(--charcoal);font-weight:600}
+  .me{margin-top:auto;padding:10px 12px;font-size:11px;color:#a8a29e;border-top:1px solid #292524}
+  .me strong{color:var(--ivory);display:block;margin-bottom:2px;font-size:12px}
+  .signout{margin-top:6px;background:none;border:1px solid #44403c;color:#d6d3d1;padding:5px 10px;border-radius:6px;font-size:11px;width:100%}
+  .signout:hover{background:#27272a}
+  .main{padding:32px 36px;max-width:1280px}
+  h1{font-family:Georgia,'Times New Roman',serif;font-size:28px;margin:0 0 4px}
+  .h-sub{color:var(--stone);font-size:13px;margin-bottom:24px}
+  .panel{display:none}
+  .panel.active{display:block}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+  .metric{background:white;border:1px solid var(--border-light);border-radius:12px;padding:18px}
+  .metric .label{font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px}
+  .metric .value{font-family:Georgia,serif;font-size:32px;font-weight:600;color:var(--charcoal)}
+  .card{background:white;border:1px solid var(--border-light);border-radius:12px;padding:18px;margin-bottom:18px}
+  .card-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .card-title h2{margin:0;font-family:Georgia,serif;font-size:18px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border-light);vertical-align:top}
+  th{background:#faf8f4;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;font-size:11px;color:var(--stone)}
+  tr:last-child td{border-bottom:none}
+  .btn{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:white;font-size:12px;font-weight:500;cursor:pointer;transition:background 120ms}
+  .btn:hover{background:var(--cream)}
+  .btn-dark{background:var(--charcoal);color:var(--ivory);border-color:var(--charcoal)}
+  .btn-dark:hover{background:#000}
+  .btn-danger{color:var(--red);border-color:rgba(184,84,80,0.3)}
+  .btn-danger:hover{background:rgba(184,84,80,0.08)}
+  .btn-sm{padding:4px 10px;font-size:11px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em}
+  .pill.root{background:#fef3c7;color:#854d0e}
+  .pill.admin{background:#dbeafe;color:#1e40af}
+  .pill.on{background:#d1fae5;color:#065f46}
+  .pill.off{background:#f3f4f6;color:#6b7280}
+  input[type=text],input[type=email],input[type=search],textarea,select{font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:white;color:var(--charcoal);width:100%}
+  .row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .row > *{flex:1}
+  .row > .narrow{flex:0 0 120px}
+  .row > .auto{flex:0 0 auto}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--charcoal);color:var(--ivory);padding:12px 18px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.18);max-width:360px;display:none;z-index:200}
+  .toast.error{background:var(--red)}
+  .toast.success{background:var(--green)}
+  .empty{text-align:center;padding:36px 12px;color:var(--stone);font-size:13px}
+  code{background:var(--cream);padding:1px 6px;border-radius:4px;font-size:12px}
+  /* Auth gate (full-page when signed out) */
+  .auth-gate{position:fixed;inset:0;background:var(--ivory);display:none;align-items:flex-start;justify-content:center;z-index:300;padding:0;overflow-y:auto}
+  .auth-gate.active{display:flex}
+  .auth-card{background:transparent;max-width:440px;padding:80px 32px 48px;width:100%}
+  .auth-brand{font-family:Georgia,'Times New Roman',serif;font-size:42px;text-align:center;letter-spacing:0.02em;margin-bottom:6px}
+  .auth-brand-sub{text-align:center;color:var(--stone);font-size:11px;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:36px}
+  .auth-card h2{font-family:Georgia,serif;font-size:24px;text-align:center;margin:0 0 6px}
+  .auth-card p.sub{text-align:center;color:var(--stone);font-size:13px;margin:0 0 22px}
+  .auth-card .row{flex-direction:column;align-items:stretch;gap:10px}
+  .auth-card input{padding:11px 14px;border-radius:10px;font-size:14px}
+  .auth-card .btn-dark{padding:11px 16px;border-radius:10px;font-size:14px}
+  #auth-msg{font-size:12px;text-align:center;color:var(--stone);min-height:18px;margin-top:14px}
+</style>
+</head>
+<body>
+
+<!-- Sign-in screen (full page when not authed) -->
+<div class="auth-gate active" id="auth-gate">
+  <div class="auth-card">
+    <div class="auth-brand">Ivory</div>
+    <div class="auth-brand-sub">Admin Portal</div>
+    <h2>Sign in</h2>
+    <p class="sub">Magic link sign-in. Your email must be on the admin allowlist.</p>
+    <div class="row" style="display:flex;flex-direction:column;gap:10px">
+      <input id="auth-email" type="email" placeholder="you@email.com" autocomplete="email"/>
+      <button class="btn btn-dark" onclick="signInWithMagicLink()">Email me a sign-in link</button>
+      <details>
+        <summary style="cursor:pointer;font-size:12px;color:var(--stone);text-align:center;margin-top:4px">Use 6-digit code instead</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <button class="btn" onclick="sendOtp()">Email me a 6-digit code</button>
+          <input id="auth-otp" type="text" inputmode="numeric" maxlength="8" placeholder="Enter code" style="text-align:center;letter-spacing:0.3em"/>
+          <button class="btn" onclick="verifyOtp()">Verify</button>
+        </div>
+      </details>
+    </div>
+    <p id="auth-msg"></p>
+  </div>
+</div>
+
+<!-- Main layout (only visible when admin-authed) -->
+<div class="layout" id="app" style="display:none">
+  <aside class="sidebar">
+    <div class="brand">Ivory</div>
+    <div class="brand-sub">Admin</div>
+    <button class="nav-btn active" data-panel="overview" onclick="showPanel('overview')">📊 Overview</button>
+    <button class="nav-btn" data-panel="weddings" onclick="showPanel('weddings')">💍 Weddings</button>
+    <button class="nav-btn" data-panel="users" onclick="showPanel('users')">👥 Users</button>
+    <button class="nav-btn" data-panel="admins" onclick="showPanel('admins')">🛡 Admins</button>
+    <button class="nav-btn" data-panel="flags" onclick="showPanel('flags')">🚩 Feature Flags</button>
+    <button class="nav-btn" data-panel="tools" onclick="showPanel('tools')">🔧 Tools</button>
+    <div class="me">
+      <strong id="me-email">—</strong>
+      <span id="me-role">—</span>
+      <button class="signout" onclick="signOut()">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- Overview -->
+    <section class="panel active" id="panel-overview">
+      <h1>Overview</h1>
+      <p class="h-sub">Snapshot of the platform across all weddings and users.</p>
+      <div class="metrics" id="metrics"></div>
+      <div class="card">
+        <div class="card-title"><h2>Quick actions</h2></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="refreshAll()">Refresh all data</button>
+          <button class="btn" onclick="showPanel('tools')">Open tools</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Weddings -->
+    <section class="panel" id="panel-weddings">
+      <h1>Weddings</h1>
+      <p class="h-sub">Every wedding row in the database. Delete is hard delete (cascades members, invites, activity, dispatches).</p>
+      <div class="card">
+        <div class="card-title">
+          <h2>All weddings (<span id="weddings-count">0</span>)</h2>
+          <input id="weddings-search" type="search" placeholder="Filter by name or id…" style="max-width:240px" oninput="renderWeddings()"/>
+        </div>
+        <div style="overflow-x:auto"><table id="weddings-table"></table></div>
+      </div>
+    </section>
+
+    <!-- Users -->
+    <section class="panel" id="panel-users">
+      <h1>Users</h1>
+      <p class="h-sub">Every Supabase auth user. Delete cascades all weddings created by that user.</p>
+      <div class="card">
+        <div class="card-title">
+          <h2>All users (<span id="users-count">0</span>)</h2>
+          <input id="users-search" type="search" placeholder="Filter by email…" style="max-width:240px" oninput="renderUsers()"/>
+        </div>
+        <div style="overflow-x:auto"><table id="users-table"></table></div>
+      </div>
+    </section>
+
+    <!-- Admins -->
+    <section class="panel" id="panel-admins">
+      <h1>Admins</h1>
+      <p class="h-sub">Anyone listed here can sign into this portal. Only <strong>root</strong> admins can add or remove other admins.</p>
+      <div class="card" id="add-admin-card">
+        <div class="card-title"><h2>Add admin</h2></div>
+        <div class="row" style="display:flex;gap:8px;align-items:center">
+          <input id="new-admin-email" type="email" placeholder="email@example.com" style="flex:1"/>
+          <select id="new-admin-role" style="flex:0 0 130px">
+            <option value="admin">admin</option>
+            <option value="root">root</option>
+          </select>
+          <button class="btn btn-dark" onclick="addAdmin()" style="flex:0 0 auto">Add</button>
+        </div>
+        <p style="font-size:11px;color:var(--stone);margin-top:8px;margin-bottom:0">They'll get access on their next sign-in via magic link or 6-digit code.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><h2>Current admins (<span id="admins-count">0</span>)</h2></div>
+        <div style="overflow-x:auto"><table id="admins-table"></table></div>
+      </div>
+    </section>
+
+    <!-- Feature flags -->
+    <section class="panel" id="panel-flags">
+      <h1>Feature Flags</h1>
+      <p class="h-sub">Gate features behind flags so you can ship code dark, then enable globally or for specific weddings.</p>
+      <div class="card">
+        <div class="card-title"><h2>Add or update flag</h2></div>
+        <div style="display:grid;grid-template-columns:1fr 2fr auto auto;gap:8px;align-items:center;margin-bottom:8px">
+          <input id="flag-key" type="text" placeholder="flag_key (snake_case)"/>
+          <input id="flag-desc" type="text" placeholder="What does this flag gate?"/>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap"><input type="checkbox" id="flag-enabled"/> Enabled globally</label>
+          <button class="btn btn-dark" onclick="upsertFlag()">Save</button>
+        </div>
+        <p style="font-size:11px;color:var(--stone);margin:0">For staged rollout, enable globally OFF and add specific wedding ids in the row's <em>scoped weddings</em> column.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><h2>All flags (<span id="flags-count">0</span>)</h2></div>
+        <div style="overflow-x:auto"><table id="flags-table"></table></div>
+      </div>
+    </section>
+
+    <!-- Tools -->
+    <section class="panel" id="panel-tools">
+      <h1>Tools</h1>
+      <p class="h-sub">Test buttons and one-off operations.</p>
+      <div class="card">
+        <div class="card-title"><h2>Trigger countdown emails</h2></div>
+        <p style="font-size:13px;margin:0 0 12px;color:var(--stone)">Manually invoke <code>process-scheduled-emails</code>. Sends nothing unless a wedding is exactly 30/14/7/3/1 days out and that milestone hasn't already fired.</p>
+        <button class="btn btn-dark" onclick="triggerEmails()">Run now</button>
+        <pre id="trigger-result" style="margin-top:14px;padding:12px;background:var(--cream);border-radius:8px;font-size:12px;white-space:pre-wrap;display:none"></pre>
+      </div>
+      <div class="card">
+        <div class="card-title"><h2>External resources</h2></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.9">
+          <li><a href="https://supabase.com/dashboard/project/sfatraifbnvgelkhpgec/auth/users" target="_blank" rel="noopener">Supabase · Auth · Users</a></li>
+          <li><a href="https://supabase.com/dashboard/project/sfatraifbnvgelkhpgec/editor" target="_blank" rel="noopener">Supabase · Table Editor</a></li>
+          <li><a href="https://supabase.com/dashboard/project/sfatraifbnvgelkhpgec/sql/new" target="_blank" rel="noopener">Supabase · SQL Editor</a></li>
+          <li><a href="https://supabase.com/dashboard/project/sfatraifbnvgelkhpgec/functions" target="_blank" rel="noopener">Supabase · Edge Functions</a></li>
+          <li><a href="https://resend.com/emails" target="_blank" rel="noopener">Resend · Emails dashboard</a></li>
+          <li><a href="https://plan.ivoryinvitations.ca/" target="_blank" rel="noopener">Live planner</a></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+// ── Constants & state ─────────────────────────────────────────────
+const FN_BASE = (window.IVORY_CONFIG?.supabaseUrl || '') + '/functions/v1';
+let supa = null;
+let session = null;
+let me = { email: null, role: null };
+let cache = { weddings: [], users: [], admins: [], flags: [] };
+
+function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtDate(s){ if(!s) return '—'; try{ return new Date(s).toLocaleDateString(); }catch(e){return s;} }
+function fmtDateTime(s){ if(!s) return '—'; try{ return new Date(s).toLocaleString(); }catch(e){return s;} }
+function toast(msg, kind){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+(kind||''); t.style.display='block'; setTimeout(()=>{t.style.display='none';},3500); }
+
+// ── Auth ──────────────────────────────────────────────────────────
+async function init(){
+  if (!window.IVORY_CONFIG || !window.supabase) {
+    document.getElementById('auth-msg').textContent = 'Supabase config missing — config.js failed to load.';
+    return;
+  }
+  supa = window.supabase.createClient(window.IVORY_CONFIG.supabaseUrl, window.IVORY_CONFIG.supabaseAnonKey);
+  supa.auth.onAuthStateChange(async (event, sess) => {
+    if (event === 'SIGNED_IN' && sess) { await onSignedIn(sess); }
+    if (event === 'SIGNED_OUT') { showSignIn(); }
+  });
+  const { data: { session: existing } } = await supa.auth.getSession();
+  if (existing) { await onSignedIn(existing); } else { showSignIn(); }
+}
+
+function showSignIn(){
+  document.getElementById('auth-gate').classList.add('active');
+  document.getElementById('app').style.display = 'none';
+}
+async function onSignedIn(sess){
+  session = sess;
+  // Verify admin status by trying the overview action — server returns 403 if not allowed.
+  try {
+    const data = await api('overview');
+    me.email = sess.user.email;
+    document.getElementById('me-email').textContent = me.email;
+    document.getElementById('auth-gate').classList.remove('active');
+    document.getElementById('app').style.display = 'grid';
+    renderMetrics(data.metrics);
+    // Load admin row to know our role for UI gating
+    const adminRes = await api('admins');
+    const myRow = (adminRes.admins || []).find(a => (a.email || '').toLowerCase() === (me.email || '').toLowerCase());
+    me.role = myRow?.role || 'admin';
+    document.getElementById('me-role').textContent = me.role;
+    if (me.role !== 'root') document.getElementById('add-admin-card').style.display = 'none';
+  } catch (e) {
+    document.getElementById('auth-msg').textContent = e.message || 'Not authorized';
+    document.getElementById('auth-msg').style.color = 'var(--red)';
+    await supa.auth.signOut();
+    showSignIn();
+  }
+}
+async function signInWithMagicLink(){
+  const email = (document.getElementById('auth-email').value || '').trim();
+  if (!email) { document.getElementById('auth-msg').textContent = 'Enter an email'; return; }
+  document.getElementById('auth-msg').textContent = 'Sending magic link…';
+  const { error } = await supa.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname, shouldCreateUser: true } });
+  if (error) { document.getElementById('auth-msg').textContent = error.message; return; }
+  document.getElementById('auth-msg').textContent = '✓ Check your inbox at ' + email;
+}
+async function sendOtp(){
+  const email = (document.getElementById('auth-email').value || '').trim();
+  if (!email) { document.getElementById('auth-msg').textContent = 'Enter an email'; return; }
+  const { error } = await supa.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+  document.getElementById('auth-msg').textContent = error ? error.message : '✓ 6-digit code sent to ' + email;
+}
+async function verifyOtp(){
+  const email = (document.getElementById('auth-email').value || '').trim();
+  const token = (document.getElementById('auth-otp').value || '').trim();
+  if (!email || !token) { document.getElementById('auth-msg').textContent = 'Email + code required'; return; }
+  const { error } = await supa.auth.verifyOtp({ email, token, type: 'email' });
+  if (error) { document.getElementById('auth-msg').textContent = error.message; return; }
+  // onAuthStateChange handles the rest
+}
+async function signOut(){ await supa.auth.signOut(); }
+
+// ── API call helper ───────────────────────────────────────────────
+async function api(action, body){
+  const accessToken = (await supa.auth.getSession()).data.session?.access_token;
+  if (!accessToken) throw new Error('Not signed in');
+  const resp = await fetch(FN_BASE + '/admin-data', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...(body || {}) }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) { throw new Error(data?.error || ('Request failed: ' + resp.status)); }
+  return data;
+}
+
+// ── Panels ────────────────────────────────────────────────────────
+function showPanel(name){
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.panel === name));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'overview') loadOverview();
+  if (name === 'weddings') loadWeddings();
+  if (name === 'users') loadUsers();
+  if (name === 'admins') loadAdmins();
+  if (name === 'flags') loadFlags();
+}
+
+async function refreshAll(){ try { await Promise.all([loadOverview(), loadWeddings(), loadUsers(), loadAdmins(), loadFlags()]); toast('Refreshed', 'success'); } catch (e) { toast(e.message, 'error'); } }
+
+// ── Overview ──────────────────────────────────────────────────────
+async function loadOverview(){
+  try { const data = await api('overview'); renderMetrics(data.metrics); } catch (e) { toast(e.message, 'error'); }
+}
+function renderMetrics(m){
+  if (!m) return;
+  const cards = [
+    { label: 'Weddings', value: m.weddings },
+    { label: 'Memberships', value: m.memberships },
+    { label: 'Pending invites', value: m.invites_pending },
+    { label: 'Total invites', value: m.invites_total },
+    { label: 'Emails sent (7d)', value: m.emails_sent_7d },
+  ];
+  document.getElementById('metrics').innerHTML = cards.map(c => `<div class="metric"><div class="label">${esc(c.label)}</div><div class="value">${esc(c.value)}</div></div>`).join('');
+}
+
+// ── Weddings ──────────────────────────────────────────────────────
+async function loadWeddings(){
+  try { const data = await api('weddings'); cache.weddings = data.weddings || []; renderWeddings(); } catch (e) { toast(e.message, 'error'); }
+}
+function renderWeddings(){
+  const q = (document.getElementById('weddings-search').value || '').toLowerCase();
+  const rows = cache.weddings.filter(w => !q || (w.name || '').toLowerCase().includes(q) || w.id.includes(q));
+  document.getElementById('weddings-count').textContent = rows.length;
+  const t = document.getElementById('weddings-table');
+  if (rows.length === 0) { t.innerHTML = '<tr><td class="empty">No weddings.</td></tr>'; return; }
+  t.innerHTML = `
+    <thead><tr><th>Name</th><th>Date</th><th>Members</th><th>Pending invites</th><th>Updated</th><th>ID</th><th></th></tr></thead>
+    <tbody>${rows.map(w => `
+      <tr>
+        <td><strong>${esc(w.name)}</strong></td>
+        <td>${esc(fmtDate(w.wedding_date))}</td>
+        <td>${esc(w.member_count)}</td>
+        <td>${esc(w.pending_invite_count)}</td>
+        <td style="font-size:11px;color:var(--stone)">${esc(fmtDateTime(w.updated_at))}</td>
+        <td style="font-size:10px;color:var(--stone);font-family:Menlo,monospace">${esc(w.id)}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteWedding('${esc(w.id)}','${esc((w.name||'').replace(/'/g,"\\'"))}')">Delete</button></td>
+      </tr>`).join('')}</tbody>`;
+}
+async function deleteWedding(id, name){
+  if (!confirm('Delete wedding "' + name + '" and ALL associated members, invites, activity, dispatches? This is irreversible.')) return;
+  try { await api('delete-wedding', { id }); toast('Deleted', 'success'); loadWeddings(); loadOverview(); } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Users ─────────────────────────────────────────────────────────
+async function loadUsers(){
+  try { const data = await api('users'); cache.users = data.users || []; renderUsers(); } catch (e) { toast(e.message, 'error'); }
+}
+function renderUsers(){
+  const q = (document.getElementById('users-search').value || '').toLowerCase();
+  const rows = cache.users.filter(u => !q || (u.email || '').toLowerCase().includes(q));
+  document.getElementById('users-count').textContent = rows.length;
+  const t = document.getElementById('users-table');
+  if (rows.length === 0) { t.innerHTML = '<tr><td class="empty">No users.</td></tr>'; return; }
+  t.innerHTML = `
+    <thead><tr><th>Email</th><th>Memberships</th><th>Last sign-in</th><th>Created</th><th></th></tr></thead>
+    <tbody>${rows.map(u => `
+      <tr>
+        <td><strong>${esc(u.email || '(no email)')}</strong>${u.confirmed_at ? '' : ' <span style="font-size:10px;color:var(--red)">unconfirmed</span>'}</td>
+        <td>${(u.memberships||[]).map(m => `<span class="pill admin" style="margin-right:4px">${esc(m.role)}</span>`).join('') || '<span style="color:var(--stone);font-size:11px">none</span>'}</td>
+        <td style="font-size:11px;color:var(--stone)">${esc(fmtDateTime(u.last_sign_in_at))}</td>
+        <td style="font-size:11px;color:var(--stone)">${esc(fmtDateTime(u.created_at))}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteUser('${esc(u.id)}','${esc((u.email||'').replace(/'/g,"\\'"))}')">Delete</button></td>
+      </tr>`).join('')}</tbody>`;
+}
+async function deleteUser(id, email){
+  if (!confirm('Delete user "' + email + '"? Their auth account is removed and any wedding they created cascades.')) return;
+  try { await api('delete-user', { id }); toast('Deleted', 'success'); loadUsers(); loadOverview(); } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Admins ────────────────────────────────────────────────────────
+async function loadAdmins(){
+  try { const data = await api('admins'); cache.admins = data.admins || []; renderAdmins(); } catch (e) { toast(e.message, 'error'); }
+}
+function renderAdmins(){
+  document.getElementById('admins-count').textContent = cache.admins.length;
+  const t = document.getElementById('admins-table');
+  if (cache.admins.length === 0) { t.innerHTML = '<tr><td class="empty">No admins.</td></tr>'; return; }
+  t.innerHTML = `
+    <thead><tr><th>Email</th><th>Role</th><th>Added by</th><th>Added at</th><th></th></tr></thead>
+    <tbody>${cache.admins.map(a => `
+      <tr>
+        <td><strong>${esc(a.email)}</strong></td>
+        <td><span class="pill ${a.role === 'root' ? 'root' : 'admin'}">${esc(a.role)}</span></td>
+        <td style="font-size:12px;color:var(--stone)">${esc(a.added_by_email || '—')}</td>
+        <td style="font-size:11px;color:var(--stone)">${esc(fmtDateTime(a.added_at))}</td>
+        <td>${me.role === 'root' && a.email !== me.email ? `<button class="btn btn-sm btn-danger" onclick="removeAdmin('${esc(a.email)}')">Remove</button>` : ''}</td>
+      </tr>`).join('')}</tbody>`;
+}
+async function addAdmin(){
+  const email = (document.getElementById('new-admin-email').value || '').trim().toLowerCase();
+  const role = document.getElementById('new-admin-role').value;
+  if (!email) { toast('Enter an email', 'error'); return; }
+  try { await api('add-admin', { email, role }); document.getElementById('new-admin-email').value = ''; toast('Admin added', 'success'); loadAdmins(); } catch (e) { toast(e.message, 'error'); }
+}
+async function removeAdmin(email){
+  if (!confirm('Remove admin access for ' + email + '? Their account is not deleted; they just lose portal access.')) return;
+  try { await api('remove-admin', { email }); toast('Admin removed', 'success'); loadAdmins(); } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Feature flags ─────────────────────────────────────────────────
+async function loadFlags(){
+  try { const data = await api('flags'); cache.flags = data.flags || []; renderFlags(); } catch (e) { toast(e.message, 'error'); }
+}
+function renderFlags(){
+  document.getElementById('flags-count').textContent = cache.flags.length;
+  const t = document.getElementById('flags-table');
+  if (cache.flags.length === 0) { t.innerHTML = '<tr><td class="empty">No flags yet. Add one above.</td></tr>'; return; }
+  t.innerHTML = `
+    <thead><tr><th>Key</th><th>Description</th><th>Global</th><th>Scoped weddings</th><th>Updated</th><th></th></tr></thead>
+    <tbody>${cache.flags.map(f => `
+      <tr>
+        <td><code>${esc(f.key)}</code></td>
+        <td style="font-size:12px">${esc(f.description || '—')}</td>
+        <td><span class="pill ${f.enabled ? 'on' : 'off'}">${f.enabled ? 'on' : 'off'}</span></td>
+        <td style="font-size:10px;color:var(--stone);max-width:200px;word-break:break-all">${(f.enabled_for_wedding_ids||[]).join(', ') || '—'}</td>
+        <td style="font-size:11px;color:var(--stone)">${esc(fmtDateTime(f.updated_at))}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-sm" onclick="toggleFlag('${esc(f.key)}', ${!f.enabled})">${f.enabled ? 'Disable' : 'Enable'}</button>
+          <button class="btn btn-sm" onclick="editFlag('${esc(f.key)}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteFlag('${esc(f.key)}')">Delete</button>
+        </td>
+      </tr>`).join('')}</tbody>`;
+}
+async function upsertFlag(){
+  const key = (document.getElementById('flag-key').value || '').trim();
+  const description = (document.getElementById('flag-desc').value || '').trim();
+  const enabled = document.getElementById('flag-enabled').checked;
+  if (!key) { toast('Key required', 'error'); return; }
+  try {
+    await api('upsert-flag', { key, description, enabled });
+    document.getElementById('flag-key').value = '';
+    document.getElementById('flag-desc').value = '';
+    document.getElementById('flag-enabled').checked = false;
+    toast('Saved', 'success');
+    loadFlags();
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function toggleFlag(key, enabled){
+  const f = cache.flags.find(x => x.key === key);
+  if (!f) return;
+  try { await api('upsert-flag', { key, description: f.description, enabled, enabled_for_wedding_ids: f.enabled_for_wedding_ids || [] }); loadFlags(); } catch (e) { toast(e.message, 'error'); }
+}
+async function editFlag(key){
+  const f = cache.flags.find(x => x.key === key);
+  if (!f) return;
+  const newDesc = prompt('Description for "' + key + '":', f.description || '');
+  if (newDesc === null) return;
+  const idsRaw = prompt('Comma-separated wedding IDs to enable for (leave empty for none):', (f.enabled_for_wedding_ids || []).join(','));
+  if (idsRaw === null) return;
+  const ids = idsRaw.split(',').map(s => s.trim()).filter(Boolean);
+  try { await api('upsert-flag', { key, description: newDesc, enabled: f.enabled, enabled_for_wedding_ids: ids }); toast('Saved', 'success'); loadFlags(); } catch (e) { toast(e.message, 'error'); }
+}
+async function deleteFlag(key){
+  if (!confirm('Delete flag "' + key + '"? Any code referencing it will treat it as off.')) return;
+  try { await api('delete-flag', { key }); toast('Deleted', 'success'); loadFlags(); } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Tools ─────────────────────────────────────────────────────────
+async function triggerEmails(){
+  const out = document.getElementById('trigger-result');
+  out.style.display = 'block';
+  out.textContent = 'Running…';
+  try { const data = await api('trigger-emails'); out.textContent = JSON.stringify(data, null, 2); } catch (e) { out.textContent = 'Error: ' + e.message; }
+}
+
+init();
+</script>
+</body>
+</html>
