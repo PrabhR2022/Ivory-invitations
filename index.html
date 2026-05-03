@@ -464,6 +464,10 @@ table input[type="number"]{text-align:right;width:90px}
 .auth-page .auth-brand{font-family:var(--font-serif);font-size:42px;text-align:center;letter-spacing:0.02em;color:var(--charcoal);margin-bottom:8px}
 .auth-page .auth-brand-sub{text-align:center;color:var(--stone);font-size:12px;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:48px}
 @media(max-width:560px){.auth-page .ob-modal{padding:48px 22px 32px}.auth-page .auth-brand{font-size:34px}}
+/* Phase 9C — read-only role banner */
+#readonly-banner{position:fixed;top:0;left:0;right:0;z-index:250;background:linear-gradient(135deg,#b89664,#8a6f44);color:#faf9f7;padding:10px 18px;font-size:13px;font-weight:500;display:none;align-items:center;justify-content:center;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,0.08);font-family:var(--font-sans)}
+body:has(#readonly-banner[style*="flex"]){padding-top:42px}
+@media(max-width:640px){#readonly-banner{font-size:12px;padding:8px 12px}}
 .ob-progress{display:flex;gap:6px;margin-bottom:32px}
 .ob-dot{flex:1;height:3px;border-radius:100px;background:var(--border-light);transition:background 300ms}
 .ob-dot.done{background:var(--taupe)}
@@ -698,7 +702,7 @@ table input[type="number"]{text-align:right;width:90px}
       <div id="notif-members-card" class="card" style="display:none;margin-bottom:16px">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
           <span>&#128101; Wedding Members</span>
-          <button class="btn btn-sm btn-dark" onclick="showInvitePartnerModal()">+ Invite Partner</button>
+          <button class="btn btn-sm btn-dark" onclick="showInvitePartnerModal()">+ Invite Member</button>
         </div>
         <div id="notif-members-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px"></div>
         <div id="notif-pending-invites-section" style="display:none;margin-top:16px;padding-top:14px;border-top:1px dashed var(--border-light)">
@@ -7118,6 +7122,7 @@ function updateTopbarAvatars() {
 let supa = null;
 let currentWeddingId = null;
 let currentUser = null;
+let currentMemberRole = null; // partner | planner | parent | wedding_party | viewer
 let cloudSyncTimer = null;
 let cloudDirty = false;
 let cloudHydrated = false;
@@ -7150,8 +7155,10 @@ async function ivoryAuthInit() {
     if (event === 'SIGNED_OUT') {
       currentWeddingId = null;
       currentUser = null;
+      currentMemberRole = null;
       cloudHydrated = false;
       updateAuthUserChip();
+      applyRoleBasedUI();
       if (realtimeChannel) {
         try { supa.removeChannel(realtimeChannel); } catch(e) {}
         realtimeChannel = null;
@@ -7202,6 +7209,8 @@ async function hydrateFromCloud(user) {
   }
 
   currentWeddingId = memberships[0].wedding_id;
+  currentMemberRole = memberships[0].role || 'partner';
+  applyRoleBasedUI();
 
   const { data: wedding, error: wErr } = await supa
     .from('weddings')
@@ -7276,8 +7285,11 @@ async function createNewWeddingForUser(user) {
       wedding_id: wed.id,
       user_id: user.id,
       role: 'partner',
-      display_name: initialState.coupleName1 || (user.email || '').split('@')[0]
+      display_name: initialState.coupleName1 || user.email || 'Member'
     });
+
+  currentMemberRole = 'partner';
+  applyRoleBasedUI();
 
   if (mErr) {
     console.error('[Ivory] Create membership error:', mErr);
@@ -7451,6 +7463,9 @@ function showInvitePartnerModal() {
   const m = document.getElementById('invite-partner-overlay');
   if (m) { m.style.display = 'flex'; m.classList.add('active'); }
   document.getElementById('invite-msg').textContent = '';
+  const sel = document.getElementById('invite-role');
+  if (sel && !sel.dataset.bound) { sel.addEventListener('change', updateInviteRoleHint); sel.dataset.bound = '1'; }
+  updateInviteRoleHint();
   setTimeout(() => { const e = document.getElementById('invite-email'); if (e) e.focus(); }, 100);
 }
 function hideInvitePartnerModal() {
@@ -7467,9 +7482,11 @@ function inviteMsg(text, type) {
 async function sendPartnerInvite() {
   if (!supa || !currentWeddingId) return inviteMsg('Not signed in', 'error');
   const email = (document.getElementById('invite-email').value || '').trim().toLowerCase();
-  const name = (document.getElementById('invite-name').value || '').trim();
   if (!email) return inviteMsg('Enter an email address', 'error');
   if (!email.includes('@')) return inviteMsg('That doesn\'t look like a valid email', 'error');
+  const validRoles = ['partner', 'planner', 'parent', 'wedding_party', 'viewer'];
+  const roleEl = document.getElementById('invite-role');
+  const role = (roleEl && validRoles.includes(roleEl.value)) ? roleEl.value : 'partner';
 
   inviteMsg('Sending invite…', 'info');
 
@@ -7479,7 +7496,7 @@ async function sendPartnerInvite() {
     .insert({
       wedding_id: currentWeddingId,
       email,
-      role: 'partner'
+      role
     })
     .select('id, token')
     .single();
@@ -7507,10 +7524,54 @@ async function sendPartnerInvite() {
   }
 
   inviteMsg('✓ Invite sent to ' + email + '. They\'ll get an email shortly.', 'success');
-  logActivity('Members', 'invited', email + ' as partner');
+  logActivity('Members', 'invited', email + ' as ' + role.replace('_', ' '));
   saveState();
   if (typeof fetchAndRenderMembers === 'function') fetchAndRenderMembers();
   setTimeout(hideInvitePartnerModal, 2500);
+}
+
+const ROLE_LABEL = {
+  partner: 'Partner',
+  planner: 'Planner',
+  parent: 'Parent',
+  wedding_party: 'Wedding party',
+  viewer: 'Viewer'
+};
+const WRITE_ROLES = ['partner', 'planner'];
+
+function applyRoleBasedUI() {
+  const role = currentMemberRole;
+  const isWriter = role && WRITE_ROLES.includes(role);
+  const banner = document.getElementById('readonly-banner');
+  document.body.classList.toggle('read-only', !!role && !isWriter);
+  // Hide invite button for non-write roles
+  const inviteBtn = document.querySelector('#notif-members-card .card-title button');
+  if (inviteBtn) inviteBtn.style.display = (!role || isWriter) ? '' : 'none';
+  // Banner
+  if (banner) {
+    if (role && !isWriter) {
+      banner.style.display = 'flex';
+      const label = ROLE_LABEL[role] || 'View-only';
+      banner.querySelector('.readonly-banner-text').textContent =
+        `View-only access — you're added as ${label.toLowerCase()}. Ask a partner or planner if you need to make changes.`;
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+}
+
+function updateInviteRoleHint() {
+  const sel = document.getElementById('invite-role');
+  const hint = document.getElementById('invite-role-hint');
+  if (!sel || !hint) return;
+  const r = sel.value;
+  if (WRITE_ROLES.includes(r)) {
+    hint.textContent = 'Can edit everything, invite others, and revoke invites.';
+    hint.style.color = 'var(--stone)';
+  } else {
+    hint.textContent = 'Can view everything but cannot make changes.';
+    hint.style.color = 'var(--stone)';
+  }
 }
 
 // Check URL for invite token + handle acceptance
@@ -7569,8 +7630,10 @@ async function checkUrlForInvite() {
         wedding_id: invite.wedding_id,
         user_id: currentUser.id,
         role: invite.role || 'partner',
-        display_name: (currentUser.email || '').split('@')[0]
+        display_name: currentUser.email || 'Member'
       });
+    currentMemberRole = invite.role || 'partner';
+    applyRoleBasedUI();
     if (mErr) {
       console.error('Could not accept invite:', mErr);
       setSyncStatus('error');
@@ -7639,8 +7702,10 @@ async function acceptPendingEmailInvite(user) {
       wedding_id: invite.wedding_id,
       user_id: user.id,
       role: invite.role || 'partner',
-      display_name: (user.email || '').split('@')[0]
+      display_name: user.email || 'Member'
     });
+  currentMemberRole = invite.role || 'partner';
+  applyRoleBasedUI();
   if (mErr) {
     console.error('[Ivory] Auto-accept membership insert failed:', mErr);
     return false;
@@ -7765,11 +7830,12 @@ async function fetchAndRenderMembers() {
   pendingList.innerHTML = pending.map(i => {
     const sent = i.created_at ? new Date(i.created_at).toLocaleDateString() : '—';
     const exp = i.expires_at ? new Date(i.expires_at).toLocaleDateString() : '—';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(184,150,100,0.06);border:1px solid var(--border-light);border-radius:8px">
+    return `<div data-invite-id="${esc(i.id)}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(184,150,100,0.06);border:1px solid var(--border-light);border-radius:8px">
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.email)}</div>
-        <div style="font-size:10px;color:var(--stone);margin-top:2px">${esc(i.role)} · sent ${esc(sent)} · expires ${esc(exp)}</div>
+        <div class="invite-status" style="font-size:10px;color:var(--stone);margin-top:2px">${esc(i.role)} · sent ${esc(sent)} · expires ${esc(exp)}</div>
       </div>
+      <button onclick="resendPendingInvite('${esc(i.id)}', '${esc(i.email)}', this)" style="font-size:11px;padding:5px 10px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--stone)">Resend</button>
       <button onclick="revokePendingInvite('${esc(i.id)}', '${esc(i.email)}')" style="font-size:11px;padding:5px 10px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--stone)">Revoke</button>
     </div>`;
   }).join('');
@@ -7786,6 +7852,36 @@ async function revokePendingInvite(id, email) {
   }
   if (typeof logActivity === 'function') logActivity('Members', 'revoked invite', email);
   fetchAndRenderMembers();
+}
+
+async function resendPendingInvite(id, email, btnEl) {
+  if (!supa) return;
+  const row = btnEl && btnEl.closest('[data-invite-id]');
+  const status = row && row.querySelector('.invite-status');
+  const origStatus = status ? status.textContent : '';
+  const origBtnText = btnEl ? btnEl.textContent : 'Resend';
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Sending…'; }
+  if (status) status.textContent = 'Resending email…';
+
+  const { data: fnData, error: fnErr } = await supa.functions.invoke('send-invite-email', {
+    body: {
+      invite_id: id,
+      redirect_origin: window.location.origin,
+      redirect_path: window.location.pathname
+    }
+  });
+
+  if (fnErr || (fnData && fnData.error)) {
+    const msg = (fnErr && fnErr.message) || (fnData && fnData.error) || 'unknown error';
+    console.error('Resend error:', fnErr || fnData);
+    if (status) status.textContent = 'Resend failed: ' + msg;
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = origBtnText; }
+    return;
+  }
+
+  if (typeof logActivity === 'function') logActivity('Members', 'resent invite', email);
+  if (status) status.textContent = '✓ Email resent · ' + origStatus;
+  if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Resent ✓'; setTimeout(() => { btnEl.textContent = origBtnText; }, 2500); }
 }
 
 // Cloud activity log
@@ -8116,24 +8212,37 @@ if (!window.IVORY_CONFIG && !S.onboardingDone) {
 </div>
 
 <!-- Phase 9A — Sync status chip (bottom right) -->
+<!-- Phase 9C — Read-only role banner -->
+<div id="readonly-banner" style="display:none">
+  <span style="font-size:14px">👁️</span>
+  <span class="readonly-banner-text"></span>
+</div>
+
 <div id="sync-chip" style="display:none;position:fixed;bottom:16px;right:16px;padding:6px 12px;border-radius:100px;background:white;border:1px solid var(--border);font-size:11px;font-weight:500;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.06);z-index:200;font-family:var(--font-sans)">
   <span class="sync-chip-icon"></span>
   <span class="sync-chip-text"></span>
 </div>
 
-<!-- Phase 9B — Invite partner modal -->
+<!-- Phase 9B — Invite member modal -->
 <div class="ob-overlay" id="invite-partner-overlay" style="display:none">
   <div class="ob-modal" style="max-width:440px;padding:32px 28px 24px">
-    <h2 style="font-family:var(--font-serif);font-size:24px;text-align:center;margin-bottom:6px">Invite your partner</h2>
-    <p style="text-align:center;color:var(--stone);font-size:13px;margin-bottom:22px">They'll get a sign-in link to join your wedding planner. Both of you can edit the same wedding live.</p>
+    <h2 style="font-family:var(--font-serif);font-size:24px;text-align:center;margin-bottom:6px">Invite a member</h2>
+    <p style="text-align:center;color:var(--stone);font-size:13px;margin-bottom:22px">They'll get an email with a one-click link to join your wedding planner.</p>
 
-    <label style="display:block;font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Partner's email</label>
+    <label style="display:block;font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Their email</label>
     <input id="invite-email" type="email" placeholder="them@email.com" autocomplete="email"
       style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:16px"/>
 
-    <label style="display:block;font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Their name (shown in activity log)</label>
-    <input id="invite-name" type="text" placeholder="e.g. Jordan"
-      style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:18px"/>
+    <label style="display:block;font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Their role</label>
+    <select id="invite-role"
+      style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:6px;background:white">
+      <option value="partner">Partner — full edit access (the other half of the couple)</option>
+      <option value="planner">Planner — full edit access (wedding planner / coordinator)</option>
+      <option value="parent">Parent — view-only</option>
+      <option value="wedding_party">Wedding party — view-only (bridesmaid, groomsman, etc.)</option>
+      <option value="viewer">Viewer — view-only</option>
+    </select>
+    <p id="invite-role-hint" style="font-size:11px;color:var(--stone);margin-bottom:18px"></p>
 
     <p id="invite-msg" style="font-size:12px;min-height:18px;margin-bottom:14px;color:var(--stone);text-align:center"></p>
 
