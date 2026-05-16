@@ -450,9 +450,11 @@ table input[type="number"]{text-align:right;width:90px}
 .tab-content.active{display:block}
 
 /* ─── Responsive ─── */
-@media(max-width:768px){
+@media(max-width:1024px){
   .sidebar{display:none}
   .main{padding:24px 16px 24px}
+}
+@media(max-width:768px){
   .stats{flex-direction:column}
 }
 
@@ -474,7 +476,7 @@ table input[type="number"]{text-align:right;width:90px}
 .launcher-head-sub{font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--stone);margin-top:2px}
 .launcher-close{width:36px;height:36px;border:1px solid var(--border);background:white;border-radius:10px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--charcoal)}
 .launcher-close:hover{background:var(--cream)}
-.launcher-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.launcher-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:12px;max-width:900px;margin:0 auto;width:100%}
 .launcher-card{background:white;border:1px solid var(--border-light);border-radius:14px;padding:14px 6px 12px;text-align:center;position:relative;cursor:pointer;transition:transform 120ms,box-shadow 120ms;-webkit-tap-highlight-color:transparent}
 .launcher-card:active{transform:scale(0.96)}
 .launcher-card.current{background:var(--charcoal);border-color:var(--charcoal)}
@@ -487,7 +489,7 @@ table input[type="number"]{text-align:right;width:90px}
 .launcher-card .lc-badge{position:absolute;top:6px;right:8px;font-size:9px;padding:1px 6px;background:rgba(184,84,80,0.12);color:var(--red);border-radius:100px;font-weight:700;line-height:1.4}
 .launcher-card .lc-badge.gold{background:rgba(184,150,100,0.18);color:#8a6f44}
 .launcher-card .lc-badge.green{background:rgba(74,122,91,0.15);color:var(--green)}
-@media(max-width:768px){.launcher-trigger{display:flex}.topbar-logo,.topbar-links{display:none}.topbar{padding:10px 14px}}
+@media(max-width:1024px){.launcher-trigger{display:flex}.topbar-logo,.topbar-links{display:none}.topbar{padding:10px 14px}}
 
 /* ─── Onboarding Modal ─── */
 .ob-overlay{position:fixed;inset:0;z-index:300;background:rgba(28,25,23,0.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 300ms var(--ease);pointer-events:none}
