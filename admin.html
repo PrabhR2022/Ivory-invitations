@@ -17,18 +17,24 @@
   button{font-family:inherit;cursor:pointer}
   .layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
   .sidebar{background:#1c1917;color:var(--ivory);padding:24px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
-  /* Mobile: collapse sidebar into a horizontal scrolling top bar */
+  /* Mobile: slide-out hamburger drawer */
+  .mobile-header{display:none;position:sticky;top:0;background:#1c1917;color:var(--ivory);padding:12px 16px;align-items:center;justify-content:space-between;z-index:60;border-bottom:1px solid #292524}
+  .mobile-header .ham-btn{background:none;border:1px solid #44403c;color:var(--ivory);padding:6px 10px;border-radius:8px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px}
+  .mobile-header .ham-icon{display:inline-block;width:16px;height:12px;position:relative}
+  .mobile-header .ham-icon::before,.mobile-header .ham-icon::after,.mobile-header .ham-icon > span{content:'';position:absolute;left:0;right:0;height:2px;background:var(--ivory);border-radius:1px}
+  .mobile-header .ham-icon::before{top:0}
+  .mobile-header .ham-icon > span{top:5px;display:block}
+  .mobile-header .ham-icon::after{bottom:0}
+  .mobile-header .mh-brand{font-family:Georgia,serif;font-size:18px}
+  .mobile-header .mh-sub{font-size:9px;color:#a8a29e;text-transform:uppercase;letter-spacing:0.12em}
+  .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:70}
+  .sidebar-backdrop.active{display:block}
+
   @media (max-width:760px){
     .layout{grid-template-columns:1fr}
-    .sidebar{position:sticky;top:0;height:auto;padding:12px 12px;flex-direction:row;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;z-index:50;border-bottom:1px solid #292524}
-    .sidebar::-webkit-scrollbar{height:4px}
-    .sidebar::-webkit-scrollbar-thumb{background:#44403c;border-radius:2px}
-    .brand,.brand-sub{display:none}
-    .nav-btn{padding:7px 12px;font-size:12px;white-space:nowrap;flex-shrink:0}
-    .me{margin:0 0 0 auto;padding:0;border:none;display:flex;flex-direction:row;align-items:center;gap:8px;font-size:11px;flex-shrink:0}
-    .me strong{margin:0;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .me #me-role{display:none}
-    .signout{margin:0;padding:4px 10px;font-size:10px;width:auto}
+    .mobile-header{display:flex}
+    .sidebar{position:fixed;top:0;left:0;bottom:0;width:280px;height:100vh;transform:translateX(-100%);transition:transform 240ms ease;z-index:80;border-right:1px solid #292524}
+    .sidebar.open{transform:translateX(0);box-shadow:8px 0 32px rgba(0,0,0,0.4)}
     .main{padding:20px 16px}
     h1{font-size:24px}
     .card{padding:14px}
@@ -129,7 +135,19 @@
 
 <!-- Main layout (only visible when admin-authed) -->
 <div class="layout" id="app" style="display:none">
-  <aside class="sidebar">
+  <!-- Mobile-only top header with hamburger trigger -->
+  <header class="mobile-header">
+    <button class="ham-btn" onclick="toggleSidebar(true)" aria-label="Open menu">
+      <span class="ham-icon"><span></span></span>
+      <span>Menu</span>
+    </button>
+    <div style="text-align:right">
+      <div class="mh-brand">Ivory</div>
+      <div class="mh-sub">Admin</div>
+    </div>
+  </header>
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+  <aside class="sidebar" id="sidebar">
     <div class="brand">Ivory</div>
     <div class="brand-sub">Admin</div>
     <button class="nav-btn active" data-panel="overview" onclick="showPanel('overview')">📊 Overview</button>
@@ -360,6 +378,17 @@ function showPanel(name){
   if (name === 'users') loadUsers();
   if (name === 'admins') loadAdmins();
   if (name === 'flags') loadFlags();
+  // Close mobile drawer after selecting a panel
+  toggleSidebar(false);
+}
+
+// Mobile slide-out drawer
+function toggleSidebar(open){
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (!sb || !bd) return;
+  if (open) { sb.classList.add('open'); bd.classList.add('active'); document.body.style.overflow = 'hidden'; }
+  else      { sb.classList.remove('open'); bd.classList.remove('active'); document.body.style.overflow = ''; }
 }
 
 async function refreshAll(){ try { await Promise.all([loadOverview(), loadWeddings(), loadUsers(), loadAdmins(), loadFlags()]); toast('Refreshed', 'success'); } catch (e) { toast(e.message, 'error'); } }

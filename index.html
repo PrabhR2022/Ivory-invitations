@@ -452,13 +452,42 @@ table input[type="number"]{text-align:right;width:90px}
 /* ─── Responsive ─── */
 @media(max-width:768px){
   .sidebar{display:none}
-  .main{padding:24px 16px 80px}
+  .main{padding:24px 16px 24px}
   .stats{flex-direction:column}
-  .mobile-nav{display:flex !important}
 }
-.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(250,250,247,0.97);backdrop-filter:blur(12px);border-top:1px solid var(--border-light);padding:8px;overflow-x:auto;gap:4px}
-.mobile-nav button{flex-shrink:0;padding:8px 14px;border-radius:8px;font-size:11px;font-weight:500;color:var(--stone);white-space:nowrap}
-.mobile-nav button.active{background:var(--charcoal);color:var(--ivory)}
+
+/* ─── Mobile app launcher (replaces bottom nav) ─── */
+.launcher-trigger{display:none;align-items:center;gap:10px;background:none;border:none;font-family:inherit;padding:4px 8px;cursor:pointer;color:var(--charcoal)}
+.launcher-trigger:hover{opacity:0.7}
+.launcher-trigger .ham{display:inline-block;width:18px;height:14px;position:relative;flex-shrink:0}
+.launcher-trigger .ham::before,.launcher-trigger .ham::after,.launcher-trigger .ham > span{content:'';display:block;height:2px;background:var(--charcoal);border-radius:1px;position:absolute;left:0;right:0}
+.launcher-trigger .ham::before{top:0}
+.launcher-trigger .ham > span{top:6px}
+.launcher-trigger .ham::after{bottom:0}
+.launcher-trigger .label{font-family:var(--font-serif);font-size:17px;line-height:1;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+#tab-launcher{position:fixed;inset:0;background:linear-gradient(180deg,var(--ivory) 0%,var(--cream) 100%);z-index:90;display:none;flex-direction:column;padding:20px 18px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#tab-launcher.active{display:flex;animation:launcherIn 200ms ease}
+@keyframes launcherIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.launcher-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.launcher-head-brand{font-family:var(--font-serif);font-size:22px;line-height:1.1}
+.launcher-head-sub{font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--stone);margin-top:2px}
+.launcher-close{width:36px;height:36px;border:1px solid var(--border);background:white;border-radius:10px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--charcoal)}
+.launcher-close:hover{background:var(--cream)}
+.launcher-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.launcher-card{background:white;border:1px solid var(--border-light);border-radius:14px;padding:14px 6px 12px;text-align:center;position:relative;cursor:pointer;transition:transform 120ms,box-shadow 120ms;-webkit-tap-highlight-color:transparent}
+.launcher-card:active{transform:scale(0.96)}
+.launcher-card.current{background:var(--charcoal);border-color:var(--charcoal)}
+.launcher-card.current .lc-label{color:var(--ivory)}
+.launcher-card.current .lc-sub{color:rgba(250,250,247,0.7)}
+.launcher-card.current .lc-icon{color:var(--gold)}
+.launcher-card .lc-icon{font-size:22px;line-height:1;display:block;margin-bottom:6px;color:var(--charcoal)}
+.launcher-card .lc-label{font-size:11px;font-weight:600;color:var(--charcoal);line-height:1.2}
+.launcher-card .lc-sub{font-size:9px;color:var(--stone);margin-top:3px;min-height:11px}
+.launcher-card .lc-badge{position:absolute;top:6px;right:8px;font-size:9px;padding:1px 6px;background:rgba(184,84,80,0.12);color:var(--red);border-radius:100px;font-weight:700;line-height:1.4}
+.launcher-card .lc-badge.gold{background:rgba(184,150,100,0.18);color:#8a6f44}
+.launcher-card .lc-badge.green{background:rgba(74,122,91,0.15);color:var(--green)}
+@media(max-width:768px){.launcher-trigger{display:flex}.topbar-logo,.topbar-links{display:none}.topbar{padding:10px 14px}}
 
 /* ─── Onboarding Modal ─── */
 .ob-overlay{position:fixed;inset:0;z-index:300;background:rgba(28,25,23,0.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 300ms var(--ease);pointer-events:none}
@@ -607,6 +636,10 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 <!-- Top bar -->
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:10px">
+    <button class="launcher-trigger" onclick="openLauncher()" aria-label="Open tab launcher">
+      <span class="ham"><span></span></span>
+      <span class="label" id="launcher-trigger-label">Wedding Central</span>
+    </button>
     <span class="topbar-logo">Ivory Planner</span>
     <div style="display:flex;gap:4px" id="topbar-avatars"></div>
   </div>
@@ -1523,19 +1556,16 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
   </div>
 </div>
 
-<!-- Mobile nav -->
-<div class="mobile-nav" id="mobile-nav">
-  <button onclick="showTab('notifications')">&#127968;</button>
-  <button class="active" onclick="showTab('budget')">Budget</button>
-  <button onclick="showTab('checklist')">Checklist</button>
-  <button onclick="showTab('guests')">Guests</button>
-  <button onclick="showTab('vendors')">Vendors</button>
-  <button onclick="showTab('ceremony')">Ceremony</button>
-  <button onclick="showTab('timeline')">Timeline</button>
-  <button onclick="showTab('attire')">Attire</button>
-  <button onclick="showTab('stationery')">Stationery</button>
-  <button onclick="showTab('kit')">Kit</button>
-  <button onclick="showTab('camera')">Camera</button>
+<!-- Mobile app launcher (replaces bottom horizontal nav) -->
+<div id="tab-launcher" role="dialog" aria-label="Tab launcher">
+  <div class="launcher-head">
+    <div>
+      <div class="launcher-head-brand">Ivory</div>
+      <div class="launcher-head-sub">Wedding Planner</div>
+    </div>
+    <button class="launcher-close" onclick="closeLauncher()" aria-label="Close">&times;</button>
+  </div>
+  <div class="launcher-grid" id="launcher-grid"></div>
 </div>
 
 <script>
@@ -1809,11 +1839,143 @@ function showTab(id) {
   document.getElementById("tab-" + id).classList.add("active");
   document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".sidebar-btn").forEach(b => { if(b.getAttribute("onclick")?.includes("'" + id + "'")) b.classList.add("active"); });
-  document.querySelectorAll(".mobile-nav button").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".mobile-nav button").forEach(b => { if(b.getAttribute("onclick")?.includes("'" + id + "'")) b.classList.add("active"); });
   // Reset guest sub-tab to list view when navigating to guests
   if (id === 'guests') showGuestSub('list');
   renderTab(id);
+  // Mobile launcher: update trigger label + close launcher if open
+  currentTabId = id;
+  const trigLbl = document.getElementById('launcher-trigger-label');
+  const meta = LAUNCHER_TABS.find(t => t.id === id);
+  if (trigLbl && meta) trigLbl.textContent = meta.short || meta.label;
+  closeLauncher();
+}
+
+// ══════════════════════════════════════════════════
+// Mobile app launcher (Option 3) — full-screen grid
+// ══════════════════════════════════════════════════
+let currentTabId = 'notifications';
+const LAUNCHER_TABS = [
+  {id:'notifications', icon:'\u{1F3E0}', label:'Wedding Central', short:'Wedding Central'},
+  {id:'budget',        icon:'$',        label:'Budget',           short:'Budget'},
+  {id:'checklist',     icon:'✓',   label:'Checklist',        short:'Checklist'},
+  {id:'guests',        icon:'♡',   label:'Guests',           short:'Guests'},
+  {id:'vendors',       icon:'☎',   label:'Vendors',          short:'Vendors'},
+  {id:'ceremony',      icon:'♥',   label:'Ceremony',         short:'Ceremony'},
+  {id:'music',         icon:'♫',   label:'Music',            short:'Music'},
+  {id:'timeline',      icon:'⏱',   label:'Timeline',         short:'Timeline'},
+  {id:'transport',     icon:'\u{1F697}',label:'Transport',        short:'Transport'},
+  {id:'preevents',     icon:'\u{1F389}',label:'Pre-Events',       short:'Pre-Events'},
+  {id:'attire',        icon:'★',   label:'Attire',           short:'Attire'},
+  {id:'stationery',    icon:'✉',   label:'Stationery',       short:'Stationery'},
+  {id:'kit',           icon:'+',        label:'Emergency Kit',    short:'Kit'},
+  {id:'camera',        icon:'\u{1F4F7}',label:'Camera',           short:'Camera'},
+];
+
+function openLauncher() {
+  renderLauncherGrid();
+  const el = document.getElementById('tab-launcher');
+  if (el) el.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeLauncher() {
+  const el = document.getElementById('tab-launcher');
+  if (el) el.classList.remove('active');
+  document.body.style.overflow = '';
+}
+function launcherGoTo(id) {
+  closeLauncher();
+  // small delay lets the close animation start before the tab re-renders
+  setTimeout(() => showTab(id), 60);
+}
+
+function launcherSubFor(id) {
+  try {
+    if (id === 'notifications') {
+      const urgent = (typeof cachedNotifications !== 'undefined' && Array.isArray(cachedNotifications))
+        ? cachedNotifications.filter(n => n.type === 'urgent' || n.type === 'warning').length : 0;
+      return urgent > 0 ? urgent + (urgent === 1 ? ' alert' : ' alerts') : 'All clear';
+    }
+    if (id === 'budget') {
+      const total = (S.budget || []).reduce((s,r) => s + (r.subs && r.subs.length ? r.subs.reduce((ss,sub)=>ss+(+sub.actual||0),0) : (+r.actual||0)), 0);
+      const planned = +S.totalBudget || 0;
+      if (!planned) return '';
+      const fmt = (n) => n >= 1000 ? '$' + Math.round(n/1000) + 'k' : '$' + Math.round(n);
+      return fmt(total) + ' / ' + fmt(planned);
+    }
+    if (id === 'checklist') {
+      const done = (S.checklist || []).filter(c => c.done).length;
+      const total = (S.checklist || []).length;
+      if (!total) return '';
+      return done + '/' + total + ' done';
+    }
+    if (id === 'guests') {
+      const att = (S.guests || []).filter(g => g.rsvp === 'Attending').length;
+      const tot = (S.guests || []).length;
+      if (!tot) return '';
+      return att + '/' + tot + ' attending';
+    }
+    if (id === 'vendors') {
+      const signed = (S.vendors || []).filter(v => v.company && (v.status === 'Signed' || v.status === 'Paid in Full')).length;
+      const tot = (S.vendors || []).filter(v => v.company).length;
+      if (!tot) return '';
+      return signed + '/' + tot + ' signed';
+    }
+    if (id === 'timeline') {
+      if (!S.weddingDate) return '';
+      const diff = Math.ceil((new Date(S.weddingDate) - new Date()) / 86400000);
+      if (diff > 0) return diff + (diff === 1 ? ' day' : ' days');
+      if (diff === 0) return 'Today!';
+      return Math.abs(diff) + ' days ago';
+    }
+    if (id === 'kit') {
+      const items = (S.emergencyKit || []);
+      const packed = items.filter(i => i.packed).length;
+      if (!items.length) return '';
+      return packed + '/' + items.length + ' packed';
+    }
+    if (id === 'camera') {
+      const photos = (S.cameraPhotos || []).length;
+      return photos > 0 ? photos + (photos === 1 ? ' photo' : ' photos') : '';
+    }
+    if (id === 'preevents') {
+      const e = (S.preEvents || []).length + (S.rehearsal && S.rehearsal.date ? 1 : 0);
+      return e > 0 ? e + (e === 1 ? ' event' : ' events') : '';
+    }
+  } catch (_e) { /* swallow */ }
+  return '';
+}
+function launcherBadgeFor(id) {
+  try {
+    if (id === 'checklist') {
+      const done = (S.checklist || []).filter(c => c.done).length;
+      const total = (S.checklist || []).length;
+      if (!total) return null;
+      return { text: Math.round(done/total*100) + '%', cls: 'gold' };
+    }
+    if (id === 'notifications') {
+      const urgent = (typeof cachedNotifications !== 'undefined' && Array.isArray(cachedNotifications))
+        ? cachedNotifications.filter(n => n.type === 'urgent').length : 0;
+      if (urgent > 0) return { text: urgent, cls: '' };
+    }
+  } catch (_e) {}
+  return null;
+}
+function renderLauncherGrid() {
+  const grid = document.getElementById('launcher-grid');
+  if (!grid) return;
+  // Ensure notifications cache is fresh for the badge
+  try { if (typeof generateNotifications === 'function' && (!Array.isArray(cachedNotifications) || cachedNotifications.length === 0)) cachedNotifications = generateNotifications(); } catch (_e) {}
+  grid.innerHTML = LAUNCHER_TABS.map(t => {
+    const sub = launcherSubFor(t.id);
+    const badge = launcherBadgeFor(t.id);
+    const isCurrent = t.id === currentTabId;
+    return `<div class="launcher-card${isCurrent ? ' current' : ''}" onclick="launcherGoTo('${t.id}')">
+      ${badge ? `<span class="lc-badge${badge.cls?(' '+badge.cls):''}">${esc(badge.text)}</span>` : ''}
+      <span class="lc-icon">${t.icon}</span>
+      <div class="lc-label">${esc(t.label)}</div>
+      <div class="lc-sub">${esc(sub || '')}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderTab(id) {
