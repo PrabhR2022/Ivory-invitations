@@ -470,6 +470,19 @@ table input[type="number"]{text-align:right;width:90px}
 .auth-page .auth-brand{font-family:var(--font-serif);font-size:42px;text-align:center;letter-spacing:0.02em;color:var(--charcoal);margin-bottom:8px}
 .auth-page .auth-brand-sub{text-align:center;color:var(--stone);font-size:12px;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:48px}
 @media(max-width:560px){.auth-page .ob-modal{padding:48px 22px 32px}.auth-page .auth-brand{font-size:34px}}
+/* Mobile fixes for new Phase 9 forms */
+@media(max-width:640px){
+  /* Emergency contacts add form: stack inputs vertically */
+  #emergency-add-form > div{display:flex!important;flex-direction:column;gap:8px}
+  #emergency-add-form > div > *{width:100%}
+  /* Floor plan toolbar: tighter buttons + smaller text so 10 fit */
+  .fp-toolbar .fp-tool-btn{padding:5px 10px;font-size:11px}
+  /* Floor plan viewport: cap height so it doesn't dominate the screen */
+  .fp-canvas-viewport{height:360px}
+  /* Seat assignments: select takes full width on its own row */
+  .fp-seat-row{flex-wrap:wrap}
+  .fp-seat-row select{width:100%!important}
+}
 /* Phase 9C — read-only role banner */
 #readonly-banner{position:fixed;top:0;left:0;right:0;z-index:250;background:linear-gradient(135deg,#b89664,#8a6f44);color:#faf9f7;padding:10px 18px;font-size:13px;font-weight:500;display:none;align-items:center;justify-content:center;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,0.08);font-family:var(--font-sans)}
 body:has(#readonly-banner[style*="flex"]){padding-top:42px}

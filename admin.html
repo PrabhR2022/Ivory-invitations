@@ -17,6 +17,30 @@
   button{font-family:inherit;cursor:pointer}
   .layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
   .sidebar{background:#1c1917;color:var(--ivory);padding:24px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+  /* Mobile: collapse sidebar into a horizontal scrolling top bar */
+  @media (max-width:760px){
+    .layout{grid-template-columns:1fr}
+    .sidebar{position:sticky;top:0;height:auto;padding:12px 12px;flex-direction:row;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;z-index:50;border-bottom:1px solid #292524}
+    .sidebar::-webkit-scrollbar{height:4px}
+    .sidebar::-webkit-scrollbar-thumb{background:#44403c;border-radius:2px}
+    .brand,.brand-sub{display:none}
+    .nav-btn{padding:7px 12px;font-size:12px;white-space:nowrap;flex-shrink:0}
+    .me{margin:0 0 0 auto;padding:0;border:none;display:flex;flex-direction:row;align-items:center;gap:8px;font-size:11px;flex-shrink:0}
+    .me strong{margin:0;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .me #me-role{display:none}
+    .signout{margin:0;padding:4px 10px;font-size:10px;width:auto}
+    .main{padding:20px 16px}
+    h1{font-size:24px}
+    .card{padding:14px}
+    .card-title{flex-wrap:wrap;gap:8px}
+    /* Form rows stack on mobile */
+    #add-admin-card .row{flex-direction:column;align-items:stretch}
+    #add-admin-card .row > *{flex:1 1 auto;width:100%}
+    #panel-flags .card > div[style*="grid-template-columns"]{display:flex!important;flex-direction:column;align-items:stretch}
+    #panel-flags .card > div[style*="grid-template-columns"] > *{width:100%}
+    table{font-size:12px}
+    th,td{padding:7px 8px}
+  }
   .brand{font-family:Georgia,'Times New Roman',serif;font-size:24px;letter-spacing:0.02em;margin-bottom:4px}
   .brand-sub{font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#a8a29e;margin-bottom:24px}
   .nav-btn{background:none;border:none;color:#d6d3d1;text-align:left;padding:9px 12px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:10px;transition:background 120ms,color 120ms}
