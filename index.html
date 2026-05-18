@@ -1372,10 +1372,25 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
     <div class="tab-content" id="tab-stationery">
       <h1 class="page-title">Stationery Checklist</h1>
       <p class="page-desc">Track all paper goods from save-the-dates to thank-yous</p>
+
+      <!-- Shop-handoff banner — funnel into the Ivory shop -->
+      <div class="card" style="background:linear-gradient(135deg,rgba(184,150,100,0.10),rgba(156,139,122,0.06));border:1px solid rgba(184,150,100,0.28);margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:240px">
+            <div style="font-family:var(--font-serif);font-size:18px;margin-bottom:3px">Order your stationery from Ivory</div>
+            <div style="font-size:12px;color:var(--stone);line-height:1.5">Custom-designed invitations, signage and thank-yous — every order is quoted based on your design. Click any <strong>Shop</strong> button below to browse that category, or get a full quote for your wedding suite.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a href="https://ivoryinvitations.ca/collections/wedding-suite" target="_blank" rel="noopener" class="btn btn-outline" style="white-space:nowrap">Browse all</a>
+            <a href="https://ivoryinvitations.ca/pages/contact" target="_blank" rel="noopener" class="btn btn-dark" style="white-space:nowrap">Request a quote &rarr;</a>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">Items <button class="btn btn-sm btn-dark" onclick="addStationeryRow()">+ Add Item</button></div>
         <div class="tbl-wrap">
-          <table><thead><tr><th>Item</th><th style="width:80px">Qty</th><th>Order Date</th><th>Send Date</th><th>Status</th><th>Vendor / Notes</th><th></th></tr></thead>
+          <table><thead><tr><th>Item</th><th style="width:80px">Qty</th><th>Order Date</th><th>Send Date</th><th>Status</th><th>Vendor / Notes</th><th style="width:80px">Shop</th><th></th></tr></thead>
           <tbody id="stationery-body"></tbody></table>
         </div>
       </div>
@@ -4979,17 +4994,69 @@ function addBeautyRow() { S.beauty.push({person:"",service:"Hair & Makeup",time:
 // ══════════════════════════════════════════════════
 // STATIONERY
 // ══════════════════════════════════════════════════
+// Map planner stationery item labels → Shopify collection handle on
+// ivoryinvitations.ca. If a row's item label doesn't match (custom item
+// or a typo), we fall back to the shop's search page so the link is
+// never broken. Each link also passes ?qty=N if a quantity is entered,
+// for the Shopify theme to pre-fill the cart quantity selector.
+const STATIONERY_SHOP_BASE = 'https://ivoryinvitations.ca';
+const STATIONERY_SHOP_MAP = {
+  'Save-the-Dates':'save-the-dates',
+  'Save the Dates':'save-the-dates',
+  'Save-the-Date':'save-the-dates',
+  'Invitations':'invitations',
+  'Invitation Envelopes':'invitation-envelopes',
+  'RSVP Cards':'rsvp-cards',
+  'RSVP Envelopes':'rsvp-envelopes',
+  'Details Cards':'details-cards',
+  'Details Card':'details-cards',
+  'Programs':'ceremony-programs',
+  'Ceremony Programs':'ceremony-programs',
+  'Escort / Place Cards':'place-cards',
+  'Escort Cards':'place-cards',
+  'Place Cards':'place-cards',
+  'Table Numbers':'table-numbers',
+  'Menu Cards':'menu-cards',
+  'Menus':'menu-cards',
+  'Thank-You Cards':'thank-you-cards',
+  'Thank You Cards':'thank-you-cards',
+  'Ceremony Signage':'ceremony-signs',
+  'Reception Signage':'reception-signs',
+  'Welcome Sign':'welcome-signs',
+  'Welcome Signs':'welcome-signs',
+  'Seating Chart':'seating-charts',
+  'Bar Sign':'bar-signs',
+  'Bar Menu':'bar-signs'
+};
+function stationeryShopUrl(itemLabel, qty) {
+  const label = (itemLabel || '').trim();
+  const slug = STATIONERY_SHOP_MAP[label];
+  const qtyParam = (qty && +qty > 0) ? `?qty=${encodeURIComponent(qty)}` : '';
+  if (slug) return `${STATIONERY_SHOP_BASE}/collections/${slug}${qtyParam}`;
+  if (label) return `${STATIONERY_SHOP_BASE}/search?q=${encodeURIComponent(label)}`;
+  return `${STATIONERY_SHOP_BASE}/collections/wedding-suite`;
+}
+
 function renderStationery() {
   const statuses = ["","Not Started","Designing","Ordered","Received","Addressed","Sent"];
-  document.getElementById("stationery-body").innerHTML = S.stationery.map((r,i)=>`<tr>
-    <td>${eCell(r.item,`S.stationery[${i}].item=this.value;saveState()`)}</td>
-    <td>${eCell(r.qty,`S.stationery[${i}].qty=this.value;saveState()`,"number")}</td>
-    <td>${eCell(r.orderDate,`S.stationery[${i}].orderDate=this.value;saveState()`,"date")}</td>
-    <td>${eCell(r.sendDate,`S.stationery[${i}].sendDate=this.value;saveState()`,"date")}</td>
-    <td>${eCell(r.status,`S.stationery[${i}].status=this.value;saveState()`,"select",statuses)}</td>
-    <td>${eCell(r.notes,`S.stationery[${i}].notes=this.value;saveState()`)}</td>
-    <td>${delBtn(`S.stationery.splice(${i},1);saveState();renderStationery()`)}</td>
-  </tr>`).join("");
+  document.getElementById("stationery-body").innerHTML = S.stationery.map((r,i)=>{
+    const url = stationeryShopUrl(r.item, r.qty);
+    // Hide the shop button once the row is past purchase (Received / Addressed / Sent)
+    const past = r.status === 'Received' || r.status === 'Addressed' || r.status === 'Sent';
+    const shopCell = past
+      ? `<span style="font-size:11px;color:var(--stone)">&#10003;</span>`
+      : `<a href="${url}" target="_blank" rel="noopener" title="Shop ${esc(r.item||'stationery')} on Ivory" style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--charcoal);text-decoration:none;background:white">Shop &rarr;</a>`;
+    return `<tr>
+      <td>${eCell(r.item,`S.stationery[${i}].item=this.value;saveState();renderStationery()`)}</td>
+      <td>${eCell(r.qty,`S.stationery[${i}].qty=this.value;saveState();renderStationery()`,"number")}</td>
+      <td>${eCell(r.orderDate,`S.stationery[${i}].orderDate=this.value;saveState()`,"date")}</td>
+      <td>${eCell(r.sendDate,`S.stationery[${i}].sendDate=this.value;saveState()`,"date")}</td>
+      <td>${eCell(r.status,`S.stationery[${i}].status=this.value;saveState();renderStationery()`,"select",statuses)}</td>
+      <td>${eCell(r.notes,`S.stationery[${i}].notes=this.value;saveState()`)}</td>
+      <td>${shopCell}</td>
+      <td>${delBtn(`S.stationery.splice(${i},1);saveState();renderStationery()`)}</td>
+    </tr>`;
+  }).join("");
 }
 function addStationeryRow() { S.stationery.push({item:"",qty:"",orderDate:"",sendDate:"",status:"",notes:""}); saveState(); renderStationery(); }
 
