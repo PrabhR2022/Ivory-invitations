@@ -4994,12 +4994,19 @@ function addBeautyRow() { S.beauty.push({person:"",service:"Hair & Makeup",time:
 // ══════════════════════════════════════════════════
 // STATIONERY
 // ══════════════════════════════════════════════════
-// Map planner stationery item labels → Shopify collection handle on
-// ivoryinvitations.ca. If a row's item label doesn't match (custom item
-// or a typo), we fall back to the shop's search page so the link is
-// never broken. Each link also passes ?qty=N if a quantity is entered,
-// for the Shopify theme to pre-fill the cart quantity selector.
+// Stationery → Shopify shop handoff.
+//
+// MODE: while the storefront is being built out, ALL Shop buttons funnel
+// to the single "wedding-suite" collection so every link is guaranteed to
+// land on a real page (instead of 404'ing per-item).
+//
+// When per-item collections exist on Shopify (Save-the-Dates, Invitations,
+// RSVP Cards, etc. — see SHOPIFY_REBRAND_HANDOFF.md for the full list of
+// handles), flip STATIONERY_PER_ITEM_ROUTING to true and each Shop button
+// will route to its specific collection automatically.
 const STATIONERY_SHOP_BASE = 'https://ivoryinvitations.ca';
+const STATIONERY_PER_ITEM_ROUTING = false; // flip to true once all per-item collections exist
+const STATIONERY_FALLBACK_HANDLE = 'wedding-suite';
 const STATIONERY_SHOP_MAP = {
   'Save-the-Dates':'save-the-dates',
   'Save the Dates':'save-the-dates',
@@ -5030,11 +5037,20 @@ const STATIONERY_SHOP_MAP = {
 };
 function stationeryShopUrl(itemLabel, qty) {
   const label = (itemLabel || '').trim();
-  const slug = STATIONERY_SHOP_MAP[label];
   const qtyParam = (qty && +qty > 0) ? `?qty=${encodeURIComponent(qty)}` : '';
+  // While the storefront is being built out, every Shop button funnels
+  // to the single "wedding-suite" collection. The row's label and qty
+  // still travel as URL params so the collection page can show a
+  // contextual "Looking for {label}? Request a custom quote." nudge.
+  if (!STATIONERY_PER_ITEM_ROUTING) {
+    const labelParam = label ? `&item=${encodeURIComponent(label)}` : '';
+    const sep = qtyParam ? '&' : '?';
+    return `${STATIONERY_SHOP_BASE}/collections/${STATIONERY_FALLBACK_HANDLE}${qtyParam}${labelParam ? sep + labelParam.slice(1) : ''}`;
+  }
+  const slug = STATIONERY_SHOP_MAP[label];
   if (slug) return `${STATIONERY_SHOP_BASE}/collections/${slug}${qtyParam}`;
   if (label) return `${STATIONERY_SHOP_BASE}/search?q=${encodeURIComponent(label)}`;
-  return `${STATIONERY_SHOP_BASE}/collections/wedding-suite`;
+  return `${STATIONERY_SHOP_BASE}/collections/${STATIONERY_FALLBACK_HANDLE}`;
 }
 
 function renderStationery() {
