@@ -137,6 +137,8 @@
       .registry-grid { grid-template-columns: 1fr; }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
 </head>
 <body>
 
@@ -214,140 +216,129 @@
 </div>
 
 <script>
-const REGISTRY_KEY = "ivory_registry_v1";
-let items = [];
+// Phase 10 — public, guest-facing registry. Loads the couple's gift
+// list via a share token (?w=TOKEN) through the token-gated
+// guest_get_wedding() RPC, and lets guests CLAIM a gift so nobody
+// buys duplicates. Authoring happens in the planner (Registry tab).
+let items = [];            // [{id,name,price,url,image,category,note,claimed}]
 let activeTab = "All";
+let supa = null;
+let shareToken = null;
+let hideClaimers = true;
+let claimerName = localStorage.getItem('ivory_registry_claimer') || '';
 
-function loadRegistry() {
-  try { const d = localStorage.getItem(REGISTRY_KEY); return d ? JSON.parse(d) : null; }
-  catch(e) { return null; }
-}
-function saveRegistry() {
-  try { localStorage.setItem(REGISTRY_KEY, JSON.stringify(items)); }
-  catch(e) { alert("Storage is full. Some changes may not be saved."); }
-}
+function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function getToken(){ try { return new URLSearchParams(location.search).get('w'); } catch(e){ return null; } }
 
-function addItem() {
-  const name = document.getElementById("f-name").value.trim();
-  const price = parseFloat(document.getElementById("f-price").value) || 0;
-  if (!name) { document.getElementById("f-name").focus(); return; }
-  items.push({
-    id: Date.now(),
-    name,
-    brand: document.getElementById("f-brand").value.trim(),
-    category: document.getElementById("f-category").value,
-    price,
-    qty: parseInt(document.getElementById("f-qty").value) || 1,
-    purchased: 0,
-    priority: document.getElementById("f-priority").value,
-    link: document.getElementById("f-link").value.trim(),
-    notes: document.getElementById("f-notes").value.trim(),
-  });
-  clearForm();
-  saveRegistry();
+async function loadRegistryCloud() {
+  shareToken = getToken();
+  if (window.IVORY_CONFIG && window.supabase) {
+    supa = window.supabase.createClient(window.IVORY_CONFIG.supabaseUrl, window.IVORY_CONFIG.supabaseAnonKey);
+  }
+  // No token → this page is guest-facing; guide the couple to the planner.
+  if (!supa || !shareToken) {
+    document.querySelector('.page-header p').textContent =
+      'Open this page from your planner (Guests → RSVP → Registry "Copy Link") to share it with guests.';
+    items = [];
+    render();
+    return;
+  }
+  const { data, error } = await supa.rpc('guest_get_wedding', { p_token: shareToken });
+  if (error || !data || data.error || !data.ok) {
+    document.querySelector('.page-header p').textContent = 'This registry link is invalid or has expired.';
+    items = []; render(); return;
+  }
+  hideClaimers = data.hide_claimers !== false;
+  const n1 = data.couple_name_1 || '', n2 = data.couple_name_2 || '';
+  if (n1 || n2) document.querySelector('.page-header h1').textContent =
+    (n1 && n2 ? (n1 + ' & ' + n2) : (n1 || n2)) + "'s Registry";
+  items = (data.registry || []).map(r => ({
+    id: r.id, name: r.name, price: r.price || '', url: r.url || '',
+    image: r.image || '', category: r.category || 'Gifts', note: r.note || '',
+    claimed: !!r.claimed
+  }));
   render();
 }
 
-function clearForm() {
-  ["f-name","f-brand","f-price","f-link","f-notes"].forEach(id => document.getElementById(id).value = "");
-  document.getElementById("f-qty").value = "1";
-}
+function setTab(cat){ activeTab = cat; render(); }
 
-function removeItem(id) {
-  items = items.filter(i => i.id !== id);
-  saveRegistry();
-  render();
-}
-
-function markPurchased(id) {
+async function claimItem(id) {
   const item = items.find(i => i.id === id);
-  if (item && item.purchased < item.qty) item.purchased++;
-  saveRegistry();
-  render();
-}
-
-function setTab(cat) {
-  activeTab = cat;
+  if (!item || item.claimed) return;
+  let name = claimerName;
+  if (!name) {
+    name = (prompt('Your name (so the couple knows who claimed it):') || '').trim();
+    if (!name) return;
+    claimerName = name; try { localStorage.setItem('ivory_registry_claimer', name); } catch(e){}
+  }
+  const { data, error } = await supa.rpc('guest_claim_registry_item', {
+    p_token: shareToken, p_item_id: id, p_claimer_name: name
+  });
+  if (error || (data && data.error)) {
+    if (data && data.error === 'already_claimed') { item.claimed = true; render(); alert('Someone just claimed this one — refreshed.'); return; }
+    alert('Could not claim this gift. Please try again.'); return;
+  }
+  item.claimed = true;
   render();
 }
 
 function render() {
-  // Stats
   const total = items.length;
-  const totalValue = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const totalPurchased = items.reduce((s, i) => s + i.purchased, 0);
-  const totalQty = items.reduce((s, i) => s + i.qty, 0);
-  const funded = totalQty > 0 ? Math.round((totalPurchased / totalQty) * 100) : 0;
-  document.getElementById("stat-total").textContent = total;
-  document.getElementById("stat-value").textContent = "$" + totalValue.toLocaleString();
-  document.getElementById("stat-funded").textContent = funded + "%";
-  document.getElementById("stat-purchased").textContent = totalPurchased;
+  const claimed = items.filter(i => i.claimed).length;
+  const funded = total > 0 ? Math.round((claimed / total) * 100) : 0;
+  const setTxt = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  setTxt("stat-total", total);
+  setTxt("stat-value", (total - claimed));
+  setTxt("stat-funded", funded + "%");
+  setTxt("stat-purchased", claimed);
+  // Relabel stats for the guest context
+  const labels = document.querySelectorAll('#stats-bar .label');
+  if (labels[0]) labels[0].textContent = 'Gifts';
+  if (labels[1]) labels[1].textContent = 'Available';
+  if (labels[2]) labels[2].textContent = 'Claimed';
+  if (labels[3]) labels[3].textContent = 'Reserved';
 
-  // Tabs
-  const categories = ["All", ...new Set(items.map(i => i.category))];
+  const categories = ["All", ...Array.from(new Set(items.map(i => i.category).filter(Boolean)))];
   const tabsEl = document.getElementById("tabs");
-  tabsEl.innerHTML = categories.map(c => {
+  if (tabsEl) tabsEl.innerHTML = categories.map(c => {
     const count = c === "All" ? items.length : items.filter(i => i.category === c).length;
-    return `<button class="tab ${activeTab === c ? 'active' : ''}" onclick="setTab('${c}')">${c}<span class="count">${count}</span></button>`;
+    return `<button class="tab ${activeTab === c ? 'active' : ''}" onclick="setTab('${esc(c)}')">${esc(c)}<span class="count">${count}</span></button>`;
   }).join("");
 
-  // Grid
   const filtered = activeTab === "All" ? items : items.filter(i => i.category === activeTab);
   const grid = document.getElementById("registry-grid");
   const empty = document.getElementById("empty-state");
-
   if (filtered.length === 0) {
-    grid.innerHTML = "";
-    empty.style.display = "block";
+    if (grid) grid.innerHTML = "";
+    if (empty) { empty.style.display = "block"; empty.querySelector('p').textContent = 'No gifts here yet'; const h=empty.querySelector('.hint'); if(h) h.textContent=''; }
     return;
   }
-  empty.style.display = "none";
+  if (empty) empty.style.display = "none";
 
-  grid.innerHTML = filtered.map(item => {
-    const progress = item.qty > 0 ? (item.purchased / item.qty) * 100 : 0;
-    return `
-      <div class="registry-card">
-        <span class="category-badge">${item.category}</span>
-        <h4>${item.name}</h4>
-        ${item.brand ? `<p class="brand">${item.brand}</p>` : ''}
-        <p class="price">$${item.price.toLocaleString()}</p>
-        <p class="qty">${item.purchased} of ${item.qty} purchased</p>
-        <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
-        <p class="funded-label">${Math.round(progress)}% fulfilled</p>
-        ${item.link ? `<a class="link" href="${item.link}" target="_blank">${item.link}</a>` : ''}
-        ${item.notes ? `<p style="font-size:12px;color:var(--stone);margin-top:8px;">${item.notes}</p>` : ''}
+  grid.innerHTML = filtered.map(item => `
+      <div class="registry-card" style="${item.claimed?'opacity:0.7':''}">
+        <span class="category-badge">${esc(item.category)}</span>
+        <h4>${esc(item.name)}</h4>
+        ${item.price ? `<p class="price">${esc(item.price)}</p>` : ''}
+        ${item.image ? `<img src="${esc(item.image)}" alt="" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin:8px 0" onerror="this.style.display='none'"/>` : ''}
+        ${item.note ? `<p style="font-size:12px;color:var(--stone);margin-top:8px;">${esc(item.note)}</p>` : ''}
+        ${item.url ? `<a class="link" href="${esc(item.url)}" target="_blank" rel="noopener">View in store &rarr;</a>` : ''}
         <div class="actions">
-          <button class="btn-sm" onclick="markPurchased(${item.id})">Mark Purchased</button>
-          <button class="btn-sm danger" onclick="removeItem(${item.id})">Remove</button>
+          ${item.claimed
+            ? `<button class="btn-sm" disabled style="opacity:0.6;cursor:default">&#10003; Claimed</button>`
+            : `<button class="btn-sm" onclick="claimItem('${esc(item.id)}')">Claim this gift</button>`}
+          ${item.url ? `<a class="btn-sm" href="${esc(item.url)}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">Buy</a>` : ''}
         </div>
-      </div>`;
-  }).join("");
+      </div>`).join("");
 }
 
-function copyLink() {
-  const input = document.getElementById("share-url");
-  navigator.clipboard.writeText(input.value).then(() => {
-    const btn = input.nextElementSibling;
-    btn.textContent = "Copied!";
-    setTimeout(() => btn.textContent = "Copy Link", 2000);
-  });
-}
+// Hide the couple-only authoring form + share panel on the public page
+document.addEventListener('DOMContentLoaded', () => {
+  const addForm = document.getElementById('add-form'); if (addForm) addForm.style.display = 'none';
+  const share = document.querySelector('.share-panel'); if (share) share.style.display = 'none';
+});
 
-// Load saved data or seed with examples
-const savedRegistry = loadRegistry();
-if (savedRegistry && savedRegistry.length > 0) {
-  items = savedRegistry;
-} else {
-  items = [
-    { id: 1, name: "Dutch Oven — 5.5 Qt", brand: "Le Creuset", category: "Kitchen", price: 395, qty: 1, purchased: 0, priority: "Must Have", link: "", notes: "Color: Marseille Blue" },
-    { id: 2, name: "Linen Duvet Cover Set", brand: "Parachute", category: "Bedroom", price: 249, qty: 1, purchased: 1, priority: "Must Have", link: "", notes: "King size, Bone color" },
-    { id: 3, name: "Honeymoon Fund", brand: "", category: "Cash Fund", price: 50, qty: 20, purchased: 5, priority: "Nice to Have", link: "", notes: "Contribute any amount toward our trip to Amalfi" },
-    { id: 4, name: "Wine Glasses — Set of 4", brand: "Riedel", category: "Dining", price: 89, qty: 2, purchased: 0, priority: "Nice to Have", link: "", notes: "" },
-  ];
-  saveRegistry();
-}
-
-render();
+loadRegistryCloud();
 </script>
 
 </body>

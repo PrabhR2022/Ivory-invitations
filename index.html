@@ -678,6 +678,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
     <div class="sidebar-section">
       <div class="sidebar-label">Details</div>
       <button class="sidebar-btn" onclick="showTab('attire')"><span class="icon">&#9733;</span>Attire & Beauty</button>
+      <button class="sidebar-btn" onclick="showTab('registry')"><span class="icon">&#127873;</span>Registry</button>
       <button class="sidebar-btn" onclick="showTab('stationery')"><span class="icon">&#9993;</span>Stationery</button>
       <button class="sidebar-btn" onclick="showTab('kit')"><span class="icon">+</span>Emergency Kit</button>
     </div>
@@ -1394,6 +1395,45 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
       </div>
     </div>
 
+    <!-- ═══ REGISTRY ═══ -->
+    <div class="tab-content" id="tab-registry">
+      <h1 class="page-title">Gift Registry</h1>
+      <p class="page-desc">Add gifts your guests can view and claim. Share the registry link from the Guests &rarr; RSVP tab.</p>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <span>Add a gift</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--stone);font-weight:400;cursor:pointer">
+            <input type="checkbox" id="registry-hide-claimers" onchange="S.registryHideClaimers=this.checked;saveState()"/>
+            Hide who claimed each gift from guests (keep the surprise)
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:start" id="registry-add-grid">
+          <input id="reg-name" class="form-input" placeholder="Gift name (e.g. Stand mixer)" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px"/>
+          <input id="reg-price" class="form-input" placeholder="Price (e.g. $180)" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px"/>
+          <input id="reg-category" class="form-input" placeholder="Category" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px"/>
+          <button class="btn btn-dark" onclick="addRegistryItem()" style="white-space:nowrap">+ Add</button>
+          <input id="reg-url" class="form-input" placeholder="Link to buy (optional — Amazon, store, etc.)" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;grid-column:1 / 3"/>
+          <input id="reg-image" class="form-input" placeholder="Image URL (optional)" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;grid-column:3 / 5"/>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card"><div class="val" id="reg-total">0</div><div class="lbl">Gifts Listed</div></div>
+        <div class="stat-card green"><div class="val" id="reg-claimed">0</div><div class="lbl">Claimed</div></div>
+        <div class="stat-card"><div class="val" id="reg-available">0</div><div class="lbl">Still Available</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Your Registry</div>
+        <div id="registry-list"></div>
+        <div id="registry-empty" style="display:none;text-align:center;padding:28px 16px;color:var(--stone);font-size:13px">
+          <p style="font-size:28px;margin-bottom:6px;opacity:0.3">&#127873;</p>
+          <p>No gifts yet — add your first above. You can link to any store; guests claim items so you don't get duplicates.</p>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══ STATIONERY ═══ -->
     <div class="tab-content" id="tab-stationery">
       <h1 class="page-title">Stationery Checklist</h1>
@@ -1654,6 +1694,8 @@ function defaultState() {
     attire: buildAttire(),
     beauty: buildBeauty(),
     stationery: buildStationery(),
+    registry: [],
+    registryHideClaimers: true,
     honeymoon: {destination:"",dates:"",passport1:"",passport2:"",airline:"",flightOut:"",flightReturn:"",confirm:"",hotel:"",hotelConfirm:"",car:"",insurance:""},
     packing: buildPacking(),
     kit: buildKit(),
@@ -1909,6 +1951,7 @@ const LAUNCHER_TABS = [
   {id:'transport',     icon:'\u{1F697}',label:'Transport',        short:'Transport'},
   {id:'preevents',     icon:'\u{1F389}',label:'Pre-Events',       short:'Pre-Events'},
   {id:'attire',        icon:'★',   label:'Attire',           short:'Attire'},
+  {id:'registry',      icon:'\u{1F381}',label:'Registry',         short:'Registry'},
   {id:'stationery',    icon:'✉',   label:'Stationery',       short:'Stationery'},
   {id:'kit',           icon:'+',        label:'Emergency Kit',    short:'Kit'},
   {id:'camera',        icon:'\u{1F4F7}',label:'Camera',           short:'Camera'},
@@ -2040,6 +2083,7 @@ function renderTab(id) {
     case "transport": renderTransport(); break;
     case "floorplan": renderFloorPlan(); break;
     case "attire": renderAttire(); break;
+    case "registry": renderRegistry(); break;
     case "stationery": renderStationery(); break;
     case "honeymoon": renderHoneymoon(); break;
     case "kit": renderKit(); break;
@@ -5173,6 +5217,85 @@ function stationeryShopUrl(itemLabel, qty) {
   if (slug) return `${STATIONERY_SHOP_BASE}/collections/${slug}${qtyParam}`;
   if (label) return `${STATIONERY_SHOP_BASE}/search?q=${encodeURIComponent(label)}`;
   return `${STATIONERY_SHOP_BASE}/collections/${STATIONERY_FALLBACK_HANDLE}`;
+}
+
+// ══════════════════════════════════════════════════
+// REGISTRY (Phase 10)
+// ══════════════════════════════════════════════════
+let _registryClaims = {}; // item_id -> claimer_name (from cloud)
+
+async function fetchRegistryClaims() {
+  _registryClaims = {};
+  if (!supa || !currentWeddingId) return;
+  const { data, error } = await supa
+    .from('registry_claims')
+    .select('item_id, claimer_name')
+    .eq('wedding_id', currentWeddingId);
+  if (error) { console.warn('[Ivory] registry claims fetch failed:', error.message); return; }
+  (data || []).forEach(c => { _registryClaims[c.item_id] = c.claimer_name; });
+}
+
+async function renderRegistry() {
+  if (!Array.isArray(S.registry)) S.registry = [];
+  const hideEl = document.getElementById('registry-hide-claimers');
+  if (hideEl) hideEl.checked = S.registryHideClaimers !== false;
+
+  await fetchRegistryClaims();
+
+  const list = document.getElementById('registry-list');
+  const empty = document.getElementById('registry-empty');
+  const items = S.registry;
+  const claimedCount = items.filter(it => _registryClaims[it.id]).length;
+
+  const t = document.getElementById('reg-total'); if (t) t.textContent = items.length;
+  const c = document.getElementById('reg-claimed'); if (c) c.textContent = claimedCount;
+  const a = document.getElementById('reg-available'); if (a) a.textContent = items.length - claimedCount;
+
+  if (items.length === 0) { list.innerHTML = ''; if (empty) empty.style.display = 'block'; return; }
+  if (empty) empty.style.display = 'none';
+
+  list.innerHTML = items.map((it, i) => {
+    const claimer = _registryClaims[it.id];
+    const claimTag = claimer
+      ? `<span style="font-size:11px;color:var(--green);font-weight:600;white-space:nowrap">&#10003; Claimed${S.registryHideClaimers === false ? ' by ' + esc(claimer) : ''}</span>`
+      : `<span style="font-size:11px;color:var(--stone);white-space:nowrap">Available</span>`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border-light)">
+      ${it.image ? `<img src="${esc(it.image)}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display='none'"/>` : ''}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${esc(it.name)}${it.price?` <span style="color:var(--stone);font-weight:400">· ${esc(it.price)}</span>`:''}</div>
+        <div style="font-size:11px;color:var(--stone)">${it.category?esc(it.category):''}${it.url?` · <a href="${esc(it.url)}" target="_blank" rel="noopener" style="color:var(--taupe)">view</a>`:''}</div>
+      </div>
+      ${claimTag}
+      <button onclick="removeRegistryItem('${esc(it.id)}')" title="Remove" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:16px;opacity:0.5;padding:2px 4px">&times;</button>
+    </div>`;
+  }).join('');
+}
+
+function addRegistryItem() {
+  const name = (document.getElementById('reg-name').value || '').trim();
+  if (!name) { alert('Give the gift a name.'); return; }
+  if (!Array.isArray(S.registry)) S.registry = [];
+  S.registry.push({
+    id: 'gift-' + Date.now() + '-' + Math.floor((S.registry.length + 1)),
+    name,
+    price: (document.getElementById('reg-price').value || '').trim(),
+    category: (document.getElementById('reg-category').value || '').trim(),
+    url: (document.getElementById('reg-url').value || '').trim(),
+    image: (document.getElementById('reg-image').value || '').trim()
+  });
+  ['reg-name','reg-price','reg-category','reg-url','reg-image'].forEach(id => { const e = document.getElementById(id); if (e) e.value=''; });
+  if (typeof logActivity === 'function') logActivity('Registry', 'added gift', name);
+  saveState();
+  renderRegistry();
+}
+
+function removeRegistryItem(id) {
+  if (_registryClaims[id]) {
+    if (!confirm('A guest has already claimed this gift. Remove it anyway?')) return;
+  }
+  S.registry = (S.registry || []).filter(it => it.id !== id);
+  saveState();
+  renderRegistry();
 }
 
 function renderStationery() {
