@@ -136,6 +136,8 @@ input{font-family:inherit}
 .perm-btn{padding:10px 32px;background:var(--ivory);color:var(--charcoal);font-size:14px;font-weight:600;border-radius:100px;transition:all 200ms}
 .perm-btn:hover{transform:scale(1.03)}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 </head>
 <body>
 
@@ -244,6 +246,38 @@ const PLANNER_KEY = "ivory_planner_v1";
 let cameraState = loadCameraState();
 let stream = null;
 let facingMode = "environment"; // back camera default
+
+// Phase 10 — cloud upload. Photos go to Supabase Storage under the
+// wedding's folder so the couple actually receives them (localStorage
+// stayed on the guest's own phone before). The local peek thumbnail
+// still uses the in-memory dataUrl for instant feedback.
+let camSupa = null, camToken = null, camWeddingId = null;
+async function initCamCloud() {
+  try { camToken = new URLSearchParams(location.search).get('w'); } catch(e) {}
+  if (window.IVORY_CONFIG && window.supabase) {
+    camSupa = window.supabase.createClient(window.IVORY_CONFIG.supabaseUrl, window.IVORY_CONFIG.supabaseAnonKey);
+  }
+  if (!camSupa || !camToken) return; // demo/preview mode — capture works, no upload
+  const { data, error } = await camSupa.rpc('guest_get_wedding', { p_token: camToken });
+  if (!error && data && data.ok) camWeddingId = data.wedding_id || null;
+}
+async function uploadPhotoDataUrl(dataUrl, uploaderName) {
+  if (!camSupa || !camToken || !camWeddingId) return { skipped: true };
+  let blob;
+  try { blob = await (await fetch(dataUrl)).blob(); } catch(e) { return { error: 'blob_convert' }; }
+  const rand = Math.random().toString(36).slice(2, 10);
+  const path = camWeddingId + '/' + Date.now() + '-' + rand + '.jpg';
+  const up = await camSupa.storage.from('wedding-photos').upload(path, blob, {
+    contentType: 'image/jpeg', upsert: false
+  });
+  if (up.error) { console.warn('[Ivory Camera] upload failed:', up.error.message); return { error: up.error.message }; }
+  const rec = await camSupa.rpc('guest_record_photo', {
+    p_token: camToken, p_storage_path: path,
+    p_caption: '', p_uploader: uploaderName || 'Guest'
+  });
+  if (rec.error || (rec.data && rec.data.error)) { console.warn('[Ivory Camera] record failed:', rec.error || (rec.data && rec.data.error)); return { error: 'record_failed' }; }
+  return { ok: true };
+}
 
 function defaultCameraState() {
   return {
@@ -390,6 +424,10 @@ function takePhoto() {
   updateShotCounter();
   updatePeek();
 
+  // Upload to the couple's cloud album (fire-and-forget; capture UI
+  // stays instant). Errors are logged, not surfaced mid-party.
+  uploadPhotoDataUrl(dataUrl, name);
+
   // Check if out of film now
   if (cameraState.shotsUsed >= cameraState.maxShots) {
     document.getElementById('out-of-film').style.display = 'flex';
@@ -478,6 +516,7 @@ document.addEventListener('keydown', e => {
 // ══════════════════════════════════════════════════
 loadSettingsFromPlanner();
 initWelcome();
+initCamCloud(); // resolve wedding_id so photos upload to the couple's album
 </script>
 </body>
 </html>

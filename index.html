@@ -6764,6 +6764,49 @@ function addPreEvent() {
   saveState();
 }
 
+// Phase 10 — pull guest photos uploaded to Supabase Storage and show
+// them in the couple's gallery (signed URLs, members-only).
+async function fetchAndRenderCloudPhotos() {
+  if (!supa || !currentWeddingId) return;
+  const grid = document.getElementById('cam-gallery');
+  const empty = document.getElementById('cam-gallery-empty');
+  const countEl = document.getElementById('cam-gallery-count');
+  if (!grid) return;
+
+  const { data: rows, error } = await supa
+    .from('camera_photos')
+    .select('id, storage_path, caption, uploaded_by_name, created_at')
+    .eq('wedding_id', currentWeddingId)
+    .order('created_at', { ascending: false });
+  if (error) { console.warn('[Ivory] cloud photos fetch failed:', error.message); return; }
+  if (!rows || rows.length === 0) return;
+
+  const paths = rows.map(r => r.storage_path);
+  const { data: signed, error: sErr } = await supa
+    .storage.from('wedding-photos').createSignedUrls(paths, 3600);
+  if (sErr) { console.warn('[Ivory] signed URL error:', sErr.message); return; }
+  const urlByPath = {};
+  (signed || []).forEach(s => { if (s.path && s.signedUrl) urlByPath[s.path] = s.signedUrl; });
+
+  if (empty) empty.style.display = 'none';
+  const html = rows.map(r => {
+    const url = urlByPath[r.storage_path];
+    if (!url) return '';
+    const t = new Date(r.created_at);
+    const timeStr = t.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+    return `<div class="cam-thumb">
+      <a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="Guest photo" loading="lazy" style="width:100%;height:100%;object-fit:cover"/></a>
+      <div class="cam-by">${esc(r.uploaded_by_name || 'Guest')} &middot; ${esc(timeStr)}</div>
+    </div>`;
+  }).join('');
+  // Prepend cloud (guest) photos ahead of any local ones
+  grid.insertAdjacentHTML('afterbegin', html);
+  if (countEl) {
+    const shown = grid.querySelectorAll('.cam-thumb').length;
+    countEl.textContent = shown + ' photo' + (shown !== 1 ? 's' : '');
+  }
+}
+
 function renderCamera() {
   const cam = loadCameraData();
   const photos = cam ? cam.photos || [] : [];
@@ -6816,6 +6859,9 @@ function renderCamera() {
 
   // Generate QR code
   generateQR();
+
+  // Pull guest photos from the cloud album (async, appends when ready)
+  fetchAndRenderCloudPhotos();
 }
 
 let currentLightboxIdx = -1;
