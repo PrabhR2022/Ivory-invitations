@@ -109,6 +109,8 @@ input,select,textarea{font-family:inherit}
 
 .decline-icon{width:56px;height:56px;border-radius:50%;background:rgba(184,84,80,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:24px}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 </head>
 <body>
 
@@ -206,20 +208,61 @@ input,select,textarea{font-family:inherit}
 </div>
 
 <script>
-const STATE_KEY = "ivory_planner_v1";
-let plannerState = null;
+// Phase 10 — public RSVP page. Loads the wedding via a share token in
+// the URL (?w=TOKEN) through a token-gated Supabase RPC. No account,
+// no localStorage-of-someone-else's-data. Falls back to a local demo
+// only when opened without a token (e.g. the couple's own Preview).
+let plannerState = null;      // { guests, mealOptions, coupleName1, coupleName2, weddingDate }
 let selectedGuestIdx = -1;
-let plusGuestsList = []; // [{name, meal}]
+let plusGuestsList = [];       // [{name, meal}]
 let currentPlusLimit = 0;
+let supa = null;
+let shareToken = null;
+let isDemo = false;
 
-function loadPlanner() {
-  try {
-    const d = localStorage.getItem(STATE_KEY);
-    if (d) { plannerState = JSON.parse(d); return true; }
-  } catch(e) {}
-  return false;
+function getTokenFromUrl() {
+  try { return new URLSearchParams(window.location.search).get('w'); } catch(e) { return null; }
 }
-function savePlanner() { localStorage.setItem(STATE_KEY, JSON.stringify(plannerState)); }
+
+async function loadWedding() {
+  shareToken = getTokenFromUrl();
+  if (window.IVORY_CONFIG && window.supabase) {
+    supa = window.supabase.createClient(window.IVORY_CONFIG.supabaseUrl, window.IVORY_CONFIG.supabaseAnonKey);
+  }
+  if (!supa || !shareToken) { seedDemo(); return; }
+
+  const { data, error } = await supa.rpc('guest_get_wedding', { p_token: shareToken });
+  if (error || !data || data.error || !data.ok) {
+    console.warn('[Ivory RSVP] load failed:', error || (data && data.error));
+    seedDemo();
+    return;
+  }
+  plannerState = {
+    guests: (data.guests || []).map(g => ({
+      name: g.name,
+      allowPlusOne: (typeof g.allow_plus_one === 'number') ? g.allow_plus_one : 0,
+      plusGuests: []
+    })),
+    mealOptions: Array.isArray(data.meal_options) ? data.meal_options : [],
+    coupleName1: data.couple_name_1 || '',
+    coupleName2: data.couple_name_2 || '',
+    weddingDate: data.wedding_date || ''
+  };
+}
+
+function seedDemo() {
+  isDemo = true;
+  plannerState = {
+    coupleName1: '', coupleName2: '', weddingDate: '', mealOptions: [],
+    guests: [
+      {name:"Sarah Chen",allowPlusOne:2,plusGuests:[]},
+      {name:"David Okafor",allowPlusOne:1,plusGuests:[]},
+      {name:"Priya Sharma",allowPlusOne:0,plusGuests:[]},
+      {name:"Tom Williams",allowPlusOne:3,plusGuests:[]},
+      {name:"Claire Dubois",allowPlusOne:0,plusGuests:[]},
+    ]
+  };
+}
 
 // ─── Step navigation ───
 function goToStep(step) {
@@ -390,38 +433,49 @@ function updateRsvpForm() {
 }
 
 // ─── Submit ───
-function submitRsvp() {
+async function submitRsvp() {
   if (selectedGuestIdx < 0) return;
   const guest = plannerState.guests[selectedGuestIdx];
   const attending = document.getElementById('rsvp-yes').checked;
+  const btn = document.getElementById('rsvp-submit');
 
   guest.rsvp = attending ? 'Attending' : 'Declined';
 
+  let validGuests = [];
   if (attending) {
     guest.meal = document.getElementById('rsvp-meal').value;
-
     if (currentPlusLimit > 0) {
-      // Filter out entries with no name
-      const validGuests = plusGuestsList.filter(g => g.name.trim());
+      validGuests = plusGuestsList.filter(g => g.name.trim());
       guest.plusGuests = validGuests;
-      // Keep legacy fields in sync for backward compat with planner
-      guest.plusOne = validGuests.length > 0 ? 'Yes' : 'No';
-      guest.plusOneName = validGuests.length > 0 ? validGuests[0].name : '';
-      guest.plusOneMeal = validGuests.length > 0 ? validGuests[0].meal : '';
     } else {
       guest.plusGuests = [];
-      guest.plusOne = 'No';
-      guest.plusOneName = '';
-      guest.plusOneMeal = '';
     }
-
     guest.dietary = document.getElementById('rsvp-dietary').value.trim();
     guest.song = document.getElementById('rsvp-song').value.trim();
   }
   guest.message = document.getElementById('rsvp-message').value.trim();
   guest.rsvpDate = new Date().toLocaleDateString();
 
-  savePlanner();
+  // Send to the cloud via the token-gated RPC (unless we're in demo mode)
+  if (!isDemo && supa && shareToken) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    const partySize = 1 + (attending ? validGuests.length : 0);
+    const { data, error } = await supa.rpc('guest_submit_rsvp', {
+      p_token: shareToken,
+      p_guest_name: guest.name,
+      p_status: attending ? 'Attending' : 'Declined',
+      p_party_size: partySize,
+      p_meal: attending ? (guest.meal || '') : '',
+      p_dietary: attending ? (guest.dietary || '') : '',
+      p_message: guest.message || ''
+    });
+    if (error || (data && data.error)) {
+      console.warn('[Ivory RSVP] submit failed:', error || data.error);
+      if (btn) { btn.disabled = false; btn.textContent = attending ? 'Confirm RSVP' : 'Send Response'; }
+      alert('Sorry — we couldn\'t save your RSVP. Please check your connection and try again.');
+      return;
+    }
+  }
 
   if (attending) {
     // Build confirmation summary
@@ -448,10 +502,9 @@ function submitRsvp() {
 }
 
 // ─── Init ───
-loadPlanner();
+(async function initRsvp() {
+  await loadWedding();
 
-// Update couple names & date from planner state
-if (plannerState) {
   const n1 = plannerState.coupleName1 || '';
   const n2 = plannerState.coupleName2 || '';
   if (n1 && n2) {
@@ -463,23 +516,7 @@ if (plannerState) {
       document.querySelector('.wedding-date').textContent = d.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
     }
   }
-}
-
-// If no planner data or no guests, seed demo data
-if (!plannerState || !plannerState.guests || plannerState.guests.length === 0) {
-  if (!plannerState) plannerState = { guests: [] };
-  if (!plannerState.guests) plannerState.guests = [];
-  if (plannerState.guests.length === 0) {
-    plannerState.guests = [
-      {name:"Sarah Chen",address:"123 Park Ave, Brooklyn, NY",rsvp:"Pending",allowPlusOne:2,plusOne:"No",meal:"",gift:"No",thanks:"No",plusGuests:[]},
-      {name:"David Okafor",address:"456 Oak St, Austin, TX",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",thanks:"No",plusGuests:[]},
-      {name:"Priya Sharma",address:"789 Elm Dr, London, UK",rsvp:"Pending",allowPlusOne:0,plusOne:"No",meal:"",gift:"No",thanks:"No",plusGuests:[]},
-      {name:"Tom Williams",address:"321 Maple Ct, Chicago, IL",rsvp:"Pending",allowPlusOne:3,plusOne:"No",meal:"",gift:"No",thanks:"No",plusGuests:[]},
-      {name:"Claire Dubois",address:"654 Pine Ln, Montreal, QC",rsvp:"Pending",allowPlusOne:0,plusOne:"No",meal:"",gift:"No",thanks:"No",plusGuests:[]},
-    ];
-    savePlanner();
-  }
-}
+})();
 </script>
 </body>
 </html>

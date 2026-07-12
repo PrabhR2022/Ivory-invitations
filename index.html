@@ -987,16 +987,42 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 
       <!-- RSVP sub-section -->
       <div class="tl-section" id="guest-sub-rsvp">
-        <!-- RSVP Share Panel -->
-        <div style="background:var(--charcoal);border-radius:12px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-          <div>
-            <p style="font-size:14px;font-weight:500;color:var(--ivory)">Guest RSVP Page</p>
-            <p style="font-size:12px;color:rgba(250,250,247,0.5)">Share this link so guests can RSVP, choose meals, and add plus-ones</p>
+        <!-- Guest Links (Phase 10) — share with guests -->
+        <div style="background:var(--charcoal);border-radius:12px;padding:20px 24px;margin-bottom:16px">
+          <p style="font-size:14px;font-weight:600;color:var(--ivory);margin-bottom:2px">Share with your guests</p>
+          <p style="font-size:12px;color:rgba(250,250,247,0.5);margin-bottom:14px">Each link is unique to your wedding. Guests don't need an account.</p>
+          <div style="display:grid;gap:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+              <span style="font-size:13px;color:var(--ivory)">&#9993;&#65039; RSVP page — guests find their name, reply, pick a meal</span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="openGuestPreview('ivory-rsvp.html')">Preview</button>
+                <button class="btn btn-sm" style="background:var(--ivory);color:var(--charcoal)" onclick="copyRsvpLink(this)">Copy Link</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid rgba(250,250,247,0.1);padding-top:8px">
+              <span style="font-size:13px;color:var(--ivory)">&#127873; Registry — guests view and claim gifts</span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="openGuestPreview('ivory-wedding-registry.html')">Preview</button>
+                <button class="btn btn-sm" style="background:var(--ivory);color:var(--charcoal)" onclick="copyRegistryLink(this)">Copy Link</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid rgba(250,250,247,0.1);padding-top:8px">
+              <span style="font-size:13px;color:var(--ivory)">&#128247; Disposable camera — guests snap photos at the wedding</span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="openGuestPreview('ivory-disposable-camera.html')">Preview</button>
+                <button class="btn btn-sm" style="background:var(--ivory);color:var(--charcoal)" onclick="copyCamLink(this)">Copy Link</button>
+              </div>
+            </div>
           </div>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="window.open('ivory-rsvp.html','_blank')">Preview</button>
-            <button class="btn btn-sm" style="background:var(--ivory);color:var(--charcoal)" onclick="copyRsvpLink(this)">Copy Link</button>
+        </div>
+
+        <!-- Online RSVP inbox (Phase 10) -->
+        <div class="card" id="online-rsvp-card" style="display:none;margin-bottom:16px">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>&#128229; Online RSVPs <span class="count" id="online-rsvp-count">0 new</span></span>
           </div>
+          <p style="font-size:12px;color:var(--stone);margin-bottom:12px">Replies guests submitted on your RSVP page. Click Apply to merge each into your guest list.</p>
+          <div id="online-rsvp-list"></div>
         </div>
 
         <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:16px">
@@ -1841,7 +1867,7 @@ function showGuestSub(sub) {
   document.getElementById('guest-sub-rsvp').classList.toggle('active', sub==='rsvp');
   const tyEl = document.getElementById('guest-sub-thankyous'); if (tyEl) tyEl.classList.toggle('active', sub==='thankyous');
   document.getElementById('guest-sub-floorplan').classList.toggle('active', sub==='floorplan');
-  if (sub === 'rsvp') renderGuestRsvp();
+  if (sub === 'rsvp') { renderGuestRsvp(); fetchAndRenderOnlineRsvps(); }
   if (sub === 'thankyous') renderThankYous();
   if (sub === 'floorplan') renderFloorPlan();
 }
@@ -2760,7 +2786,103 @@ function unassignGuestTable(guestIdx) {
   renderGuests();
 }
 
-function copyRsvpLink(btn) { const url = window.location.href.replace(/[^/]*$/,'') + 'ivory-rsvp.html'; navigator.clipboard.writeText(url).then(()=>{ btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy Link',2000); }); }
+// Phase 10 — build a public guest link for a given page, carrying the
+// wedding's share token so anonymous guests reach the right wedding.
+function guestLink(page) {
+  const base = window.location.href.replace(/[^/]*$/, '');
+  const tok = currentShareToken ? ('?w=' + encodeURIComponent(currentShareToken)) : '';
+  return base + page + tok;
+}
+function _copyGuestLink(btn, page) {
+  if (!currentShareToken) {
+    alert('Sign in first — guest links need your wedding to be saved to the cloud.');
+    return;
+  }
+  navigator.clipboard.writeText(guestLink(page)).then(() => {
+    const orig = btn.textContent; btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+function copyRsvpLink(btn)     { _copyGuestLink(btn, 'ivory-rsvp.html'); }
+function copyRegistryLink(btn) { _copyGuestLink(btn, 'ivory-wedding-registry.html'); }
+function copyCamLink(btn)      { _copyGuestLink(btn, 'ivory-disposable-camera.html'); }
+function openGuestPreview(page){ window.open(guestLink(page), '_blank'); }
+
+// ── Online RSVP inbox — submissions guests made on the RSVP page ──
+async function fetchAndRenderOnlineRsvps() {
+  const card = document.getElementById('online-rsvp-card');
+  const list = document.getElementById('online-rsvp-list');
+  if (!card || !list) return;
+  if (!supa || !currentWeddingId) { card.style.display = 'none'; return; }
+
+  const { data: subs, error } = await supa
+    .from('rsvp_submissions')
+    .select('id, guest_name, guest_name_key, status, party_size, meal, dietary, message, applied, submitted_at')
+    .eq('wedding_id', currentWeddingId)
+    .order('submitted_at', { ascending: false });
+
+  if (error) { console.warn('[Ivory] RSVP inbox fetch failed:', error.message); card.style.display = 'none'; return; }
+  if (!subs || subs.length === 0) { card.style.display = 'none'; return; }
+
+  card.style.display = 'block';
+  const pending = subs.filter(s => !s.applied).length;
+  const badge = document.getElementById('online-rsvp-count');
+  if (badge) badge.textContent = pending > 0 ? (pending + ' new') : 'all applied';
+
+  list.innerHTML = subs.map(s => {
+    const known = (S.guests || []).some(g => (g.name || '').trim().toLowerCase() === s.guest_name_key);
+    const statusColor = s.status === 'Attending' ? 'var(--green)' : 'var(--red)';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border-light);border-radius:10px;margin-bottom:8px;${s.applied?'opacity:0.55':''}">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${esc(s.guest_name)}${known?'':' <span style="font-size:10px;color:var(--taupe)">(not on your list)</span>'}</div>
+        <div style="font-size:11px;color:var(--stone)">
+          <span style="color:${statusColor};font-weight:600">${esc(s.status)}</span>
+          ${s.party_size>1?` · party of ${s.party_size}`:''}
+          ${s.meal?` · ${esc(s.meal)}`:''}
+          ${s.dietary?` · ${esc(s.dietary)}`:''}
+        </div>
+        ${s.message?`<div style="font-size:11px;color:var(--stone);font-style:italic;margin-top:2px">&ldquo;${esc(s.message)}&rdquo;</div>`:''}
+      </div>
+      ${s.applied
+        ? '<span style="font-size:11px;color:var(--green);white-space:nowrap">&#10003; applied</span>'
+        : `<button class="btn btn-sm btn-dark" style="white-space:nowrap" onclick="applyOnlineRsvp('${esc(s.id)}')">Apply</button>`}
+    </div>`;
+  }).join('');
+}
+
+// Merge one online submission into the local guest list, then mark applied.
+async function applyOnlineRsvp(subId) {
+  if (!supa || !currentWeddingId) return;
+  const { data: rows } = await supa
+    .from('rsvp_submissions').select('*').eq('id', subId).limit(1);
+  const s = rows && rows[0];
+  if (!s) return;
+
+  const key = s.guest_name_key;
+  let g = (S.guests || []).find(x => (x.name || '').trim().toLowerCase() === key);
+  if (!g) {
+    // Guest not on the list — add them
+    if (!Array.isArray(S.guests)) S.guests = [];
+    g = { name: s.guest_name, rsvp: 'Pending', allowPlusOne: Math.max(0, (s.party_size||1) - 1) };
+    S.guests.push(g);
+  }
+  g.rsvp = s.status === 'Declined' ? 'Declined' : 'Attending';
+  g.rsvpDate = new Date().toISOString().slice(0, 10);
+  if (s.meal) g.meal = s.meal;
+  if (s.dietary) g.dietary = s.dietary;
+  // Plus-ones: record count so the guest-list plus math is consistent
+  if (s.party_size > 1) {
+    g.plusGuests = g.plusGuests || [];
+    const need = (s.party_size - 1) - g.plusGuests.length;
+    for (let k = 0; k < need; k++) g.plusGuests.push({ name: '(guest)', meal: '' });
+  }
+  if (typeof logActivity === 'function') logActivity('RSVP', 'applied online RSVP', s.guest_name + ' — ' + g.rsvp);
+  saveState();
+
+  await supa.from('rsvp_submissions').update({ applied: true }).eq('id', subId);
+  if (typeof renderGuests === 'function') renderGuests();
+  fetchAndRenderOnlineRsvps();
+}
 
 function importGuestFile(input) {
   const file = input.files[0];
@@ -7598,6 +7720,7 @@ function updateTopbarAvatars() {
 // ══════════════════════════════════════════════════
 let supa = null;
 let currentWeddingId = null;
+let currentShareToken = null; // Phase 10 — public guest-access token
 let currentUser = null;
 let currentMemberRole = null; // partner | planner | parent | wedding_party | viewer
 let cloudSyncTimer = null;
@@ -7710,7 +7833,7 @@ async function hydrateFromCloud(user) {
 
   const { data: wedding, error: wErr } = await supa
     .from('weddings')
-    .select('state, wedding_date, name')
+    .select('state, wedding_date, name, share_token')
     .eq('id', currentWeddingId)
     .single();
 
@@ -7719,6 +7842,8 @@ async function hydrateFromCloud(user) {
     setSyncStatus('error');
     return;
   }
+
+  currentShareToken = wedding.share_token || null;
 
   // Merge cloud state with default to ensure all keys present
   const cloudState = wedding.state || {};
