@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Ivory — Wedding Planner</title>
+<meta name="description" content="Free wedding planner by Ivory Invitations — guest list, RSVPs, budget with real Ontario pricing, seating chart, and a printable day-of packet."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet"/>
@@ -38,17 +39,23 @@ table{border-collapse:collapse;width:100%}
 /* ─── Layout ─── */
 .app{display:flex;min-height:calc(100vh - 49px)}
 .sidebar{width:56px;flex-shrink:0;border-right:1px solid var(--border-light);padding:24px 0;position:sticky;top:49px;height:calc(100vh - 49px);overflow-y:auto;overflow-x:hidden;background:var(--ivory);transition:width 200ms ease;z-index:20}
-.sidebar:hover{width:240px}
+.sidebar:hover,.sidebar:focus-within{width:240px}
 .sidebar-section{padding:0 8px;margin-bottom:24px}
-.sidebar:hover .sidebar-section{padding:0 16px}
+.sidebar:hover .sidebar-section,.sidebar:focus-within .sidebar-section{padding:0 16px}
 .sidebar-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:rgba(107,101,96,0.5);margin-bottom:8px;padding:0 8px;white-space:nowrap;opacity:0;height:0;overflow:hidden;margin:0;transition:opacity 200ms}
-.sidebar:hover .sidebar-label{opacity:1;height:auto;margin-bottom:8px}
+.sidebar:hover .sidebar-label,.sidebar:focus-within .sidebar-label{opacity:1;height:auto;margin-bottom:8px}
 .sidebar-btn{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border-radius:8px;font-size:13px;color:var(--stone);transition:all 150ms;text-align:left;white-space:nowrap;overflow:hidden}
 .sidebar-btn:hover{background:var(--cream);color:var(--charcoal)}
 .sidebar-btn.active{background:var(--charcoal);color:var(--ivory)}
-.sidebar-btn .icon{width:20px;min-width:20px;text-align:center;font-size:14px;flex-shrink:0}
+.sidebar-btn .icon{width:20px;min-width:20px;text-align:center;font-size:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center}
+.sidebar-btn .icon svg{display:block}
 .sidebar-btn .badge{margin-left:auto;font-size:10px;background:rgba(156,139,122,0.15);color:var(--taupe);padding:2px 6px;border-radius:100px;opacity:0;transition:opacity 200ms}
-.sidebar:hover .sidebar-btn .badge{opacity:1}
+.sidebar:hover .sidebar-btn .badge,.sidebar:focus-within .sidebar-btn .badge{opacity:1}
+
+/* Accessibility: skip link + reduced motion */
+.skip-link{position:absolute;left:-9999px;top:0;z-index:100;background:var(--charcoal);color:var(--ivory);padding:8px 16px;border-radius:0 0 8px 0}
+.skip-link:focus{left:0}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:0.01ms !important;transition-duration:0.01ms !important}html{scroll-behavior:auto}}
 
 .main{flex:1;padding:32px 80px 96px;max-width:none;min-width:0}
 
@@ -78,6 +85,13 @@ table input,table select{width:100%;padding:6px 8px;border:1px solid var(--borde
 table input:focus,table select:focus{border-color:var(--taupe);background:white;outline:none;box-shadow:0 0 0 2px rgba(156,139,122,0.15)}
 table input:hover,table select:hover{border-color:var(--border);background:rgba(237,232,224,0.35)}
 table input::placeholder,table select::placeholder{color:var(--taupe);opacity:0.5;font-style:italic}
+/* U5: guest-table selects must never clip their longest option
+   (Role: "Wedding Party", Age: "Infant", RSVP: "Attending", Gift/Thanks: "Yes").
+   The wrapper scrolls horizontally, so widening cells is safe. */
+#guest-body td:nth-child(3) select{min-width:118px}
+#guest-body td:nth-child(5) select{min-width:74px}
+#guest-body td:nth-child(9) select{min-width:100px}
+#guest-body td:nth-child(12) select,#guest-body td:nth-child(13) select{min-width:56px}
 table input[type="number"]{text-align:right;width:90px}
 .currency{text-align:right;font-variant-numeric:tabular-nums}
 
@@ -502,6 +516,10 @@ table input[type="number"]{text-align:right;width:90px}
 .auth-page .auth-brand{font-family:var(--font-serif);font-size:42px;text-align:center;letter-spacing:0.02em;color:var(--charcoal);margin-bottom:8px}
 .auth-page .auth-brand-sub{text-align:center;color:var(--stone);font-size:12px;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:48px}
 @media(max-width:560px){.auth-page .ob-modal{padding:48px 22px 32px}.auth-page .auth-brand{font-size:34px}}
+/* U3: reusable two-column grid that stacks on phones (inline styles can't be
+   overridden by media queries, so these grids use this class instead) */
+.dash-two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
 /* Mobile fixes for new Phase 9 forms */
 @media(max-width:640px){
   /* Emergency contacts add form: stack inputs vertically */
@@ -517,6 +535,8 @@ table input[type="number"]{text-align:right;width:90px}
   /* Rehearsal Dinner Date/Time/Venue: stack to 2 cols (Date+Time) then Venue full-width */
   .reh-grid{grid-template-columns:1fr 1fr!important}
   .reh-grid > div:nth-child(3){grid-column:1 / -1}
+  /* U3: two-column dashboard/detail grids collapse to one column on phones */
+  .dash-two-col{grid-template-columns:1fr}
   /* Wide tables: make horizontal scroll discoverable with a subtle right-edge fade */
   .tbl-wrap{position:relative}
   .tbl-wrap::after{content:'';position:absolute;top:0;right:0;bottom:0;width:18px;pointer-events:none;background:linear-gradient(to right, rgba(250,250,247,0), rgba(250,250,247,0.85));border-radius:0 8px 8px 0}
@@ -614,6 +634,8 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 </head>
 <body>
 
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
 <!-- PIN Lock Screen -->
 <div class="pin-screen" id="pin-screen" style="display:none">
   <div class="pin-card">
@@ -650,7 +672,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
     <a href="ivory-wedding-registry.html">Registry</a>
     <a href="ivory-rsvp.html">RSVP</a>
     <a href="ivory-photography-shotlist.html">Shot List</a>
-    <a href="#" onclick="event.preventDefault();showPinSetup()" title="PIN Protection" style="font-size:14px">&#128274;</a>
+    <button type="button" onclick="showPinSetup()" title="PIN Protection" style="font-size:14px">&#128274;</button>
   </div>
 </div>
 
@@ -689,7 +711,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
   </nav>
 
   <!-- Main content -->
-  <div class="main">
+  <div class="main" id="main-content">
 
     <!-- ═══ NOTIFICATIONS ═══ -->
     <div class="tab-content active" id="tab-notifications">
@@ -795,7 +817,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
       </div>
 
       <!-- Dashboard Widgets -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+      <div class="dash-two-col" style="margin-bottom:24px">
         <!-- Budget Pie Chart -->
         <div class="card" style="margin-bottom:0">
           <div class="card-title" style="margin-bottom:12px">Budget Overview <span class="count" style="cursor:pointer" onclick="showTab('budget')">View all &rarr;</span></div>
@@ -865,12 +887,12 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
       <!-- Summary Stats -->
       <div class="stats">
         <div class="stat-card" style="cursor:pointer" onclick="editTotalBudget()" title="Click to edit">
-          <div class="val" id="b-total">$50,000</div>
+          <div class="val" id="b-total" style="font-size:inherit">Set your budget</div>
           <div class="lbl">Total Budget <span style="font-size:9px;opacity:0.5">&#9998;</span></div>
         </div>
         <div class="stat-card"><div class="val" id="b-planned">$0</div><div class="lbl">Planned</div></div>
         <div class="stat-card"><div class="val" id="b-actual">$0</div><div class="lbl">Actual</div></div>
-        <div class="stat-card green"><div class="val" id="b-remaining">$50,000</div><div class="lbl">Remaining</div></div>
+        <div class="stat-card green"><div class="val" id="b-remaining">&mdash;</div><div class="lbl">Remaining</div></div>
       </div>
 
       <!-- HST & Tips Summary -->
@@ -1099,17 +1121,17 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
         <p class="page-desc" style="margin-bottom:16px">Drag and drop to arrange your venue — tables, stage, dance floor and more</p>
         <div class="fp-canvas-wrap">
           <div class="fp-toolbar">
-            <button class="fp-tool-btn" onclick="addFpItem('round')">&#9711; Round Table</button>
-            <button class="fp-tool-btn" onclick="addFpItem('rect')">&#9645; Long Table</button>
-            <button class="fp-tool-btn" onclick="addFpItem('stage')">&#127924; Stage</button>
-            <button class="fp-tool-btn" onclick="addFpItem('dj')">&#127911; DJ Booth</button>
-            <button class="fp-tool-btn" onclick="addFpItem('dance')">&#128131; Dance Floor</button>
-            <button class="fp-tool-btn" onclick="addFpItem('bar')">&#127864; Bar</button>
-            <button class="fp-tool-btn" onclick="addFpItem('entrance')">&#128682; Entrance</button>
-            <button class="fp-tool-btn" onclick="addFpItem('exit')">&#128682; Exit</button>
+            <button class="fp-tool-btn" onclick="addFpItem('round')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/></svg> Round Table</button>
+            <button class="fp-tool-btn" onclick="addFpItem('rect')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="8" width="18" height="8" rx="1"/></svg> Long Table</button>
+            <button class="fp-tool-btn" onclick="addFpItem('stage')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 16h16M6 16v-3l6-4 6 4v3"/></svg> Stage</button>
+            <button class="fp-tool-btn" onclick="addFpItem('dj')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="12" r="3"/><circle cx="16" cy="12" r="3"/><rect x="3" y="6" width="18" height="12" rx="1.5"/></svg> DJ Booth</button>
+            <button class="fp-tool-btn" onclick="addFpItem('dance')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 4h4v4H4zM12 4h4v4h-4zM8 8h4v4H8zM16 8h4v4h-4zM4 12h4v4H4zM12 12h4v4h-4zM8 16h4v4H8zM16 16h4v4h-4z"/></svg> Dance Floor</button>
+            <button class="fp-tool-btn" onclick="addFpItem('bar')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 4h14l-6 7v6M13 17H9m4 0h4M5 4l6 7"/></svg> Bar</button>
+            <button class="fp-tool-btn" onclick="addFpItem('entrance')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l4 4-4 4M14 12H4"/></svg> Entrance</button>
+            <button class="fp-tool-btn" onclick="addFpItem('exit')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M14 8l4 4-4 4M18 12H8"/></svg> Exit</button>
             <button class="fp-tool-btn" onclick="addFpItem('custom')">+ Custom</button>
-            <button class="fp-tool-btn" onclick="printFloorPlan()" title="Open a printable view to share with vendors">&#128424; Print / Share</button>
-            <button class="fp-tool-btn" style="margin-left:auto;color:var(--red)" onclick="clearFloorPlan()">&#128465; Clear All</button>
+            <button class="fp-tool-btn" onclick="printFloorPlan()" title="Open a printable view to share with vendors"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8V4h10v4M7 17H5a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-2M7 14h10v6H7z"/></svg> Print / Share</button>
+            <button class="fp-tool-btn" style="margin-left:auto;color:var(--red)" onclick="clearFloorPlan()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12"/></svg> Clear All</button>
           </div>
           <div class="fp-canvas-viewport" id="fp-canvas-viewport">
             <div class="fp-canvas" id="fp-canvas"></div>
@@ -1236,7 +1258,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
       </div>
 
       <!-- Must-Play & Do-Not-Play -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="dash-two-col">
         <div class="card">
           <div class="card-title" style="color:var(--green)">&#9835; Must-Play List <button class="btn btn-sm btn-dark" onclick="addMusicItem('mustPlay')">+ Add</button></div>
           <div id="music-must-play"></div>
@@ -1506,7 +1528,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
       <p class="page-desc">Destination, flights, packing, and more</p>
       <div class="card">
         <div class="card-title">Trip Details</div>
-        <div id="honeymoon-details" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+        <div id="honeymoon-details" class="dash-two-col" style="gap:12px"></div>
       </div>
       <div class="card">
         <div class="card-title">Packing Checklist</div>
@@ -1695,10 +1717,15 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 // ══════════════════════════════════════════════════
 const STATE_KEY = "ivory_planner_v1";
 let S = loadState();
+// U4: prune abandoned nameless guest rows left over from previous sessions
+if (Array.isArray(S.guests)) {
+  const pruned = S.guests.filter(g => g && g.name && g.name.trim());
+  if (pruned.length !== S.guests.length) S.guests = pruned;
+}
 
 function defaultState() {
   return {
-    totalBudget: 50000,
+    totalBudget: null,  // set by the couple — never invent a number (U2)
     region: 'ON',
     taxRate: 0.13,
     applyHST: true,
@@ -1995,6 +2022,38 @@ const LAUNCHER_TABS = [
   {id:'camera',        icon:'\u{1F4F7}',label:'Camera',           short:'Camera'},
 ];
 
+// U7: single inline-SVG icon set (currentColor stroke, 20px, no fill) so UI
+// chrome renders identically on every device — no emoji-font dependency.
+const TAB_ICONS = {
+  notifications:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9.5 20v-6h5v6"/>',
+  budget:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M14.4 9.4c-.5-.9-1.4-1.4-2.4-1.4-1.4 0-2.5.9-2.5 2s1.1 1.7 2.5 2 2.5.9 2.5 2-1.1 2-2.5 2c-1 0-1.9-.5-2.4-1.4"/>',
+  checklist:'<path d="M9 4h6a1 1 0 0 1 1 1v0a1 1 0 0 1-1 1H9A1 1 0 0 1 8 5v0a1 1 0 0 1 1-1Z"/><path d="M8 5H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="m8.5 12 2 2 3.5-3.5"/>',
+  guests:'<path d="M12 20.5s-7-4.2-7-9.2A4.3 4.3 0 0 1 12 8a4.3 4.3 0 0 1 7 3.3c0 5-7 9.2-7 9.2Z"/>',
+  vendors:'<path d="M6.5 4.5c.4-.4 1-.4 1.4 0l1.9 1.9c.4.4.4 1 0 1.4L8.4 9.3a11 11 0 0 0 6.3 6.3l1.5-1.4c.4-.4 1-.4 1.4 0l1.9 1.9c.4.4.4 1 0 1.4l-1.3 1.3c-1 1-2.6 1.2-3.7.5A18 18 0 0 1 5 8.2c-.7-1.1-.5-2.7.5-3.7Z"/>',
+  ceremony:'<path d="M12 20.5s-7.5-4.6-7.5-9.7c0-2.3 1.8-4.1 4-4.1 1.5 0 2.8.8 3.5 2 .7-1.2 2-2 3.5-2 2.2 0 4 1.8 4 4.1 0 5.1-7.5 9.7-7.5 9.7Z"/>',
+  music:'<circle cx="7" cy="17.5" r="2.5"/><circle cx="17" cy="15.5" r="2.5"/><path d="M9.5 17.5V6l10-2v11.5M9.5 8.5l10-2"/>',
+  timeline:'<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 1.8M9 3h6"/>',
+  transport:'<path d="M4 15.5v-3l1.7-4.2A2 2 0 0 1 7.5 7h9a2 2 0 0 1 1.8 1.3L20 12.5v3"/><path d="M4 15.5h16v2.2a.8.8 0 0 1-.8.8H18a.8.8 0 0 1-.8-.8V16M6.8 18.5H4.8a.8.8 0 0 1-.8-.8V16"/><circle cx="7.5" cy="15.5" r="1"/><circle cx="16.5" cy="15.5" r="1"/>',
+  preevents:'<path d="M4 20.5 8 9l7 7-11 4.5ZM8 9l1.5-4M15 16l4-1.5M11 4.5l.8 2M17 7l2-.8M18.5 11l1.8.5"/>',
+  attire:'<path d="m12 4 2.2 4.5 4.8.7-3.5 3.4.8 4.9L12 15.6 7.7 18l.8-4.9L5 9.7l4.8-.7L12 4Z"/>',
+  registry:'<path d="M4 11h16v8.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V11ZM3.5 7.5h17V11h-17zM12 7.5v13"/><path d="M12 7.5S10.5 3.5 8 4.5s.5 3 4 3M12 7.5s1.5-4 4-3-.5 3-4 3"/>',
+  stationery:'<rect x="3.5" y="5.5" width="17" height="13" rx="1.2"/><path d="m4 6.5 8 6 8-6"/>',
+  kit:'<rect x="3.5" y="7.5" width="17" height="12" rx="1.5"/><path d="M8.5 7.5V6a1.5 1.5 0 0 1 1.5-1.5h4A1.5 1.5 0 0 1 15.5 6v1.5M12 11v5M9.5 13.5h5"/>',
+  camera:'<path d="M4.5 8.5h3l1.3-2h6.4l1.3 2h3a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.2"/>'
+};
+function tabIconSVG(id, size){
+  const p = TAB_ICONS[id]; if (!p) return '';
+  return '<svg width="'+(size||20)+'" height="'+(size||20)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';
+}
+// Fill the static sidebar icons on load (parse the tab id from each button's onclick)
+function paintSidebarIcons(){
+  document.querySelectorAll('.sidebar-btn').forEach(btn => {
+    const m = (btn.getAttribute('onclick')||'').match(/showTab\('([^']+)'\)/);
+    const ico = btn.querySelector('.icon');
+    if (m && ico && TAB_ICONS[m[1]]) ico.innerHTML = tabIconSVG(m[1], 18);
+  });
+}
+
 function openLauncher() {
   renderLauncherGrid();
   const el = document.getElementById('tab-launcher');
@@ -2095,7 +2154,7 @@ function renderLauncherGrid() {
     const isCurrent = t.id === currentTabId;
     return `<div class="launcher-card${isCurrent ? ' current' : ''}" onclick="launcherGoTo('${t.id}')">
       ${badge ? `<span class="lc-badge${badge.cls?(' '+badge.cls):''}">${esc(badge.text)}</span>` : ''}
-      <span class="lc-icon">${t.icon}</span>
+      <span class="lc-icon">${TAB_ICONS[t.id] ? tabIconSVG(t.id, 24) : t.icon}</span>
       <div class="lc-label">${esc(t.label)}</div>
       <div class="lc-sub">${esc(sub || '')}</div>
     </div>`;
@@ -2234,10 +2293,12 @@ function renderBudget() {
     }
   });
 
-  document.getElementById("b-total").textContent = money(S.totalBudget);
+  // U2: no phantom default — prompt to set the budget until one exists
+  const hasBudget = S.totalBudget != null && +S.totalBudget > 0;
+  document.getElementById("b-total").textContent = hasBudget ? money(S.totalBudget) : 'Set your budget';
   document.getElementById("b-planned").textContent = money(planned);
   document.getElementById("b-actual").textContent = money(actual);
-  document.getElementById("b-remaining").textContent = money(S.totalBudget - actual);
+  document.getElementById("b-remaining").textContent = hasBudget ? money(S.totalBudget - actual) : '—';
 
   // HST + Tips + Grand Total summary
   const taxable = S.budget.reduce((sum, r) => {
@@ -2422,8 +2483,9 @@ function addBudgetRow() {
 
 function editTotalBudget() {
   const el = document.getElementById('b-total');
-  const current = S.totalBudget || 50000;
-  el.innerHTML = `<input type="number" id="budget-edit-input" value="${current}" min="0" step="1000"
+  // U2: 50000 is only a placeholder hint, never a value the user didn't enter
+  const current = (S.totalBudget != null && +S.totalBudget > 0) ? S.totalBudget : '';
+  el.innerHTML = `<input type="number" id="budget-edit-input" value="${current}" placeholder="50000" min="0" step="1000"
     style="width:130px;text-align:center;font-family:var(--font-serif);font-size:24px;border:1px solid var(--taupe);border-radius:8px;padding:4px 8px;outline:none;background:white"
     onblur="saveTotalBudget()" onkeydown="if(event.key==='Enter')this.blur()" />`;
   document.getElementById('budget-edit-input').focus();
@@ -2433,7 +2495,8 @@ function editTotalBudget() {
 function saveTotalBudget() {
   const input = document.getElementById('budget-edit-input');
   if (!input) return;
-  S.totalBudget = parseFloat(input.value) || 50000;
+  const v = parseFloat(input.value);
+  S.totalBudget = (isFinite(v) && v > 0) ? v : null;  // blank/invalid → stays unset
   saveState();
   renderBudget();
 }
@@ -2515,10 +2578,16 @@ function addChecklistTask(phase, task, inputEl) {
 // ══════════════════════════════════════════════════
 // GUESTS
 // ══════════════════════════════════════════════════
+// U4: rows without a name are drafts — they must never inflate any count.
+function namedGuests() {
+  return (S.guests || []).filter(g => g.name && g.name.trim());
+}
+
 function renderGuests() {
-  // Count all plus guests across all guests
+  const named = namedGuests();
+  // Count all plus guests across all named guests
   let totalPlusGuests = 0;
-  S.guests.forEach(g => {
+  named.forEach(g => {
     const pg = g.plusGuests || [];
     const validPg = pg.filter(p => p.name);
     // Also count legacy single plus-one if no plusGuests array
@@ -2529,11 +2598,11 @@ function renderGuests() {
     }
   });
 
-  const invitedCount = S.guests.length;
+  const invitedCount = named.length;
   const t = invitedCount + totalPlusGuests;
-  const attendingInvited = S.guests.filter(g=>g.rsvp==="Attending").length;
+  const attendingInvited = named.filter(g=>g.rsvp==="Attending").length;
   const a = attendingInvited + totalPlusGuests;
-  const d = S.guests.filter(g=>g.rsvp==="Declined").length;
+  const d = named.filter(g=>g.rsvp==="Declined").length;
   const pendingCount = invitedCount - attendingInvited - d;
   document.getElementById("g-total").textContent=t;
   document.getElementById("g-attending").textContent=a;
@@ -2541,10 +2610,10 @@ function renderGuests() {
   document.getElementById("g-pending").textContent=pendingCount;
   document.getElementById("guest-badge").textContent=t;
   // Phase 3.3 — age & household stats
-  const adults = S.guests.filter(g => (g.ageGroup||'Adult') === 'Adult').length;
-  const kids = S.guests.filter(g => g.ageGroup === 'Kid').length;
-  const infants = S.guests.filter(g => g.ageGroup === 'Infant').length;
-  const households = new Set(S.guests.map(g => (g.household||'').trim()).filter(h => h)).size;
+  const adults = named.filter(g => (g.ageGroup||'Adult') === 'Adult').length;
+  const kids = named.filter(g => g.ageGroup === 'Kid').length;
+  const infants = named.filter(g => g.ageGroup === 'Infant').length;
+  const households = new Set(named.map(g => (g.household||'').trim()).filter(h => h)).size;
   const adultsEl = document.getElementById("g-adults");
   if (adultsEl) adultsEl.textContent = adults;
   const kidsEl = document.getElementById("g-kids");
@@ -2584,7 +2653,7 @@ function renderGuests() {
     // Table assignment — popover-based
     const tableCell = g.table
       ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--cream);border:1px solid var(--border-light);border-radius:100px;font-size:12px;font-weight:500;cursor:pointer" onclick="showTablePopover(event,${i},this)">${esc(g.table)} <span onclick="event.stopPropagation();unassignGuestTable(${i})" style="color:var(--stone);cursor:pointer;font-size:14px;line-height:1">&times;</span></span>`
-      : `<a href="#" onclick="event.preventDefault();showTablePopover(event,${i},this)" style="font-size:12px;color:var(--taupe);text-decoration:underline;cursor:pointer">Assign</a>`;
+      : `<button type="button" onclick="showTablePopover(event,${i},this)" style="font-size:12px;color:var(--taupe);text-decoration:underline;cursor:pointer">Assign</button>`;
 
     let row = `<tr>
     <td style="width:36px;text-align:center;color:var(--stone)">${i+1}</td>
@@ -2737,7 +2806,7 @@ function renderThankYous() {
 }
 
 function renderGuestRsvp() {
-  const guests = S.guests || [];
+  const guests = namedGuests(); // U4: draft rows don't count
 
   // Stats
   const total = guests.length;
@@ -3091,10 +3160,10 @@ function exportGuestPDF() {
     });
   });
 
-  // Stats
-  const total = S.guests.length;
-  const attending = S.guests.filter(g => g.rsvp === 'Attending').length;
-  const declined = S.guests.filter(g => g.rsvp === 'Declined').length;
+  // Stats (U4: named guests only)
+  const total = namedGuests().length;
+  const attending = namedGuests().filter(g => g.rsvp === 'Attending').length;
+  const declined = namedGuests().filter(g => g.rsvp === 'Declined').length;
   const pending = total - attending - declined;
   const dateStr = new Date().toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
 
@@ -3324,7 +3393,7 @@ function renderVendors() {
           <div style="flex:1"><label class="ob-label">Company Name</label><input class="ob-input" value="${esc(v.company)}" onblur="S.vendors[${i}].company=this.value;saveState()" style="padding:8px 12px;font-size:15px;font-family:var(--font-serif)"/></div>
           <button onclick="expandedVendor=-1;renderVendors()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--stone);margin-left:12px;align-self:flex-end">&#10005; Close</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div class="dash-two-col" style="gap:12px;margin-bottom:16px">
           <div><label class="ob-label">Contact</label><input class="ob-input" value="${esc(v.contact)}" onblur="S.vendors[${i}].contact=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Email</label><input class="ob-input" type="email" value="${esc(v.email)}" onblur="S.vendors[${i}].email=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Phone</label><input class="ob-input" type="tel" value="${esc(formatPhoneDisplay(v.phone))}" onblur="S.vendors[${i}].phone=this.value;saveState()" oninput="formatPhone(this)" style="padding:8px 12px;font-size:13px"/></div>
@@ -6297,10 +6366,10 @@ function generateNotifications() {
     notifs.push({type:'success', source:'checklist', icon:'&#10003;', title:'All tasks complete!', desc:'Your checklist is 100% done. Amazing work!'});
   }
 
-  // ─── Guest alerts ───
-  const totalGuests = S.guests.length;
-  const pending = S.guests.filter(g => g.rsvp === 'Pending').length;
-  const attending = S.guests.filter(g => g.rsvp === 'Attending').length;
+  // ─── Guest alerts ─── (U4: named guests only)
+  const totalGuests = namedGuests().length;
+  const pending = namedGuests().filter(g => g.rsvp === 'Pending').length;
+  const attending = namedGuests().filter(g => g.rsvp === 'Attending').length;
   const declined = S.guests.filter(g => g.rsvp === 'Declined').length;
 
   if (pending > 0) {
@@ -6631,7 +6700,8 @@ function renderNotifBudgetPie() {
     if (planned > 0 || actual > 0) catTotals.push({name: cat.cat, val: planned || actual});
   });
 
-  const totalBudget = S.totalBudget || 50000;
+  // U2: unset budget → base the pie on what's actually planned/spent, not a phantom 50k
+  const totalBudget = S.totalBudget || totalPlanned || totalActual || 0;
   const remaining = Math.max(0, totalBudget - totalActual);
   const colors = ['#9C8B7A','#B85450','#4A7A5B','#C4A035','#6B6560','#8B7355','#7A6B5C','#A69080'];
 
@@ -6676,9 +6746,9 @@ function renderNotifGuestRing() {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, 140, 140);
 
-  const total = S.guests.length;
-  const attending = S.guests.filter(g => g.rsvp === 'Attending').length;
-  const declined = S.guests.filter(g => g.rsvp === 'Declined').length;
+  const total = namedGuests().length;
+  const attending = namedGuests().filter(g => g.rsvp === 'Attending').length;
+  const declined = namedGuests().filter(g => g.rsvp === 'Declined').length;
   const pending = total - attending - declined;
 
   const cx = 70, cy = 70, r = 58;
@@ -7133,7 +7203,7 @@ function printQR() {
     .sub{font-size:12px;color:#9C8B7A;margin-top:16px}
     @media print{body{padding:0}}</style></head><body>
     <h1>Capture the Moment</h1><p>Scan to open your disposable camera</p>
-    <img src="${canvas.toDataURL()}" width="200" height="200"/>
+    <img src="${canvas.toDataURL()}" width="200" height="200" alt="QR code linking to this page"/>
     <p class="sub">Ivory · Disposable Camera</p>
     </body></html>`);
   win.document.close();
@@ -7284,8 +7354,8 @@ function obNext() {
     S.avatar1 = obAvatar1;
     S.avatar2 = obAvatar2;
     S.weddingDate = date;
-    const budgetVal = parseFloat(document.getElementById('ob-budget').value) || 50000;
-    S.totalBudget = budgetVal;
+    const budgetVal = parseFloat(document.getElementById('ob-budget').value);
+    S.totalBudget = (isFinite(budgetVal) && budgetVal > 0) ? budgetVal : null; // U2: skip = unset, not 50k
     saveState();
     updateObStep(2);
   } else if (obStep === 2) {
@@ -7661,7 +7731,7 @@ function updateSidebarBadges() {
   const clDone2 = S.checklist.filter(c=>c.done).length;
   const clTotal2 = S.checklist.length;
   document.getElementById("check-badge").textContent = (clTotal2?Math.round(clDone2/clTotal2*100):0)+"%";
-  document.getElementById("guest-badge").textContent = S.guests.length;
+  document.getElementById("guest-badge").textContent = namedGuests().length;
   const camData2 = loadCameraData();
   document.getElementById("camera-badge").textContent = camData2 ? (camData2.photos||[]).length : 0;
 }
@@ -7711,7 +7781,7 @@ function renderItinObStep() {
 
   // Build progress dots inline
   const dots = [1,2,3,4].map(n => `<div class="ob-dot ${n < itinObStep ? 'done' : n === itinObStep ? 'current' : ''}"></div>`).join('');
-  const skipLink = `<div style="text-align:center;margin-top:12px"><a href="#" onclick="event.preventDefault();S.itinerarySetupDone=true;saveState();closeItinOnboarding();renderTimeline()" style="font-size:12px;color:var(--stone);text-decoration:underline">Skip setup entirely</a></div>`;
+  const skipLink = `<div style="text-align:center;margin-top:12px"><button type="button" onclick="S.itinerarySetupDone=true;saveState();closeItinOnboarding();renderTimeline()" style="font-size:12px;color:var(--stone);text-decoration:underline">Skip setup entirely</button></div>`;
 
   if (itinObStep === 1) {
     con.innerHTML = `<div class="ob-progress">${dots}</div>
@@ -8921,6 +8991,9 @@ if (!window.IVORY_CONFIG) {
   checkPinOnLoad();
 }
 
+// U7: swap the static sidebar emoji for inline SVG icons on load
+paintSidebarIcons();
+
 // First-login detection: show onboarding if never completed.
 // In Supabase mode, defer onboarding until AFTER auth + cloud hydration
 // (handled inside hydrateFromCloud / createNewWeddingForUser) so the user
@@ -8929,9 +9002,46 @@ if (!window.IVORY_CONFIG && !S.onboardingDone) {
   setTimeout(showOnboarding, 400);
 }
 
+// ── Offline / CDN-failure handling ─────────────────────────────
+// If config.js loaded but the Supabase library didn't (ad-blocker,
+// offline, flaky network), the app used to silently open a fresh
+// local-only planner — a returning user would think their data was
+// deleted. Now: show a banner with Retry, and still run onboarding
+// for first-time users.
+function showOfflineBanner() {
+  if (document.getElementById('offline-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'offline-banner';
+  b.setAttribute('role', 'alert');
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:260;display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 44px 10px 16px;background:var(--charcoal);color:var(--ivory);font-size:13px;font-family:var(--font-sans);box-shadow:0 2px 12px rgba(0,0,0,0.15)';
+  b.innerHTML = '<span>Couldn\'t connect — your changes are being saved on this device only.</span>' +
+    '<button type="button" onclick="retrySupabaseConnect(this)" style="background:var(--gold,#b89664);color:var(--charcoal);border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer">Retry</button>' +
+    '<button type="button" onclick="document.getElementById(\'offline-banner\').remove()" aria-label="Dismiss" style="position:absolute;right:10px;background:none;border:none;color:var(--ivory);font-size:18px;cursor:pointer;line-height:1;padding:4px">&times;</button>';
+  document.body.appendChild(b);
+}
+function retrySupabaseConnect(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  s.onload = async () => {
+    if (window.supabase) {
+      const banner = document.getElementById('offline-banner');
+      if (banner) banner.remove();
+      try { await ivoryAuthInit(); } catch (e) { console.error('[Ivory] Auth init failed on retry:', e); }
+    } else if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+  };
+  s.onerror = () => { if (btn) { btn.disabled = false; btn.textContent = 'Retry'; } };
+  document.head.appendChild(s);
+}
+
 // Phase 9A: kick off Supabase auth + cloud hydration (async — non-blocking)
 (async () => {
   try { await ivoryAuthInit(); } catch (e) { console.error('[Ivory] Auth init failed:', e); }
+  // Config present but library missing = the CDN failed to load
+  if (window.IVORY_CONFIG && !window.supabase) {
+    showOfflineBanner();
+    if (!S.onboardingDone) setTimeout(showOnboarding, 600);
+  }
 })();
 </script>
 
@@ -9030,7 +9140,7 @@ if (!window.IVORY_CONFIG && !S.onboardingDone) {
         <label class="ob-label">Total Budget</label>
         <div style="position:relative">
           <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:var(--stone);font-size:15px;pointer-events:none">$</span>
-          <input class="ob-input" id="ob-budget" type="number" min="0" step="1000" value="50000" style="padding-left:32px" />
+          <input class="ob-input" id="ob-budget" type="number" min="0" step="1000" value="" placeholder="50000" style="padding-left:32px" />
         </div>
       </div>
 
