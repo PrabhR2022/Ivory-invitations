@@ -993,7 +993,14 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
           <p style="font-size:14px;font-weight:600;color:var(--ivory);margin-bottom:2px">Share with your guests</p>
           <p style="font-size:12px;color:rgba(250,250,247,0.5);margin-bottom:14px">Each link is unique to your wedding. Guests don't need an account.</p>
           <div style="display:grid;gap:8px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:rgba(184,150,100,0.15);border:1px solid rgba(184,150,100,0.35);border-radius:10px;padding:10px 12px">
+              <span style="font-size:13px;color:var(--ivory)"><strong>&#11088; Guest Hub — one link for everything.</strong> RSVP, registry, camera &amp; hotel blocks on a single page. Put this (or its QR code) on your invitations.</span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="openGuestPreview('ivory-guest-hub.html')">Preview</button>
+                <button class="btn btn-sm" style="background:var(--gold);color:var(--charcoal);font-weight:600" onclick="copyHubLink(this)">Copy Link</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid rgba(250,250,247,0.1);padding-top:8px">
               <span style="font-size:13px;color:var(--ivory)">&#9993;&#65039; RSVP page — guests find their name, reply, pick a meal</span>
               <div style="display:flex;gap:6px">
                 <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="openGuestPreview('ivory-rsvp.html')">Preview</button>
@@ -1024,6 +1031,16 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
           </div>
           <p style="font-size:12px;color:var(--stone);margin-bottom:12px">Replies guests submitted on your RSVP page. Click Apply to merge each into your guest list.</p>
           <div id="online-rsvp-list"></div>
+        </div>
+
+        <!-- RSVP chase list — who still hasn't replied -->
+        <div class="card" id="rsvp-chase-card" style="display:none;margin-bottom:16px;border:1px solid rgba(184,150,100,0.3);background:rgba(184,150,100,0.05)">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <span>&#128276; Still waiting on <span id="rsvp-chase-count" style="color:var(--red)">0</span></span>
+            <button class="btn btn-sm btn-dark" onclick="copyChaseList(this)">Copy chase list</button>
+          </div>
+          <p style="font-size:12px;color:var(--stone);margin-bottom:10px">10&ndash;20% of guests typically never RSVP without a nudge. Copy this list and send a quick group text &mdash; a reminder boosts responses by up to 20%.</p>
+          <div id="rsvp-chase-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
         </div>
 
         <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:16px">
@@ -1141,6 +1158,18 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
           <div class="tbl-wrap">
             <table><thead><tr><th style="min-width:120px">Category</th><th style="min-width:100px">Status</th><th style="min-width:130px">Company</th><th style="text-align:right;min-width:80px">Cost</th><th style="text-align:right;min-width:70px">Deposit</th><th style="min-width:110px">Payment Due</th><th style="width:30px"></th><th style="width:30px"></th></tr></thead>
             <tbody id="vendor-body"></tbody></table>
+          </div>
+        </div>
+
+        <!-- Final-week tip planner -->
+        <div class="card" id="tip-planner-card" style="display:none;border:1px dashed rgba(184,150,100,0.4)">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <span>&#128176; Tip Planner <span class="count" id="tip-total-badge">$0 cash needed</span></span>
+          </div>
+          <p style="font-size:12px;color:var(--stone);margin-bottom:12px">Vendor tips are typically $800&ndash;$2,000 and are handed out in cash during the final week &mdash; the most-missed budget item. Plan envelopes now; check them off as you prepare each one. Included in your printed Day-of Packet.</p>
+          <div class="tbl-wrap">
+            <table><thead><tr><th>Vendor</th><th>Guidance</th><th style="width:110px">Tip ($)</th><th style="width:100px">Envelope ready</th></tr></thead>
+            <tbody id="tip-planner-body"></tbody></table>
           </div>
         </div>
       </div>
@@ -1451,6 +1480,15 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
             <a href="https://ivoryinvitations.ca/pages/contact" target="_blank" rel="noopener" class="btn btn-dark" style="white-space:nowrap">Request a quote &rarr;</a>
           </div>
         </div>
+      </div>
+
+      <!-- Invitation quantity calculator — derived from the guest list -->
+      <div class="card" id="invite-calc-card" style="display:none;margin-bottom:14px">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <span>&#128221; How many invitations do you need?</span>
+          <button class="btn btn-sm btn-dark" onclick="applyInviteCalc()">Use these quantities</button>
+        </div>
+        <div id="invite-calc-body" style="font-size:13px;color:var(--stone)"></div>
       </div>
 
       <div class="card">
@@ -1909,7 +1947,7 @@ function showGuestSub(sub) {
   document.getElementById('guest-sub-rsvp').classList.toggle('active', sub==='rsvp');
   const tyEl = document.getElementById('guest-sub-thankyous'); if (tyEl) tyEl.classList.toggle('active', sub==='thankyous');
   document.getElementById('guest-sub-floorplan').classList.toggle('active', sub==='floorplan');
-  if (sub === 'rsvp') { renderGuestRsvp(); fetchAndRenderOnlineRsvps(); }
+  if (sub === 'rsvp') { renderGuestRsvp(); fetchAndRenderOnlineRsvps(); renderRsvpChaseList(); }
   if (sub === 'thankyous') renderThankYous();
   if (sub === 'floorplan') renderFloorPlan();
 }
@@ -2847,10 +2885,38 @@ function _copyGuestLink(btn, page) {
     setTimeout(() => btn.textContent = orig, 2000);
   });
 }
+function copyHubLink(btn)      { _copyGuestLink(btn, 'ivory-guest-hub.html'); }
 function copyRsvpLink(btn)     { _copyGuestLink(btn, 'ivory-rsvp.html'); }
 function copyRegistryLink(btn) { _copyGuestLink(btn, 'ivory-wedding-registry.html'); }
 function copyCamLink(btn)      { _copyGuestLink(btn, 'ivory-disposable-camera.html'); }
 function openGuestPreview(page){ window.open(guestLink(page), '_blank'); }
+
+// ── RSVP chase list — guests still marked Pending ──
+function renderRsvpChaseList() {
+  const card = document.getElementById('rsvp-chase-card');
+  const list = document.getElementById('rsvp-chase-list');
+  const countEl = document.getElementById('rsvp-chase-count');
+  if (!card || !list) return;
+  const pending = (S.guests || []).filter(g => g.name && (!g.rsvp || g.rsvp === 'Pending'));
+  if (pending.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  if (countEl) countEl.textContent = pending.length + ' guest' + (pending.length !== 1 ? 's' : '');
+  list.innerHTML = pending.map(g =>
+    `<span style="padding:4px 12px;background:white;border:1px solid var(--border-light);border-radius:100px;font-size:12px">${esc(g.name)}${g.phone ? ` <span style="color:var(--stone)">· ${esc(formatPhoneDisplay(g.phone))}</span>` : ''}</span>`
+  ).join('');
+}
+function copyChaseList(btn) {
+  const pending = (S.guests || []).filter(g => g.name && (!g.rsvp || g.rsvp === 'Pending'));
+  if (pending.length === 0) return;
+  const rsvpUrl = currentShareToken ? guestLink('ivory-rsvp.html') : '';
+  const lines = pending.map(g => '• ' + g.name + (g.phone ? ' — ' + formatPhoneDisplay(g.phone) : ''));
+  const text = 'Still waiting on RSVPs from:\n' + lines.join('\n') +
+    (rsvpUrl ? '\n\nRSVP link to resend: ' + rsvpUrl : '');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent; btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
 
 // ── Online RSVP inbox — submissions guests made on the RSVP page ──
 async function fetchAndRenderOnlineRsvps() {
@@ -3323,6 +3389,51 @@ function renderVendors() {
   }).join("");
   // Show regional pricing card on Vendors tab
   renderRegionalPricing();
+  renderTipPlanner();
+}
+
+// ── Final-week tip planner ──────────────────────────────────────
+// Guidance reflects common Ontario/Canada norms. Tips are stored on
+// the vendor row (v.tip, v.tipReady) so they ride the existing sync.
+const TIP_GUIDANCE = {
+  'Caterer':        'Often included as gratuity — check your contract first',
+  'Venue':          'Usually included in service fee — check contract',
+  'DJ':             '$50–$200',
+  'Band':           '$25–$50 per musician',
+  'Photographer':   'Optional — $100–$200 if they went above & beyond',
+  'Videographer':   'Optional — $100–$200',
+  'Florist':        'Optional — 10–15% for delivery/setup crew',
+  'Hair & Makeup':  '15–20% (like a salon visit)',
+  'Officiant':      '$50–$100 (or donation if religious)',
+  'Transportation': '15–20% if not already on the bill',
+  'Wedding Planner':'Optional — 10–15% or a thoughtful gift',
+  'Baker':          'Optional — $25–$50 for delivery/setup'
+};
+function renderTipPlanner() {
+  const card = document.getElementById('tip-planner-card');
+  const body = document.getElementById('tip-planner-body');
+  if (!card || !body) return;
+  const vendors = (S.vendors || []).map((v, i) => ({ v, i })).filter(x => x.v.company);
+  if (vendors.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  let total = 0;
+  body.innerHTML = vendors.map(({ v, i }) => {
+    const amt = parseFloat(v.tip) || 0;
+    total += amt;
+    const guidance = TIP_GUIDANCE[v.cat] || 'Optional — 10–15% for great service';
+    return `<tr>
+      <td><strong>${esc(v.company)}</strong><div style="font-size:11px;color:var(--stone)">${esc(v.cat || '')}</div></td>
+      <td style="font-size:11px;color:var(--stone)">${esc(guidance)}</td>
+      <td><input type="number" min="0" step="5" value="${esc(v.tip || '')}" placeholder="0"
+        style="width:90px;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;text-align:right"
+        onchange="S.vendors[${i}].tip=this.value;saveState();renderTipPlanner()"/></td>
+      <td style="text-align:center"><input type="checkbox" ${v.tipReady ? 'checked' : ''}
+        style="width:16px;height:16px;cursor:pointer"
+        onchange="S.vendors[${i}].tipReady=this.checked;saveState()"/></td>
+    </tr>`;
+  }).join('');
+  const badge = document.getElementById('tip-total-badge');
+  if (badge) badge.textContent = money(total) + ' cash needed';
 }
 
 // Phase 8 helpers
@@ -4232,6 +4343,16 @@ function printDayOfPacket() {
     <td>${esc(formatPhoneDisplay(c.phone||''))}</td>
   </tr>`).join('');
 
+  // Tip envelopes (from the Vendors tab tip planner)
+  const tipVendors = (S.vendors||[]).filter(v => v.company && parseFloat(v.tip) > 0);
+  const tipTotal = tipVendors.reduce((s,v) => s + (parseFloat(v.tip)||0), 0);
+  const tipRows = tipVendors.map(v => `<tr>
+    <td>${esc(v.cat||'')}</td>
+    <td><strong>${esc(v.company)}</strong></td>
+    <td style="text-align:right">${money(parseFloat(v.tip)||0)}</td>
+    <td style="width:110px;text-align:center">${v.tipReady ? '&#10003; ready' : '&#9634;'}</td>
+  </tr>`).join('');
+
   // Meal breakdown
   const mealCounts = {};
   (S.guests||[]).forEach(g => {
@@ -4271,6 +4392,9 @@ function printDayOfPacket() {
 
       <h2>Emergency Contacts</h2>
       ${contactRows ? `<table><tbody>${contactRows}</tbody></table>` : '<p style="font-size:12px;color:#666">No contacts saved.</p>'}
+
+      ${tipRows ? `<h2>Tip Envelopes — ${money(tipTotal)} cash total</h2>
+      <table><thead><tr><th>Category</th><th>Vendor</th><th style="text-align:right">Amount</th><th style="text-align:center">Envelope</th></tr></thead><tbody>${tipRows}</tbody></table>` : ''}
 
       <div class="grid2">
         <div>
@@ -5298,7 +5422,56 @@ function removeRegistryItem(id) {
   renderRegistry();
 }
 
+// ── Invitation quantity calculator ─────────────────────────────
+// Industry rules: one invitation per HOUSEHOLD (guests with no
+// household get their own), order 10–15% extra (reprints of 10 cost
+// nearly as much as the original run), ~5 extra save-the-dates.
+function computeInviteCounts() {
+  const guests = (S.guests || []).filter(g => g.name);
+  const households = new Set();
+  let singles = 0;
+  guests.forEach(g => {
+    const hh = (g.household || '').trim().toLowerCase();
+    if (hh) households.add(hh); else singles++;
+  });
+  const base = households.size + singles;
+  const extras = Math.max(5, Math.ceil(base * 0.12)); // 12% or min 5
+  return { guests: guests.length, households: households.size, singles, base, extras, recommended: base + extras };
+}
+
+function renderInviteCalc() {
+  const card = document.getElementById('invite-calc-card');
+  const body = document.getElementById('invite-calc-body');
+  if (!card || !body) return;
+  const c = computeInviteCounts();
+  if (c.guests === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:10px">
+      <div style="padding:10px 12px;background:var(--cream);border-radius:10px;text-align:center"><div style="font-family:var(--font-serif);font-size:22px;color:var(--charcoal)">${c.guests}</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Guests</div></div>
+      <div style="padding:10px 12px;background:var(--cream);border-radius:10px;text-align:center"><div style="font-family:var(--font-serif);font-size:22px;color:var(--charcoal)">${c.base}</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Invites (1/household)</div></div>
+      <div style="padding:10px 12px;background:var(--cream);border-radius:10px;text-align:center"><div style="font-family:var(--font-serif);font-size:22px;color:var(--charcoal)">+${c.extras}</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Extras (12%)</div></div>
+      <div style="padding:10px 12px;background:rgba(184,150,100,0.15);border:1px solid rgba(184,150,100,0.3);border-radius:10px;text-align:center"><div style="font-family:var(--font-serif);font-size:22px;color:var(--charcoal)">${c.recommended}</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Order this many</div></div>
+    </div>
+    <p style="font-size:11px;margin:0">${c.households} household${c.households!==1?'s':''} + ${c.singles} individual guest${c.singles!==1?'s':''}. Extras cover addressing mistakes, mail loss, late adds and keepsakes &mdash; a reprint of 10 costs nearly as much as the original run. &ldquo;Use these quantities&rdquo; fills the invitation, envelope and RSVP rows below.</p>`;
+}
+
+function applyInviteCalc() {
+  const c = computeInviteCounts();
+  if (c.guests === 0) return;
+  const perHousehold = ['Save-the-Dates','Invitations','Invitation Envelopes','RSVP Cards','RSVP Envelopes','Details Cards'];
+  let applied = 0;
+  (S.stationery || []).forEach(r => {
+    if (perHousehold.includes((r.item || '').trim())) { r.qty = String(c.recommended); applied++; }
+  });
+  if (applied === 0) { alert('No matching rows found (Save-the-Dates, Invitations, envelopes, RSVP cards). Add them back with + Add Item.'); return; }
+  if (typeof logActivity === 'function') logActivity('Stationery', 'set quantities', c.recommended + ' via calculator');
+  saveState();
+  renderStationery();
+}
+
 function renderStationery() {
+  renderInviteCalc();
   const statuses = ["","Not Started","Designing","Ordered","Received","Addressed","Sent"];
   document.getElementById("stationery-body").innerHTML = S.stationery.map((r,i)=>{
     const url = stationeryShopUrl(r.item, r.qty);
