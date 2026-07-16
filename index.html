@@ -668,10 +668,9 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
     <div style="display:flex;gap:4px" id="topbar-avatars"></div>
   </div>
   <div class="topbar-links">
-    <a href="https://ivoryinvitations.ca">Home</a>
-    <a href="ivory-wedding-registry.html">Registry</a>
-    <a href="ivory-rsvp.html">RSVP</a>
+    <a href="https://ivoryinvitations.ca">Shop</a>
     <a href="ivory-photography-shotlist.html">Shot List</a>
+    <button type="button" id="topbar-signin" onclick="showAuthModal()" style="display:none;background:var(--charcoal);color:var(--ivory);border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Sign in</button>
     <button type="button" onclick="showPinSetup()" title="PIN Protection" style="font-size:14px">&#128274;</button>
   </div>
 </div>
@@ -6354,7 +6353,12 @@ function generateNotifications() {
   const overdueTasks = S.checklist.filter(c => !c.done && c.priority === 'High');
   const pct = totalTasks > 0 ? Math.round(doneCount / totalTasks * 100) : 0;
 
-  if (overdueTasks.length > 0) {
+  // The default checklist ships with high-priority items, so this would scream
+  // URGENT at a brand-new user. Only raise it once there's real time pressure
+  // (wedding within 90 days) or they've actually started using the checklist.
+  const checklistEngaged = doneCount > 0;
+  const weddingSoon = daysUntilWedding !== null && daysUntilWedding <= 90;
+  if (overdueTasks.length > 0 && (checklistEngaged || weddingSoon)) {
     notifs.push({type:'urgent', source:'checklist', icon:'&#10003;', title:`${overdueTasks.length} high-priority task${overdueTasks.length!==1?'s':''} incomplete`, desc:`Don\'t forget: ${overdueTasks.slice(0,3).map(t=>t.task).join(', ')}${overdueTasks.length>3 ? ' and more...' : ''}`});
   }
 
@@ -8172,6 +8176,7 @@ async function ivoryAuthInit() {
   supa.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session && !cloudHydrated) {
       hideAuthModal();
+      localStorage.removeItem('ivory_local_mode');
       currentUser = session.user;
       updateAuthUserChip();
       // Phase 9B: check for invite token in URL first; if present, accept it.
@@ -8198,7 +8203,10 @@ async function ivoryAuthInit() {
 
   const { data: { session } } = await supa.auth.getSession();
   if (!session) {
-    showAuthModal();
+    // Returning "try it first" users go straight to their local plan;
+    // the topbar Sign-in button remains available.
+    if (localStorage.getItem('ivory_local_mode') !== '1') showAuthModal();
+    updateAuthUserChip();
     return false;
   }
   currentUser = session.user;
@@ -8412,7 +8420,22 @@ function setSyncStatus(status) {
 // Auth modal show/hide
 function showAuthModal() {
   const m = document.getElementById('ivory-auth-overlay');
-  if (m) { m.style.display = 'flex'; m.classList.add('active'); }
+  if (!m) {
+    // The async auth init can resolve before the parser reaches the overlay
+    // markup near the end of this file — retry once the DOM is complete
+    // (unless a sign-in won the race in the meantime).
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => { if (!currentUser) showAuthModal(); }, { once: true });
+    }
+    return;
+  }
+  m.style.display = 'flex'; m.classList.add('active');
+}
+function authTryLocal() {
+  // "Try it first" — plan on this device only; the wall stays away on return visits.
+  localStorage.setItem('ivory_local_mode', '1');
+  hideAuthModal();
+  if (!S.onboardingDone) setTimeout(showOnboarding, 200);
 }
 function hideAuthModal() {
   const m = document.getElementById('ivory-auth-overlay');
@@ -8965,10 +8988,12 @@ if (_origLogActivity_phase9b) {
   };
 }
 
-// Show user email in header chip
+// Show user email in header chip; topbar Sign-in button shows only when signed out
 function updateAuthUserChip() {
   const chip = document.getElementById('auth-user-chip');
   const emailEl = document.getElementById('auth-user-email');
+  const signinBtn = document.getElementById('topbar-signin');
+  if (signinBtn) signinBtn.style.display = (currentUser || !window.IVORY_CONFIG) ? 'none' : 'inline-block';
   if (!chip || !emailEl) return;
   if (currentUser && currentUser.email) {
     chip.style.display = 'block';
@@ -9038,9 +9063,21 @@ function retrySupabaseConnect(btn) {
 (async () => {
   try { await ivoryAuthInit(); } catch (e) { console.error('[Ivory] Auth init failed:', e); }
   // Config present but library missing = the CDN failed to load
-  if (window.IVORY_CONFIG && !window.supabase) {
-    showOfflineBanner();
-    if (!S.onboardingDone) setTimeout(showOnboarding, 600);
+  if (window.IVORY_CONFIG && !window.supabase) showOfflineBanner();
+  // No cloud session and no auth wall showing (local-only mode, CDN failure, or a
+  // returning "try it first" user): welcome brand-new users with the setup wizard.
+  // Signed-in users get it from the cloud hydrate/create paths instead.
+  if (!currentUser && !S.onboardingDone) {
+    const tryShowWizard = () => {
+      const wall = document.getElementById('ivory-auth-overlay');
+      const wallVisible = wall && wall.style.display !== 'none';
+      if (!currentUser && !wallVisible && !S.onboardingDone && document.getElementById('ob-overlay')) showOnboarding();
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => setTimeout(tryShowWizard, 400), { once: true });
+    } else {
+      setTimeout(tryShowWizard, 400);
+    }
   }
 })();
 </script>
@@ -9229,8 +9266,13 @@ function retrySupabaseConnect(btn) {
   <div class="ob-modal">
     <div class="auth-brand">Ivory</div>
     <div class="auth-brand-sub">Wedding Planner</div>
-    <h1 style="font-family:var(--font-serif);font-size:28px;text-align:center;margin-bottom:6px">Sign in to your wedding</h1>
-    <p style="text-align:center;color:var(--stone);font-size:14px;margin-bottom:28px">Plan together. Your data syncs across every device you sign in on.</p>
+    <h1 style="font-family:var(--font-serif);font-size:28px;text-align:center;margin-bottom:6px">Plan your wedding — free</h1>
+    <p style="text-align:center;color:var(--stone);font-size:14px;margin-bottom:18px">Everything in one place, synced with your partner on every device. Free forever — no ads, and we never sell your data.</p>
+    <div style="display:flex;flex-direction:column;gap:7px;margin:0 auto 26px;max-width:330px">
+      <div style="display:flex;gap:10px;font-size:13px;line-height:1.5"><span style="color:var(--gold);flex-shrink:0">&#10003;</span><span>Guest list &amp; online RSVPs your guests answer from their phone</span></div>
+      <div style="display:flex;gap:10px;font-size:13px;line-height:1.5"><span style="color:var(--gold);flex-shrink:0">&#10003;</span><span>A budget built for Ontario — HST, tips &amp; the hidden costs</span></div>
+      <div style="display:flex;gap:10px;font-size:13px;line-height:1.5"><span style="color:var(--gold);flex-shrink:0">&#10003;</span><span>Seating, timeline &amp; a printable day-of packet</span></div>
+    </div>
 
     <!-- OAuth buttons -->
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
@@ -9277,6 +9319,11 @@ function retrySupabaseConnect(btn) {
     </details>
 
     <p id="auth-msg" style="text-align:center;font-size:12px;margin-top:16px;min-height:16px"></p>
+
+    <div style="text-align:center;margin-top:22px;padding-top:18px;border-top:1px solid var(--border-light)">
+      <button type="button" onclick="authTryLocal()" style="background:none;border:none;color:var(--charcoal);font-size:13px;font-weight:500;cursor:pointer;text-decoration:underline">Try it first — no account needed</button>
+      <p style="font-size:11px;color:var(--stone);margin-top:6px">Your plan saves on this device. Create a free account anytime to sync &amp; invite your partner.</p>
+    </div>
 
     <p style="text-align:center;font-size:11px;color:var(--stone);margin-top:14px">
       By signing in you agree to keep your wedding data in our secure cloud. We never share your data with vendors or third parties.
