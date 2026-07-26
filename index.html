@@ -511,12 +511,30 @@ table input[type="number"]{text-align:right;width:90px}
 .ob-overlay.active{opacity:1;pointer-events:auto}
 .ob-modal{background:var(--ivory);border-radius:20px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.2);transform:translateY(24px) scale(0.97);transition:transform 400ms var(--ease);padding:40px 36px 32px}
 .ob-overlay.active .ob-modal{transform:translateY(0) scale(1)}
-/* Phase 9A — full-page auth (overrides .ob-overlay dim/blur) */
+/* Phase 9A — full-page auth (overrides .ob-overlay dim/blur).
+   Styled in the print-suite language: Playfair, hairlines, letterspaced caps. */
 .auth-page{background:var(--ivory)!important;backdrop-filter:none!important;align-items:flex-start;overflow-y:auto;padding:0}
-.auth-page .ob-modal{background:transparent;box-shadow:none;border-radius:0;max-width:460px;max-height:none;padding:80px 32px 48px;overflow:visible}
-.auth-page .auth-brand{font-family:var(--font-serif);font-size:42px;text-align:center;letter-spacing:0.02em;color:var(--charcoal);margin-bottom:8px}
-.auth-page .auth-brand-sub{text-align:center;color:var(--stone);font-size:12px;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:48px}
-@media(max-width:560px){.auth-page .ob-modal{padding:48px 22px 32px}.auth-page .auth-brand{font-size:34px}}
+.auth-page .ob-modal{background:transparent;box-shadow:none;border-radius:0;max-width:432px;max-height:none;padding:92px 32px 60px;overflow:visible}
+.auth-page .auth-brand{font-family:'Playfair Display',Georgia,serif;font-weight:400;font-size:31px;text-align:center;letter-spacing:0.34em;padding-left:0.34em;text-transform:uppercase;color:var(--charcoal);margin-bottom:12px}
+.auth-page .auth-brand-sub{display:flex;align-items:center;justify-content:center;gap:16px;color:var(--taupe);font-size:9px;text-transform:uppercase;letter-spacing:0.42em;padding-left:0.42em;margin-bottom:60px}
+.auth-page .auth-brand-sub::before,.auth-page .auth-brand-sub::after{content:'';height:1px;background:var(--border);flex:0 1 56px}
+.auth-page .auth-head{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:400;font-size:26px;line-height:1.35;text-align:center;color:var(--charcoal);margin:0 0 16px}
+.auth-page .auth-sub{text-align:center;color:var(--stone);font-size:13.5px;line-height:1.75;margin:0 auto 28px;max-width:330px}
+.auth-page .auth-features{text-align:center;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--charcoal);line-height:2.3;margin:0 0 44px}
+.auth-page .auth-features .dot{color:var(--gold);padding:0 7px}
+.auth-page .auth-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 16px;border:1px solid var(--border);border-radius:2px;background:white;font-size:13px;letter-spacing:0.04em;color:var(--charcoal);cursor:pointer;font-family:inherit;transition:background 140ms,border-color 140ms}
+.auth-page .auth-btn:hover{background:var(--cream);border-color:var(--taupe)}
+.auth-page .auth-cta{background:var(--charcoal);border-color:var(--charcoal);color:var(--ivory);text-transform:uppercase;font-size:10.5px;letter-spacing:0.28em;padding-left:calc(16px + 0.28em);font-weight:500}
+.auth-page .auth-cta:hover{background:#000;border-color:#000;color:var(--ivory)}
+.auth-page .auth-input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:2px;font-size:14px;font-family:inherit;background:white;color:var(--charcoal)}
+.auth-page .auth-input:focus{outline:none;border-color:var(--taupe)}
+.auth-page .auth-or{display:flex;align-items:center;gap:16px;margin:24px 0;color:var(--taupe);font-size:9px;text-transform:uppercase;letter-spacing:0.32em}
+.auth-page .auth-or::before,.auth-page .auth-or::after{content:'';flex:1;height:1px;background:var(--border-light)}
+.auth-page .auth-try{background:none;border:none;cursor:pointer;font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:16px;color:var(--charcoal);border-bottom:1px solid var(--gold);padding:0 3px 4px;transition:color 140ms}
+.auth-page .auth-try:hover{color:var(--gold)}
+.auth-page .auth-trust{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;font-size:8.5px;letter-spacing:0.26em;text-transform:uppercase;color:var(--taupe);margin-top:48px}
+.auth-page .auth-trust .dot{color:var(--gold)}
+@media(max-width:560px){.auth-page .ob-modal{padding:60px 24px 44px}.auth-page .auth-brand{font-size:24px}.auth-page .auth-head{font-size:23px}.auth-page .auth-features{font-size:8.5px;letter-spacing:0.14em}.auth-page .auth-features .dot{padding:0 5px}}
 /* U3: reusable two-column grid that stacks on phones (inline styles can't be
    overridden by media queries, so these grids use this class instead) */
 .dash-two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -9258,68 +9276,57 @@ function retrySupabaseConnect(btn) {
 <div class="ob-overlay auth-page" id="ivory-auth-overlay" style="display:none">
   <div class="ob-modal">
     <div class="auth-brand">Ivory</div>
-    <div class="auth-brand-sub">Wedding Planner</div>
-    <h1 style="font-family:var(--font-serif);font-size:28px;text-align:center;margin-bottom:6px">Plan your wedding — free</h1>
-    <p style="text-align:center;color:var(--stone);font-size:14px;margin-bottom:18px">Everything in one place, synced with your partner on every device. Free forever — no ads, and we never sell your data.</p>
-    <div style="display:flex;flex-direction:column;gap:7px;margin:0 auto 26px;max-width:330px">
-      <div style="display:flex;gap:10px;font-size:13px;line-height:1.5"><span style="color:var(--gold);flex-shrink:0">&#10003;</span><span>Guest list &amp; online RSVPs your guests answer from their phone</span></div>
-      <div style="display:flex;gap:10px;font-size:13px;line-height:1.5"><span style="color:var(--gold);flex-shrink:0">&#10003;</span><span>A budget built for Ontario — HST, tips &amp; the hidden costs</span></div>
-      <div style="display:flex;gap:10px;font-size:13px;line-height:1.5"><span style="color:var(--gold);flex-shrink:0">&#10003;</span><span>Seating, timeline &amp; a printable day-of packet</span></div>
-    </div>
+    <div class="auth-brand-sub"><span>Wedding Planner</span></div>
+
+    <h1 class="auth-head">Plan your wedding, beautifully.</h1>
+    <p class="auth-sub">Every detail of your day in one place — together with your partner, on every device. Always complimentary.</p>
+    <p class="auth-features"><span style="white-space:nowrap">Guest list &amp; online RSVPs</span><span class="dot">&middot;</span><span style="white-space:nowrap">Seating &amp; timeline</span><br/><span style="white-space:nowrap">Ontario-honest budget</span><span class="dot">&middot;</span><span style="white-space:nowrap">Day-of packet</span></p>
 
     <!-- OAuth buttons -->
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
-      <button onclick="authGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:11px 16px;border:1px solid var(--border);border-radius:10px;background:white;font-size:14px;cursor:pointer;font-weight:500">
-        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.04a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.48a4.8 4.8 0 0 1 0-3.04V5.37H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.72c1.16 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.37L4.5 7.44a4.8 4.8 0 0 1 4.48-2.72z"/></svg>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="auth-btn" onclick="authGoogle()">
+        <svg width="17" height="17" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.04a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.48a4.8 4.8 0 0 1 0-3.04V5.37H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.72c1.16 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.37L4.5 7.44a4.8 4.8 0 0 1 4.48-2.72z"/></svg>
         Continue with Google
       </button>
-      <button onclick="authApple()" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:11px 16px;border:1px solid var(--border);border-radius:10px;background:white;font-size:14px;cursor:pointer;font-weight:500">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="#000"><path d="M11.18 8.5c-.02-2 1.64-3 1.7-3.04-.93-1.36-2.38-1.55-2.9-1.57-1.23-.13-2.4.72-3.03.72-.62 0-1.59-.7-2.61-.69-1.34.02-2.59.78-3.28 1.97-1.4 2.43-.36 6.02 1.01 7.99.67.96 1.46 2.05 2.49 2.01 1-.04 1.38-.65 2.59-.65s1.55.65 2.6.62c1.08-.02 1.76-.98 2.42-1.95.76-1.12 1.07-2.21 1.09-2.27-.02-.01-2.08-.8-2.1-3.18zM9.32 2.55C9.86 1.88 10.23 1 10.13 0 9.3.04 8.27.56 7.7 1.21c-.51.58-.96 1.5-.84 2.36.93.07 1.89-.47 2.46-1.02z"/></svg>
+      <button class="auth-btn" onclick="authApple()">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="#000"><path d="M11.18 8.5c-.02-2 1.64-3 1.7-3.04-.93-1.36-2.38-1.55-2.9-1.57-1.23-.13-2.4.72-3.03.72-.62 0-1.59-.7-2.61-.69-1.34.02-2.59.78-3.28 1.97-1.4 2.43-.36 6.02 1.01 7.99.67.96 1.46 2.05 2.49 2.01 1-.04 1.38-.65 2.59-.65s1.55.65 2.6.62c1.08-.02 1.76-.98 2.42-1.95.76-1.12 1.07-2.21 1.09-2.27-.02-.01-2.08-.8-2.1-3.18zM9.32 2.55C9.86 1.88 10.23 1 10.13 0 9.3.04 8.27.56 7.7 1.21c-.51.58-.96 1.5-.84 2.36.93.07 1.89-.47 2.46-1.02z"/></svg>
         Continue with Apple
       </button>
     </div>
 
     <!-- Divider -->
-    <div style="display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--stone);font-size:11px;text-transform:uppercase;letter-spacing:0.08em">
-      <div style="flex:1;height:1px;background:var(--border-light)"></div>
-      <span>or with email</span>
-      <div style="flex:1;height:1px;background:var(--border-light)"></div>
-    </div>
+    <div class="auth-or"><span>or with email</span></div>
 
     <!-- Email + OTP -->
     <div style="display:flex;flex-direction:column;gap:10px">
-      <input id="auth-email" type="email" placeholder="you@email.com" autocomplete="email"
-        style="padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"/>
-      <button onclick="authSendOtp()" style="padding:11px 16px;background:var(--charcoal);color:var(--ivory);border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer">
-        Email me a 6-digit code
-      </button>
+      <input id="auth-email" class="auth-input" type="email" placeholder="you@email.com" autocomplete="email"/>
+      <button class="auth-btn auth-cta" onclick="authSendOtp()">Email me a sign-in code</button>
       <div id="auth-pin-row" style="display:none;gap:8px">
-        <input id="auth-pin" type="text" inputmode="numeric" pattern="[0-9]{6,8}" maxlength="8" placeholder="Enter code"
-          style="flex:1;padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;text-align:center;letter-spacing:0.3em"/>
-        <button onclick="authVerifyOtp()" style="padding:11px 18px;background:var(--green);color:white;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer">Verify</button>
+        <input id="auth-pin" class="auth-input" type="text" inputmode="numeric" pattern="[0-9]{6,8}" maxlength="8" placeholder="Enter code" style="flex:1;text-align:center;letter-spacing:0.3em"/>
+        <button class="auth-btn" onclick="authVerifyOtp()" style="width:auto;flex:0 0 auto;padding:12px 20px">Verify</button>
       </div>
     </div>
 
     <!-- Password fallback -->
-    <details style="margin-top:18px">
-      <summary style="cursor:pointer;font-size:12px;color:var(--stone);text-align:center">Use password instead</summary>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <input id="auth-pwd" type="password" placeholder="Password" autocomplete="current-password"
-          style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit"/>
-        <button onclick="authPasswordIn()" style="padding:10px 16px;background:var(--taupe);color:white;border:none;border-radius:10px;font-size:13px;cursor:pointer">Sign in</button>
+    <details style="margin-top:20px">
+      <summary style="cursor:pointer;font-size:11px;color:var(--stone);text-align:center;letter-spacing:0.08em">Use a password instead</summary>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <input id="auth-pwd" class="auth-input" type="password" placeholder="Password" autocomplete="current-password" style="flex:1"/>
+        <button class="auth-btn" onclick="authPasswordIn()" style="width:auto;flex:0 0 auto;padding:12px 20px">Sign in</button>
       </div>
-      <p style="font-size:11px;color:var(--stone);margin-top:6px">If no account exists, one will be created.</p>
+      <p style="font-size:11px;color:var(--stone);margin-top:8px;text-align:center">If no account exists, one will be created.</p>
     </details>
 
     <p id="auth-msg" style="text-align:center;font-size:12px;margin-top:16px;min-height:16px"></p>
 
-    <div style="text-align:center;margin-top:22px;padding-top:18px;border-top:1px solid var(--border-light)">
-      <button type="button" onclick="authTryLocal()" style="background:none;border:none;color:var(--charcoal);font-size:13px;font-weight:500;cursor:pointer;text-decoration:underline">Try it first — no account needed</button>
-      <p style="font-size:11px;color:var(--stone);margin-top:6px">Your plan saves on this device. Create a free account anytime to sync &amp; invite your partner.</p>
+    <div style="text-align:center;margin-top:36px;padding-top:30px;border-top:1px solid var(--border-light)">
+      <button type="button" class="auth-try" onclick="authTryLocal()">Try it first — no account needed</button>
+      <p style="font-size:11.5px;color:var(--stone);margin-top:14px;line-height:1.7">Your plan saves on this device.<br/>Create a free account anytime to sync &amp; invite your partner.</p>
     </div>
 
-    <p style="text-align:center;font-size:11px;color:var(--stone);margin-top:14px">
-      By signing in you agree to keep your wedding data in our secure cloud. We never share your data with vendors or third parties.
+    <div class="auth-trust"><span>Complimentary, always</span><span class="dot">&middot;</span><span>No ads</span><span class="dot">&middot;</span><span>Never sold data</span></div>
+    <p style="text-align:center;font-size:10.5px;color:var(--stone);margin-top:14px;line-height:1.7;opacity:0.85">
+      By signing in you agree to keep your wedding data in our secure cloud.<br/>We never share it with vendors or third parties.
     </p>
   </div>
 </div>
