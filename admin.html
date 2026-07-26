@@ -181,7 +181,7 @@
     <!-- Weddings -->
     <section class="panel" id="panel-weddings">
       <h1>Weddings</h1>
-      <p class="h-sub">Every wedding row in the database. Delete is hard delete (cascades members, invites, activity, dispatches).</p>
+      <p class="h-sub">Every wedding row in the database. Delete is hard delete (cascades members, invites, activity, dispatches, guest RSVPs, registry claims &amp; photos — including Storage files).</p>
       <div class="card">
         <div class="card-title">
           <h2>All weddings (<span id="weddings-count">0</span>)</h2>
@@ -252,7 +252,7 @@
       <p class="h-sub">Test buttons and one-off operations.</p>
       <div class="card">
         <div class="card-title"><h2>Trigger countdown emails</h2></div>
-        <p style="font-size:13px;margin:0 0 12px;color:var(--stone)">Manually invoke <code>process-scheduled-emails</code>. Sends nothing unless a wedding is exactly 30/14/7/3/1 days out and that milestone hasn't already fired.</p>
+        <p style="font-size:13px;margin:0 0 12px;color:var(--stone)">Manually invoke <code>process-scheduled-emails</code>. Sends nothing unless a wedding is exactly 30/14/7/3/1 days out (countdown emails) or 35/21 days out (RSVP-chase digests) and that milestone hasn't already fired.</p>
         <button class="btn btn-dark" onclick="triggerEmails()">Run now</button>
         <pre id="trigger-result" style="margin-top:14px;padding:12px;background:var(--cream);border-radius:8px;font-size:12px;white-space:pre-wrap;display:none"></pre>
       </div>
@@ -405,6 +405,9 @@ function renderMetrics(m){
     { label: 'Pending invites', value: m.invites_pending },
     { label: 'Total invites', value: m.invites_total },
     { label: 'Emails sent (7d)', value: m.emails_sent_7d },
+    { label: 'Guest RSVPs', value: m.rsvp_submissions ?? '—' },
+    { label: 'Registry claims', value: m.registry_claims ?? '—' },
+    { label: 'Guest photos', value: m.camera_photos ?? '—' },
   ];
   document.getElementById('metrics').innerHTML = cards.map(c => `<div class="metric"><div class="label">${esc(c.label)}</div><div class="value">${esc(c.value)}</div></div>`).join('');
 }
@@ -420,21 +423,47 @@ function renderWeddings(){
   const t = document.getElementById('weddings-table');
   if (rows.length === 0) { t.innerHTML = '<tr><td class="empty">No weddings.</td></tr>'; return; }
   t.innerHTML = `
-    <thead><tr><th>Name</th><th>Date</th><th>Members</th><th>Pending invites</th><th>Updated</th><th>ID</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>Date</th><th>Members</th><th>Pending invites</th><th>Guest activity</th><th>Guest link</th><th>Updated</th><th>ID</th><th></th></tr></thead>
     <tbody>${rows.map(w => `
       <tr>
         <td><strong>${esc(w.name)}</strong></td>
         <td>${esc(fmtDate(w.wedding_date))}</td>
         <td>${esc(w.member_count)}</td>
         <td>${esc(w.pending_invite_count)}</td>
+        <td style="font-size:11px;white-space:nowrap" title="RSVPs · registry claims · photos">${esc(w.rsvp_count ?? 0)} RSVP · ${esc(w.claim_count ?? 0)} gifts · ${esc(w.photo_count ?? 0)} 📷</td>
+        <td style="white-space:nowrap">${w.share_token ? `
+          <button class="btn btn-sm" onclick="copyGuestLink('${esc(w.id)}')">Copy link</button>
+          <button class="btn btn-sm" onclick="regenerateToken('${esc(w.id)}','${esc((w.name||'').replace(/'/g,"\\'"))}')">Regenerate</button>` : '<span style="color:var(--stone);font-size:11px">no token</span>'}</td>
         <td style="font-size:11px;color:var(--stone)">${esc(fmtDateTime(w.updated_at))}</td>
         <td style="font-size:10px;color:var(--stone);font-family:Menlo,monospace">${esc(w.id)}</td>
         <td><button class="btn btn-sm btn-danger" onclick="deleteWedding('${esc(w.id)}','${esc((w.name||'').replace(/'/g,"\\'"))}')">Delete</button></td>
       </tr>`).join('')}</tbody>`;
 }
+function guestHubLink(token){
+  return 'https://plan.ivoryinvitations.ca/ivory-guest-hub.html?w=' + encodeURIComponent(token);
+}
+async function copyGuestLink(id){
+  const w = cache.weddings.find(x => x.id === id);
+  if (!w || !w.share_token) { toast('No share token for this wedding', 'error'); return; }
+  try { await navigator.clipboard.writeText(guestHubLink(w.share_token)); toast('Guest hub link copied', 'success'); }
+  catch (e) { prompt('Copy the guest hub link:', guestHubLink(w.share_token)); }
+}
+async function regenerateToken(id, name){
+  if (!confirm('Regenerate the guest link for "' + name + '"?\n\nThe old link (including any printed QR codes) stops working immediately. The couple will see the new link in their planner\'s Share panel.')) return;
+  try {
+    const res = await api('regenerate-token', { id });
+    toast('New link generated & copied', 'success');
+    await loadWeddings();
+    try { await navigator.clipboard.writeText(guestHubLink(res.share_token)); } catch (e) { /* copy is best-effort */ }
+  } catch (e) { toast(e.message, 'error'); }
+}
 async function deleteWedding(id, name){
-  if (!confirm('Delete wedding "' + name + '" and ALL associated members, invites, activity, dispatches? This is irreversible.')) return;
-  try { await api('delete-wedding', { id }); toast('Deleted', 'success'); loadWeddings(); loadOverview(); } catch (e) { toast(e.message, 'error'); }
+  if (!confirm('Delete wedding "' + name + '" and ALL associated data — members, invites, activity, dispatches, guest RSVPs, registry claims, and uploaded photos (including the files in Storage)? This is irreversible.')) return;
+  try {
+    const res = await api('delete-wedding', { id });
+    toast('Deleted' + (res.photos_removed ? ' (' + res.photos_removed + ' photos purged)' : '') + (res.warning ? ' — ' + res.warning : ''), res.warning ? 'error' : 'success');
+    loadWeddings(); loadOverview();
+  } catch (e) { toast(e.message, 'error'); }
 }
 
 // ── Users ─────────────────────────────────────────────────────────
