@@ -373,6 +373,9 @@ function selectGuest(idx) {
   // Reset form fields
   document.getElementById('rsvp-yes').checked = guest.rsvp === 'Attending';
   document.getElementById('rsvp-no').checked = guest.rsvp === 'Declined';
+
+  // IVY-01: a returning guest sees their previous answer, not a blank form
+  loadExistingRsvp(guest);
   document.getElementById('rsvp-dietary').value = guest.dietary || '';
   document.getElementById('rsvp-song').value = guest.song || '';
   document.getElementById('rsvp-message').value = guest.message || '';
@@ -454,6 +457,49 @@ function updateRsvpForm() {
   }
 }
 
+// ─── Previous response (IVY-01: reopening the link shows your answer) ───
+async function loadExistingRsvp(guest) {
+  const old = document.getElementById('rsvp-prev-banner');
+  if (old) old.remove();
+  if (isDemo || !supa || !shareToken || !guest || !guest.name) return;
+  try {
+    const { data, error } = await supa.rpc('guest_get_my_rsvp', {
+      p_token: shareToken, p_guest_name: guest.name
+    });
+    if (error || !data || data.found !== true) return;
+
+    // Prefill the form with what the server has
+    const isAttending = data.status === 'Attending';
+    document.getElementById('rsvp-yes').checked = isAttending;
+    document.getElementById('rsvp-no').checked = !isAttending;
+    if (data.meal) { const m = document.getElementById('rsvp-meal'); if (m) m.value = data.meal; }
+    if (data.dietary) { const d = document.getElementById('rsvp-dietary'); if (d) d.value = data.dietary; }
+    if (data.message) { const msg = document.getElementById('rsvp-message'); if (msg) msg.value = data.message; }
+    if (typeof updateRsvpForm === 'function') updateRsvpForm();
+
+    // Banner: you've already responded — editing updates it
+    const when = data.updated_at || data.submitted_at;
+    const whenStr = when ? new Date(when).toLocaleDateString('en-US', {month:'long', day:'numeric'}) : '';
+    const banner = document.createElement('div');
+    banner.id = 'rsvp-prev-banner';
+    banner.setAttribute('role', 'status');
+    banner.style.cssText = 'margin:0 0 18px;padding:12px 16px;background:rgba(74,122,91,0.08);border:1px solid rgba(74,122,91,0.25);border-radius:10px;font-size:13px;color:var(--charcoal,#1c1917);line-height:1.5';
+    banner.innerHTML = '&#10003; <strong>We have your response</strong> — ' +
+      (isAttending ? 'Attending' : 'Declined') +
+      (data.meal ? ', ' + escHtml(data.meal) : '') +
+      (whenStr ? ', received ' + whenStr : '') +
+      '. You can update it below and resubmit.';
+    const greeting = document.getElementById('rsvp-greeting');
+    if (greeting && greeting.parentNode) greeting.parentNode.insertBefore(banner, greeting.nextSibling);
+  } catch (e) {
+    // Best-effort — never block the form over this
+    console.warn('[Ivory RSVP] previous-response lookup failed:', e);
+  }
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 // ─── Submit ───
 async function submitRsvp() {
   if (selectedGuestIdx < 0) return;
@@ -478,8 +524,18 @@ async function submitRsvp() {
   guest.message = document.getElementById('rsvp-message').value.trim();
   guest.rsvpDate = new Date().toLocaleDateString();
 
-  // Send to the cloud via the token-gated RPC (unless we're in demo mode)
-  if (!isDemo && supa && shareToken) {
+  // Send to the cloud via the token-gated RPC. FAIL CLOSED (IVY-01): a real
+  // guest link must never show a confirmation unless the write provably
+  // landed on the server. Demo mode is the only simulated path.
+  if (!isDemo) {
+    const failBtn = () => { if (btn) { btn.disabled = false; btn.textContent = attending ? 'Confirm RSVP' : 'Send Response'; } };
+    if (!supa || !shareToken) {
+      // The page loaded but the cloud client is unavailable (blocked CDN,
+      // in-app browser, dropped connection). Do NOT pretend it worked.
+      failBtn();
+      alert('Sorry — we couldn\'t reach the wedding planner to save your RSVP. Please reload the page and try again, or contact the couple directly.');
+      return;
+    }
     if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
     const partySize = 1 + (attending ? validGuests.length : 0);
     const { data, error } = await supa.rpc('guest_submit_rsvp', {
@@ -491,10 +547,26 @@ async function submitRsvp() {
       p_dietary: attending ? (guest.dietary || '') : '',
       p_message: guest.message || ''
     });
-    if (error || (data && data.error)) {
-      console.warn('[Ivory RSVP] submit failed:', error || data.error);
-      if (btn) { btn.disabled = false; btn.textContent = attending ? 'Confirm RSVP' : 'Send Response'; }
+    if (error || (data && data.error) || !(data && data.ok === true)) {
+      console.warn('[Ivory RSVP] submit failed:', error || (data && data.error) || data);
+      failBtn();
       alert('Sorry — we couldn\'t save your RSVP. Please check your connection and try again.');
+      return;
+    }
+    // Read the submission back from the server so the confirmation screen
+    // is only ever shown for a response that verifiably exists.
+    const verify = await supa.rpc('guest_get_my_rsvp', {
+      p_token: shareToken, p_guest_name: guest.name
+    });
+    const fnMissing = verify.error && /guest_get_my_rsvp/.test(verify.error.message || '');
+    if (fnMissing) {
+      // Verification RPC not deployed yet — the submit itself returned ok,
+      // which the server only does after the insert succeeds.
+      console.warn('[Ivory RSVP] verification RPC unavailable; trusting submit ok:true');
+    } else if (verify.error || !verify.data || verify.data.found !== true) {
+      console.warn('[Ivory RSVP] read-back verification failed:', verify.error || verify.data);
+      failBtn();
+      alert('Sorry — your RSVP was sent but we couldn\'t confirm it was saved. Please try again, or contact the couple directly.');
       return;
     }
   }
@@ -516,6 +588,7 @@ async function submitRsvp() {
 
     if (guest.dietary) rows += `<div class="confirm-row"><span class="label">Dietary Notes</span><span class="value">${guest.dietary}</span></div>`;
     if (guest.song) rows += `<div class="confirm-row"><span class="label">Song Request</span><span class="value">${guest.song}</span></div>`;
+    if (!isDemo) rows += `<div class="confirm-row"><span class="label"></span><span class="value" style="color:var(--green);font-size:12px">&#10003; Saved to the couple's planner</span></div>`;
     document.getElementById('confirm-details').innerHTML = rows;
     goToStep('confirmed');
   } else {

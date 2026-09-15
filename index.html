@@ -1029,6 +1029,16 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 
       <!-- RSVP sub-section -->
       <div class="tl-section" id="guest-sub-rsvp">
+        <!-- Online RSVP inbox (Phase 10 · A1) — first thing the couple sees -->
+        <div class="card" id="online-rsvp-card" style="display:none;margin-bottom:16px;border:1px solid rgba(74,122,91,0.35);background:rgba(74,122,91,0.04)">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <span>&#128229; Online RSVPs <span class="count" id="online-rsvp-count">0 new</span></span>
+            <button class="btn btn-sm btn-dark" id="online-rsvp-applyall" style="display:none" onclick="applyAllOnlineRsvps(this)">Apply all</button>
+          </div>
+          <p style="font-size:12px;color:var(--stone);margin-bottom:12px">Replies guests submitted on your RSVP page. Click Apply to merge each into your guest list.</p>
+          <div id="online-rsvp-list"></div>
+        </div>
+
         <!-- Guest Links (Phase 10) — share with guests -->
         <div style="background:var(--charcoal);border-radius:12px;padding:20px 24px;margin-bottom:16px">
           <p style="font-size:14px;font-weight:600;color:var(--ivory);margin-bottom:2px">Share with your guests</p>
@@ -1064,15 +1074,6 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Online RSVP inbox (Phase 10) -->
-        <div class="card" id="online-rsvp-card" style="display:none;margin-bottom:16px">
-          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-            <span>&#128229; Online RSVPs <span class="count" id="online-rsvp-count">0 new</span></span>
-          </div>
-          <p style="font-size:12px;color:var(--stone);margin-bottom:12px">Replies guests submitted on your RSVP page. Click Apply to merge each into your guest list.</p>
-          <div id="online-rsvp-list"></div>
         </div>
 
         <!-- RSVP chase list — who still hasn't replied -->
@@ -3009,6 +3010,43 @@ function copyChaseList(btn) {
 }
 
 // ── Online RSVP inbox — submissions guests made on the RSVP page ──
+// A1 (IVY-01): pending online-RSVP count feeds a dashboard alert so
+// submissions can't arrive invisibly. Refreshed on hydration and on
+// every inbox fetch/apply.
+let pendingOnlineRsvpCount = 0;
+async function refreshOnlineRsvpAlert() {
+  if (!supa || !currentWeddingId) return;
+  const { count, error } = await supa
+    .from('rsvp_submissions')
+    .select('*', { count: 'exact', head: true })
+    .eq('wedding_id', currentWeddingId)
+    .eq('applied', false);
+  if (error) return;
+  const prev = pendingOnlineRsvpCount;
+  pendingOnlineRsvpCount = count || 0;
+  if (prev !== pendingOnlineRsvpCount && typeof renderNotifications === 'function') {
+    try { renderNotifications(); } catch (e) { /* tab may not be mounted yet */ }
+  }
+}
+
+async function applyAllOnlineRsvps(btn) {
+  if (!supa || !currentWeddingId) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Applying…'; }
+  const { data: subs, error } = await supa
+    .from('rsvp_submissions')
+    .select('id')
+    .eq('wedding_id', currentWeddingId)
+    .eq('applied', false)
+    .order('submitted_at', { ascending: true });
+  if (!error) {
+    for (const s of (subs || [])) {
+      try { await applyOnlineRsvp(s.id); } catch (e) { console.warn('[Ivory] apply-all item failed:', e); }
+    }
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Apply all'; }
+  fetchAndRenderOnlineRsvps();
+}
+
 async function fetchAndRenderOnlineRsvps() {
   const card = document.getElementById('online-rsvp-card');
   const list = document.getElementById('online-rsvp-list');
@@ -3028,6 +3066,12 @@ async function fetchAndRenderOnlineRsvps() {
   const pending = subs.filter(s => !s.applied).length;
   const badge = document.getElementById('online-rsvp-count');
   if (badge) badge.textContent = pending > 0 ? (pending + ' new') : 'all applied';
+  const applyAllBtn = document.getElementById('online-rsvp-applyall');
+  if (applyAllBtn) applyAllBtn.style.display = pending > 1 ? '' : 'none';
+  if (pendingOnlineRsvpCount !== pending) {
+    pendingOnlineRsvpCount = pending;
+    try { renderNotifications(); } catch (e) { /* fine */ }
+  }
 
   list.innerHTML = subs.map(s => {
     const known = (S.guests || []).some(g => (g.name || '').trim().toLowerCase() === s.guest_name_key);
@@ -6301,6 +6345,13 @@ function generateNotifications() {
     }
   }
 
+  // ─── Online RSVPs waiting (A1 / IVY-01) ───
+  if (typeof pendingOnlineRsvpCount === 'number' && pendingOnlineRsvpCount > 0) {
+    notifs.push({type:'warning', source:'guests', icon:'&#128229;',
+      title:`${pendingOnlineRsvpCount} new online RSVP${pendingOnlineRsvpCount!==1?'s':''} to review`,
+      desc:'Guests replied on your RSVP page. Open Guests → RSVP and press Apply to merge them into your guest list.'});
+  }
+
   // ─── Budget alerts ───
   const totalPlanned = S.budget.reduce((s,r) => s + (r.subs && r.subs.length ? r.subs.reduce((ss,sub)=>ss+(+sub.planned||0),0) : (+r.planned||0)), 0);
   const totalActual = S.budget.reduce((s,r) => s + (r.subs && r.subs.length ? r.subs.reduce((ss,sub)=>ss+(+sub.actual||0),0) : (+r.actual||0)), 0);
@@ -8285,14 +8336,10 @@ async function hydrateFromCloud(user) {
   setSyncStatus('synced');
   lastSyncedStateHash = JSON.stringify(S).length + '_synced';
 
-  // Re-render the currently active tab so cloud data shows
-  const activeTab = document.querySelector('.tab-content.active');
-  if (activeTab && typeof renderTab === 'function') {
-    const tabId = activeTab.id.replace('tab-', '');
-    try { renderTab(tabId); } catch(e) { console.warn('Re-render failed:', e); }
-  }
-  if (typeof updateSidebarBadges === 'function') updateSidebarBadges();
-  if (typeof updateTopbarAvatars === 'function') updateTopbarAvatars();
+  // A1/A2: one hook refreshes everything the cloud data affects —
+  // including sub-tabs and token-dependent renders the old inline
+  // re-render missed (RSVP inbox, camera QR).
+  onCloudHydrated();
 
   // Phase 9B: realtime subscription + members card + cloud activity log
   subscribeToRealtimeUpdates();
@@ -8303,6 +8350,32 @@ async function hydrateFromCloud(user) {
   if (!S.onboardingDone && typeof showOnboarding === 'function') {
     setTimeout(showOnboarding, 300);
   }
+}
+
+// A1/A2 (IVY-01 · IVY-09): the single place the UI catches up after cloud
+// data arrives. Before this, a tab rendered during the async hydration —
+// before currentWeddingId / currentShareToken existed — would never show
+// the online-RSVP inbox or draw the camera QR, and nothing retried.
+function onCloudHydrated() {
+  const activeTab = document.querySelector('.tab-content.active');
+  if (activeTab && typeof renderTab === 'function') {
+    const tabId = activeTab.id.replace('tab-', '');
+    try {
+      renderTab(tabId);
+      // renderTab doesn't restore sub-tab state — do it explicitly so the
+      // RSVP inbox (Guests → RSVP) re-fetches with the wedding id now set.
+      if (tabId === 'guests' && typeof showGuestSub === 'function' &&
+          typeof guestActiveSub !== 'undefined' && guestActiveSub) {
+        showGuestSub(guestActiveSub);
+      }
+      // Camera QR depends on the share token that just arrived.
+      if (tabId === 'camera' && typeof generateQR === 'function') generateQR();
+    } catch (e) { console.warn('Post-hydration re-render failed:', e); }
+  }
+  if (typeof updateSidebarBadges === 'function') updateSidebarBadges();
+  if (typeof updateTopbarAvatars === 'function') updateTopbarAvatars();
+  // Pending online RSVPs → dashboard alert, wherever the user is.
+  if (typeof refreshOnlineRsvpAlert === 'function') refreshOnlineRsvpAlert();
 }
 
 async function createNewWeddingForUser(user) {
@@ -8357,6 +8430,7 @@ async function createNewWeddingForUser(user) {
   // Phase 9B: realtime subscription + members card
   subscribeToRealtimeUpdates();
   fetchAndRenderMembers();
+  onCloudHydrated();
 
   // Show onboarding for brand-new users
   if (!S.onboardingDone && typeof showOnboarding === 'function') {
