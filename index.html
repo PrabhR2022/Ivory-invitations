@@ -727,6 +727,13 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
       <div class="sidebar-label">Tools</div>
       <button class="sidebar-btn" onclick="showTab('camera')"><span class="icon">&#128247;</span>Disposable Camera<span class="badge" id="camera-badge">0</span></button>
     </div>
+    <!-- A8 (IVY-10): three finished sections that previously had no way in -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">After the Big Day</div>
+      <button class="sidebar-btn" onclick="showTab('honeymoon')"><span class="icon">&#9992;</span>Honeymoon</button>
+      <button class="sidebar-btn" onclick="showTab('visionboard')"><span class="icon">&#128444;</span>Vision Board</button>
+      <button class="sidebar-btn" onclick="showTab('notebook')"><span class="icon">&#128221;</span>Notebook</button>
+    </div>
   </nav>
 
   <!-- Main content -->
@@ -2037,6 +2044,9 @@ const LAUNCHER_TABS = [
   {id:'stationery',    icon:'✉',   label:'Stationery',       short:'Stationery'},
   {id:'kit',           icon:'+',        label:'Emergency Kit',    short:'Kit'},
   {id:'camera',        icon:'\u{1F4F7}',label:'Camera',           short:'Camera'},
+  {id:'honeymoon',     icon:'✈',   label:'Honeymoon',        short:'Honeymoon'},
+  {id:'visionboard',   icon:'\u{1F5BC}',label:'Vision Board',     short:'Vision'},
+  {id:'notebook',      icon:'\u{1F4DD}',label:'Notebook',         short:'Notebook'},
 ];
 
 // U7: single inline-SVG icon set (currentColor stroke, 20px, no fill) so UI
