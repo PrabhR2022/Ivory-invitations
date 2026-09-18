@@ -2892,19 +2892,31 @@ function setGuestRole(idx, val) {
   saveState(); renderGuests();
 }
 // ─── Phase 5: Thank-You Tracker ──────────────────────
+// A6 (IVY-18): the ONE place thank-you progress is computed — the tab and
+// the dashboard read the same numbers, so "Still to Send" can't say 0
+// while nine notes are outstanding.
+function thankYouStats() {
+  const withGifts = (S.guests||[]).filter(g => g.gift === 'Yes' || (g.giftDesc && g.giftDesc.trim()));
+  const sent = withGifts.filter(g => g.thanks === 'Yes').length;
+  return {
+    gifts: withGifts.length,
+    sent,
+    pending: withGifts.length - sent,
+    pct: withGifts.length ? Math.round(sent / withGifts.length * 100) : 0,
+    withGifts,
+  };
+}
+
 function renderThankYous() {
   const body = document.getElementById('ty-body');
   if (!body) return;
   const filt = (document.getElementById('ty-filter')||{}).value || 'all';
-  const all = (S.guests||[]);
-  const withGifts = all.filter(g => g.gift === 'Yes' || (g.giftDesc && g.giftDesc.trim()));
-  const sent = withGifts.filter(g => g.thanks === 'Yes').length;
-  const pending = withGifts.length - sent;
-  const pct = withGifts.length ? Math.round(sent/withGifts.length*100) : 0;
-  document.getElementById('ty-gifts').textContent = withGifts.length;
-  document.getElementById('ty-sent').textContent = sent;
-  document.getElementById('ty-pending').textContent = pending;
-  document.getElementById('ty-pct').textContent = pct + '%';
+  const TY = thankYouStats();
+  const withGifts = TY.withGifts;
+  document.getElementById('ty-gifts').textContent = TY.gifts;
+  document.getElementById('ty-sent').textContent = TY.sent;
+  document.getElementById('ty-pending').textContent = TY.pending;
+  document.getElementById('ty-pct').textContent = TY.pct + '%';
 
   let list = withGifts;
   if (filt === 'pending') list = list.filter(g => g.thanks !== 'Yes');
@@ -6750,8 +6762,10 @@ function renderPostWeddingSummary() {
   const ratings = (S.vendors||[]).filter(v => (v.rating||0) > 0);
   const avgRating = ratings.length ? (ratings.reduce((s,v) => s + v.rating, 0) / ratings.length).toFixed(1) : '—';
   const topVendor = ratings.slice().sort((a,b) => (b.rating||0)-(a.rating||0))[0];
-  const thanksSent = (S.guests||[]).filter(g => g.thanks === 'Yes').length;
-  const thanksPending = (S.guests||[]).filter(g => (g.gift === 'Yes' || g.giftDesc) && g.thanks !== 'Yes').length;
+  // A6 (IVY-18): same source of truth as the Thank-Yous tab
+  const _ty = thankYouStats();
+  const thanksSent = _ty.sent;
+  const thanksPending = _ty.pending;
 
   content.innerHTML = `
     <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Attended</div><div style="font-family:var(--font-serif);font-size:22px">${attending}</div></div>
