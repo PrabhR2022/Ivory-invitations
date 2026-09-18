@@ -911,7 +911,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
         </div>
         <div class="stat-card"><div class="val" id="b-planned">$0</div><div class="lbl">Planned</div></div>
         <div class="stat-card"><div class="val" id="b-actual">$0</div><div class="lbl">Actual</div></div>
-        <div class="stat-card green"><div class="val" id="b-remaining">&mdash;</div><div class="lbl">Remaining</div></div>
+        <div class="stat-card green" id="b-remaining-card"><div class="val" id="b-remaining">&mdash;</div><div class="lbl">Remaining to spend</div><div id="b-plan-status" style="font-size:10px;margin-top:2px;color:var(--stone)"></div></div>
       </div>
 
       <!-- HST & Tips Summary -->
@@ -921,12 +921,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
             <input type="checkbox" id="hst-toggle" onchange="S.applyHST=this.checked;saveState();renderBudget()" style="width:16px;height:16px"/>
             <span>Apply <strong>HST (13%)</strong> to budget totals — <span style="color:var(--stone);font-size:11px">Ontario</span></span>
           </label>
-          <div style="display:flex;gap:24px;font-size:13px">
-            <div><span style="color:var(--stone)">Subtotal:</span> <strong id="b-subtotal">$0</strong></div>
-            <div><span style="color:var(--stone)">HST:</span> <strong id="b-hst">$0</strong></div>
-            <div><span style="color:var(--stone)">Tips:</span> <strong id="b-tips">$0</strong></div>
-            <div><span style="color:var(--stone)">Grand Total:</span> <strong id="b-grand">$0</strong></div>
-          </div>
+          <div id="b-summary" style="display:flex;flex-direction:column;gap:4px;font-size:13px;text-align:right"></div>
         </div>
       </div>
 
@@ -2297,52 +2292,88 @@ function isVendorSyncedBudget(catName) {
   return Object.values(VENDOR_BUDGET_MAP).includes(catName) && S.vendors.some(v => VENDOR_BUDGET_MAP[v.cat] === catName && ((v.estimatedPrice||0) > 0 || (v.actualPrice||0) > 0 || (v.deposit||0) > 0));
 }
 
+// A4 (IVY-03/04/05): THE one place budget money is computed. Every panel —
+// budget page, dashboard, alerts, HST footer — reads from here, so screens
+// can no longer disagree. Rule: a category with sub-items totals from its
+// subs; otherwise from its own values. HST is computed per basis (planned /
+// actual) on exactly the base displayed beside it, honouring taxExempt.
+function budgetTotals() {
+  const rows = (S.budget || []).map(r => {
+    const subs = Array.isArray(r.subs) ? r.subs : [];
+    const hasSubs = subs.length > 0;
+    let planned, actual, taxPlanned = 0, taxActual = 0;
+    if (hasSubs) {
+      planned = subs.reduce((s, x) => s + (+x.planned || 0), 0);
+      actual  = subs.reduce((s, x) => s + (+x.actual  || 0), 0);
+      subs.forEach(x => { if (!x.taxExempt && !r.taxExempt) { taxPlanned += (+x.planned || 0); taxActual += (+x.actual || 0); } });
+    } else {
+      planned = (+r.planned || 0);
+      actual  = (+r.actual  || 0);
+      if (!r.taxExempt) { taxPlanned = planned; taxActual = actual; }
+    }
+    return { cat: r.cat, planned, actual, taxPlanned, taxActual, hasSubs };
+  });
+  const t = rows.reduce((a, r) => ({
+    planned: a.planned + r.planned, actual: a.actual + r.actual,
+    taxPlanned: a.taxPlanned + r.taxPlanned, taxActual: a.taxActual + r.taxActual,
+  }), { planned: 0, actual: 0, taxPlanned: 0, taxActual: 0 });
+  const rate = S.applyHST ? (S.taxRate || 0.13) : 0;
+  const tips = (S.vendors || []).reduce((sum, v) =>
+    sum + ((+v.price || 0) * ((typeof v.tipPercent === 'number' ? v.tipPercent : 0) / 100)), 0);
+  const budget = (S.totalBudget != null && +S.totalBudget > 0) ? +S.totalBudget : null;
+  return {
+    rows,
+    planned: t.planned, actual: t.actual,
+    hstPlanned: t.taxPlanned * rate, hstActual: t.taxActual * rate,
+    tips,
+    grandPlanned: t.planned + t.taxPlanned * rate + tips,
+    grandActual:  t.actual  + t.taxActual  * rate + tips,
+    budget,
+    overPlanned: budget != null ? Math.max(0, t.planned - budget) : 0,
+    leftToAllocate: budget != null ? budget - t.planned : null,
+    leftToSpend: budget != null ? budget - t.actual : null,
+  };
+}
+
 function renderBudget() {
   // Ensure sub-items arrays exist
   S.budget.forEach(r => { if (!r.subs) r.subs = []; });
 
-  // Compute totals based on filter
-  let planned = 0, actual = 0;
-  S.budget.forEach(r => {
-    if (r.subs.length > 0) {
-      // Category totals come from sub-items
-      const filtered = budgetFilter === 'all' ? r.subs : r.subs.filter(s => s.tag === budgetFilter);
-      planned += filtered.reduce((s, sub) => s + (sub.planned || 0), 0);
-      actual += filtered.reduce((s, sub) => s + (sub.actual || 0), 0);
-    } else {
-      planned += (r.planned || 0);
-      actual += (r.actual || 0);
-    }
-  });
+  const T = budgetTotals();
+  const hasBudget = T.budget != null;
 
-  // U2: no phantom default — prompt to set the budget until one exists
-  const hasBudget = S.totalBudget != null && +S.totalBudget > 0;
-  document.getElementById("b-total").textContent = hasBudget ? money(S.totalBudget) : 'Set your budget';
-  document.getElementById("b-planned").textContent = money(planned);
-  document.getElementById("b-actual").textContent = money(actual);
-  document.getElementById("b-remaining").textContent = hasBudget ? money(S.totalBudget - actual) : '—';
+  document.getElementById("b-total").textContent = hasBudget ? money(T.budget) : 'Set your budget';
+  document.getElementById("b-planned").textContent = money(T.planned);
+  document.getElementById("b-actual").textContent = money(T.actual);
+  // IVY-05: "Remaining" is honest about BOTH meanings — left to spend
+  // (budget − actual) as the number, plan status as the line under it.
+  document.getElementById("b-remaining").textContent = hasBudget ? money(T.leftToSpend) : '—';
+  const planStatus = document.getElementById("b-plan-status");
+  const remCard = document.getElementById("b-remaining-card");
+  if (planStatus) {
+    if (!hasBudget) { planStatus.textContent = ''; }
+    else if (T.overPlanned > 0) { planStatus.textContent = 'Plan is ' + money(T.overPlanned) + ' OVER budget'; planStatus.style.color = 'var(--red)'; planStatus.style.fontWeight = '600'; }
+    else { planStatus.textContent = money(T.leftToAllocate) + ' left to allocate'; planStatus.style.color = 'var(--stone)'; planStatus.style.fontWeight = '400'; }
+  }
+  if (remCard) {
+    remCard.classList.toggle('green', !(hasBudget && T.overPlanned > 0));
+    remCard.style.borderColor = (hasBudget && T.overPlanned > 0) ? 'var(--red)' : '';
+  }
 
-  // HST + Tips + Grand Total summary
-  const taxable = S.budget.reduce((sum, r) => {
-    if (r.taxExempt) return sum;
-    if (r.subs && r.subs.length > 0) return sum + r.subs.filter(s => !s.taxExempt).reduce((s2, sub) => s2 + (sub.actual || sub.planned || 0), 0);
-    return sum + (r.actual || r.planned || 0);
-  }, 0);
-  const tipsTotal = (S.vendors || []).reduce((sum, v) => {
-    const base = (v.price || 0);
-    const pct = (typeof v.tipPercent === 'number') ? v.tipPercent : 0;
-    return sum + (base * pct / 100);
-  }, 0);
-  const hstAmt = S.applyHST ? taxable * (S.taxRate || 0.13) : 0;
-  const subtotalEl = document.getElementById("b-subtotal");
-  const hstEl = document.getElementById("b-hst");
-  const tipsEl = document.getElementById("b-tips");
-  const grandEl = document.getElementById("b-grand");
-  if (subtotalEl) subtotalEl.textContent = money(planned + actual - planned); // show actual-based if present, else planned
-  if (subtotalEl) subtotalEl.textContent = money(actual || planned);
-  if (hstEl) hstEl.textContent = money(hstAmt);
-  if (tipsEl) tipsEl.textContent = money(tipsTotal);
-  if (grandEl) grandEl.textContent = money((actual || planned) + hstAmt + tipsTotal);
+  // IVY-04: HST + Tips summary — each basis computed on the base printed
+  // beside it, planned and spent shown as separate labelled lines.
+  const summaryEl = document.getElementById("b-summary");
+  if (summaryEl) {
+    summaryEl.innerHTML =
+      `<div><span style="color:var(--stone)">Planned:</span> ${money(T.planned)}` +
+      ` <span style="color:var(--stone)">+ HST</span> ${money(T.hstPlanned)}` +
+      ` <span style="color:var(--stone)">+ Tips</span> ${money(T.tips)}` +
+      ` <span style="color:var(--stone)">=</span> <strong>${money(T.grandPlanned)}</strong></div>` +
+      `<div><span style="color:var(--stone)">Spent so far:</span> ${money(T.actual)}` +
+      ` <span style="color:var(--stone)">+ HST</span> ${money(T.hstActual)}` +
+      ` <span style="color:var(--stone)">+ Tips</span> ${money(T.tips)}` +
+      ` <span style="color:var(--stone)">=</span> <strong>${money(T.grandActual)}</strong></div>`;
+  }
   const hstChk = document.getElementById("hst-toggle");
   if (hstChk) hstChk.checked = !!S.applyHST;
 
@@ -2438,8 +2469,15 @@ function tagSelect(catIdx, subIdx, current) {
 }
 
 function addSubItem(catIdx) {
-  if (!S.budget[catIdx].subs) S.budget[catIdx].subs = [];
-  S.budget[catIdx].subs.push({name:'',planned:0,actual:0,notes:'',tag:''});
+  const r = S.budget[catIdx];
+  if (!r.subs) r.subs = [];
+  // IVY-03: once a category has subs its totals come FROM the subs — so the
+  // first sub-add must carry the parent's existing amounts into a seeded
+  // line item, or one click silently zeroes the category.
+  if (r.subs.length === 0 && ((+r.planned || 0) > 0 || (+r.actual || 0) > 0)) {
+    r.subs.push({name: (r.cat || 'Category') + ' — original amount', planned: +r.planned || 0, actual: +r.actual || 0, notes: r.notes || '', tag: ''});
+  }
+  r.subs.push({name:'',planned:0,actual:0,notes:'',tag:''});
   expandedCategories[catIdx] = true;
   saveState();
   renderBudget();
@@ -2649,6 +2687,9 @@ function renderGuests() {
   const fpTables = (S.floorPlan||[]).filter(f => {const d=FP_TYPES[f.type];return d&&d.isTable;});
   const tableOptions = ['','...fpTables.map(t=>t.label)'];
 
+  // A3 (IVY-02): meal options for the editable Meal column
+  const mealOptsForTable = S.mealOptions || ["Chicken","Fish","Beef","Vegetarian","Vegan","Kids Meal"];
+
   document.getElementById("guest-body").innerHTML = S.guests.map((g,i)=>{
     // Ensure allowPlusOne field exists for legacy guests (migrate old Yes/No to number)
     if(g.allowPlusOne===undefined||g.allowPlusOne==="Yes") g.allowPlusOne=1;
@@ -2656,9 +2697,12 @@ function renderGuests() {
     // Build RSVP status display with date if available
     const rsvpInfo = g.rsvpDate ? `<div style="font-size:10px;color:var(--stone);margin-top:2px">${g.rsvpDate}</div>` : '';
 
-    // Get all plus guests (prefer plusGuests array, fallback to legacy)
-    const plusGuests = (g.plusGuests && g.plusGuests.length > 0) ? g.plusGuests.filter(p=>p.name) :
-                       (g.plusOne === 'Yes' && g.plusOneName) ? [{name:g.plusOneName, meal:g.plusOneMeal||''}] : [];
+    // Plus-guest rows: raw array for editing (empty names stay visible while
+    // being typed), named subset for status/counts. Legacy single plus-one
+    // still displays until first edit migrates it to the array.
+    const plusRows = (g.plusGuests && g.plusGuests.length > 0) ? g.plusGuests :
+                     (g.plusOne === 'Yes' && g.plusOneName) ? [{name:g.plusOneName, meal:g.plusOneMeal||''}] : [];
+    const plusGuests = plusRows.filter(p=>p.name);
 
     // Determine +1 accepted status
     let plusAccepted, plusAcceptedColor;
@@ -2671,6 +2715,8 @@ function renderGuests() {
     } else {
       plusAccepted = 'Pending'; plusAcceptedColor = 'var(--stone)';
     }
+    // A3: the couple can record a plus-one by hand (phone/text RSVPs)
+    const canAddPlus = g.allowPlusOne > 0 && plusRows.length < g.allowPlusOne;
 
     // Table assignment — popover-based
     const tableCell = g.table
@@ -2687,17 +2733,19 @@ function renderGuests() {
     <td style="min-width:100px;position:relative">${tableCell}</td>
     <td><input type="number" min="0" max="10" value="${g.allowPlusOne}" style="width:60px;text-align:center" onchange="S.guests[${i}].allowPlusOne=+this.value;saveState()" /></td>
     <td><div>${eCell(g.rsvp,`S.guests[${i}].rsvp=this.value;saveState();renderGuests()`,"select",["Pending","Attending","Declined"])}</div>${rsvpInfo}</td>
-    <td><div style="font-size:13px;font-weight:500;color:${plusAcceptedColor}">${plusAccepted}</div></td>
-    <td><span style="font-size:13px;color:${g.meal?'var(--charcoal)':'var(--border)'}">${esc(g.meal||'—')}</span>${g.dietary?`<div style="font-size:10px;color:var(--taupe);margin-top:2px">${esc(g.dietary)}</div>`:''}</td>
+    <td><div style="font-size:13px;font-weight:500;color:${plusAcceptedColor}">${plusAccepted}</div>${canAddPlus?`<button type="button" onclick="addPlusGuest(${i})" style="font-size:11px;color:var(--taupe);text-decoration:underline;cursor:pointer;background:none;border:none;padding:2px 0 0">+ add guest</button>`:''}</td>
+    <td style="min-width:120px">${eCell(g.meal||'',`S.guests[${i}].meal=this.value;saveState();renderGuests()`,"select",['',...mealOptsForTable,...(g.meal && !mealOptsForTable.includes(g.meal) ? [g.meal] : [])])}${g.dietary?`<div style="font-size:10px;color:var(--taupe);margin-top:2px">${esc(g.dietary)}</div>`:''}</td>
     <td>${eCell(g.gift,`S.guests[${i}].gift=this.value;saveState();renderGuests()`,"select",["No","Yes"])}</td>
     <td>${eCell(g.thanks,`S.guests[${i}].thanks=this.value;saveState();renderGuests()`,"select",["No","Yes"])}</td>
     <td>${delBtn(`if(confirm('Are you sure you want to remove this guest?')){S.guests.splice(${i},1);saveState();renderGuests()}`)}</td>
   </tr>`;
-    // Add a sub-row for each plus guest
-    plusGuests.forEach((pg, pi) => {
+    // Add an editable sub-row for each plus guest (A3: name & meal enterable
+    // by hand, with remove — phone/text plus-ones no longer depend on the
+    // guest-facing RSVP page)
+    plusRows.forEach((pg, pi) => {
       row += `<tr style="background:rgba(237,232,224,0.18)">
         <td></td>
-        <td style="padding-left:28px;font-size:12px;color:var(--stone)"><span style="color:var(--taupe);margin-right:6px">+${pi+1}</span>${esc(pg.name)}</td>
+        <td style="padding-left:28px;font-size:12px;color:var(--stone)"><span style="color:var(--taupe);margin-right:6px">+${pi+1}</span><input value="${esc(pg.name||'')}" placeholder="Guest name" style="width:75%;font-size:12px" onblur="setPlusGuest(${i},${pi},'name',this.value)"/></td>
         <td></td>
         <td style="font-size:11px;color:var(--stone);font-style:italic">${esc(g.household||'')}</td>
         <td></td>
@@ -2705,9 +2753,10 @@ function renderGuests() {
         <td></td>
         <td></td>
         <td></td>
-        <td style="font-size:12px;font-weight:500;color:var(--green)">Accepted</td>
-        <td style="font-size:12px;color:var(--stone)">${esc(pg.meal||'—')}</td>
-        <td></td><td></td><td></td>
+        <td style="font-size:12px;font-weight:500;color:${pg.name?'var(--green)':'var(--stone)'}">${pg.name?'Accepted':'New'}</td>
+        <td style="min-width:120px">${eCell(pg.meal||'',`setPlusGuest(${i},${pi},'meal',this.value)`,"select",['',...mealOptsForTable,...(pg.meal && !mealOptsForTable.includes(pg.meal) ? [pg.meal] : [])])}</td>
+        <td></td><td></td>
+        <td>${delBtn(`removePlusGuest(${i},${pi})`)}</td>
       </tr>`;
     });
     return row;
@@ -2858,6 +2907,38 @@ function renderGuestRsvp() {
 }
 
 function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",giftDesc:"",thanks:"No",thanksDate:"",table:"",role:"Guest",household:"",ageGroup:"Adult"}); saveState(); renderGuests(); }
+
+// A3 (IVY-02): manual plus-guest entry. First edit migrates a legacy single
+// plusOne to the plusGuests array so indices line up with the rendered rows.
+function ensurePlusArray(i) {
+  const g = S.guests[i];
+  if (!g) return [];
+  if (!Array.isArray(g.plusGuests) || g.plusGuests.length === 0) {
+    g.plusGuests = (g.plusOne === 'Yes' && g.plusOneName)
+      ? [{name: g.plusOneName, meal: g.plusOneMeal || ''}]
+      : (Array.isArray(g.plusGuests) ? g.plusGuests : []);
+  }
+  return g.plusGuests;
+}
+function addPlusGuest(i) {
+  const g = S.guests[i]; if (!g) return;
+  const arr = ensurePlusArray(i);
+  const cap = (typeof g.allowPlusOne === 'number') ? g.allowPlusOne : 1;
+  if (arr.length >= cap) return;
+  arr.push({name:'', meal:''});
+  saveState(); renderGuests();
+}
+function setPlusGuest(i, pi, field, val) {
+  const arr = ensurePlusArray(i);
+  if (!arr[pi]) return;
+  arr[pi][field] = val;
+  saveState(); renderGuests();
+}
+function removePlusGuest(i, pi) {
+  const arr = ensurePlusArray(i);
+  arr.splice(pi, 1);
+  saveState(); renderGuests();
+}
 
 function assignGuestTable(guestIdx, tableName) {
   const guest = S.guests[guestIdx];
@@ -6352,9 +6433,16 @@ function generateNotifications() {
       desc:'Guests replied on your RSVP page. Open Guests → RSVP and press Apply to merge them into your guest list.'});
   }
 
-  // ─── Budget alerts ───
-  const totalPlanned = S.budget.reduce((s,r) => s + (r.subs && r.subs.length ? r.subs.reduce((ss,sub)=>ss+(+sub.planned||0),0) : (+r.planned||0)), 0);
-  const totalActual = S.budget.reduce((s,r) => s + (r.subs && r.subs.length ? r.subs.reduce((ss,sub)=>ss+(+sub.actual||0),0) : (+r.actual||0)), 0);
+  // ─── Budget alerts (A4: all figures from the one totals function) ───
+  const BT = (typeof budgetTotals === 'function') ? budgetTotals() : {planned:0, actual:0, budget:null, overPlanned:0};
+  const totalPlanned = BT.planned;
+  const totalActual = BT.actual;
+
+  // IVY-05: the plan itself exceeding the budget is the warning couples
+  // actually need — it fires long before a dollar is overspent.
+  if (BT.budget != null && BT.overPlanned > 0) {
+    notifs.push({type:'urgent', source:'budget', icon:'$', title:'Plan exceeds budget by ' + money(BT.overPlanned), desc:`Planned total ${money(BT.planned)} vs your ${money(BT.budget)} budget. Trim categories or adjust the budget before contracts lock it in.`});
+  }
 
   if (totalActual > totalPlanned && totalPlanned > 0) {
     const over = totalActual - totalPlanned;
@@ -6464,7 +6552,7 @@ function generateNotifications() {
 
   const noMeal = S.guests.filter(g => g.rsvp === 'Attending' && !g.meal).length;
   if (noMeal > 0) {
-    notifs.push({type:'info', source:'guest', icon:'&#9825;', title:`${noMeal} attending guest${noMeal!==1?'s':''} missing meal choice`, desc:'Update meal selections for your catering count.'});
+    notifs.push({type:'info', source:'guest', icon:'&#9825;', title:`${noMeal} attending guest${noMeal!==1?'s':''} missing meal choice`, desc:'Pick each guest\'s meal in the Meal column of your guest list — phone and text replies count too.'});
   }
 
   // ─── Camera alerts ───
@@ -6769,12 +6857,12 @@ function renderNotifBudgetPie() {
   // Calculate budget data
   let totalPlanned = 0, totalActual = 0;
   const catTotals = [];
-  S.budget.forEach(cat => {
-    const planned = (cat.subs || []).reduce((s, sub) => s + (parseFloat(sub.planned) || 0), 0) + (parseFloat(cat.planned) || 0);
-    const actual = (cat.subs || []).reduce((s, sub) => s + (parseFloat(sub.actual) || 0), 0) + (parseFloat(cat.actual) || 0);
-    totalPlanned += planned;
-    totalActual += actual;
-    if (planned > 0 || actual > 0) catTotals.push({name: cat.cat, val: planned || actual});
+  // A4 (IVY-03): same rule as everywhere — subs replace the parent's values,
+  // never add to them (the old parent+subs sum double-counted categories).
+  budgetTotals().rows.forEach(r => {
+    totalPlanned += r.planned;
+    totalActual += r.actual;
+    if (r.planned > 0 || r.actual > 0) catTotals.push({name: r.cat, val: r.planned || r.actual});
   });
 
   // U2: unset budget → base the pie on what's actually planned/spent, not a phantom 50k
