@@ -264,10 +264,22 @@ function updateProgress() {
   document.getElementById("progress-bar").style.width = pct + "%";
 }
 
-function toggleShot(section, idx) {
-  shots[section][idx].checked = !shots[section][idx].checked;
+function toggleShot(section, idx, el) {
+  const shot = shots[section][idx];
+  shot.checked = !shot.checked;
   saveShotList();
-  renderAll();
+  // A5 (IVY-07): update in place — rebuilding every section per tick made
+  // rapid clicks land on detached nodes and vanish (45 ticks → 43 saved).
+  if (el) {
+    el.classList.toggle('checked', shot.checked);
+    const row = el.closest('.shot-row');
+    if (row) row.classList.toggle('done', shot.checked);
+    const count = document.getElementById('count-' + section.replace(/\s/g, '-'));
+    if (count) count.textContent = shots[section].filter(s => s.checked).length + '/' + shots[section].length;
+    updateProgress();
+  } else {
+    renderAll();
+  }
 }
 
 function addCustomShot(section) {
@@ -320,7 +332,7 @@ function renderAll() {
     html += `<div class="shot-section-header" onclick="toggleSection('${sectionId}')">
       <h2>${sectionName}</h2>
       <div style="display:flex;align-items:center;gap:12px;">
-        <span class="count">${checkedCount}/${sectionShots.length}</span>
+        <span class="count" id="count-${sectionId}">${checkedCount}/${sectionShots.length}</span>
         <span class="toggle">&#9660;</span>
       </div>
     </div>`;
@@ -329,7 +341,7 @@ function renderAll() {
     sectionShots.forEach((shot, idx) => {
       const priorityClass = shot.priority === "essential" ? "priority-essential" : shot.priority === "important" ? "priority-important" : "priority-nice";
       html += `<div class="shot-row ${shot.checked ? 'done' : ''}">
-        <div class="shot-check ${shot.checked ? 'checked' : ''}" onclick="toggleShot('${sectionName}', ${idx})"></div>
+        <div class="shot-check ${shot.checked ? 'checked' : ''}" onclick="toggleShot('${sectionName}', ${idx}, this)"></div>
         <div class="shot-info">
           <div class="shot-name">${shot.name}</div>
           ${shot.note ? `<div class="shot-note">${shot.note}</div>` : ''}

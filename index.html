@@ -2292,6 +2292,50 @@ function isVendorSyncedBudget(catName) {
   return Object.values(VENDOR_BUDGET_MAP).includes(catName) && S.vendors.some(v => VENDOR_BUDGET_MAP[v.cat] === catName && ((v.estimatedPrice||0) > 0 || (v.actualPrice||0) > 0 || (v.deposit||0) > 0));
 }
 
+// A5 (IVY-07): tick helper — instant visual + synchronous save, with the
+// full rebuild deferred until the burst of clicks ends. Rebuilding the
+// whole list per tick made rapid clicks land on detached nodes and vanish.
+const _tickTimers = {};
+function tickAndRender(el, checked, renderFn, key) {
+  if (el) el.classList.toggle('checked', checked);
+  clearTimeout(_tickTimers[key]);
+  _tickTimers[key] = setTimeout(renderFn, 350);
+}
+function toggleChecklistItem(idx, el) {
+  const it = S.checklist[idx]; if (!it) return;
+  it.done = !it.done;
+  if (typeof logActivity === 'function') logActivity('Checklist', it.done ? 'completed' : 'reopened', it.task);
+  saveState();
+  tickAndRender(el, it.done, renderChecklist, 'checklist');
+}
+function toggleKitItem(i, el) {
+  const k = S.kit[i]; if (!k) return;
+  k.got = !k.got;
+  saveState();
+  tickAndRender(el, k.got, renderKit, 'kit');
+}
+function togglePackItem(idx, el) {
+  const p = S.packing[idx]; if (!p) return;
+  p.packed = !p.packed;
+  saveState();
+  tickAndRender(el, p.packed, renderHoneymoon, 'packing');
+}
+
+// A5 (IVY-17): budget cell edits refresh the totals immediately but defer
+// the table rebuild until focus has left the grid — so Tab moves to the
+// next cell instead of the page body, and no in-flight edit is discarded.
+let budgetRefreshTimer = null;
+function scheduleBudgetRefresh() {
+  if (typeof updateBudgetHeader === 'function') updateBudgetHeader();
+  clearTimeout(budgetRefreshTimer);
+  budgetRefreshTimer = setTimeout(() => {
+    const tb = document.getElementById('budget-body');
+    const ae = document.activeElement;
+    if (tb && ae && tb.contains(ae)) { scheduleBudgetRefresh(); return; }
+    renderBudget();
+  }, 500);
+}
+
 // A4 (IVY-03/04/05): THE one place budget money is computed. Every panel —
 // budget page, dashboard, alerts, HST footer — reads from here, so screens
 // can no longer disagree. Rule: a category with sub-items totals from its
@@ -2335,10 +2379,9 @@ function budgetTotals() {
   };
 }
 
-function renderBudget() {
-  // Ensure sub-items arrays exist
-  S.budget.forEach(r => { if (!r.subs) r.subs = []; });
-
+// A5: header/summary refresh extracted so cell edits can update totals
+// without rebuilding the table under the user's cursor.
+function updateBudgetHeader() {
   const T = budgetTotals();
   const hasBudget = T.budget != null;
 
@@ -2376,6 +2419,13 @@ function renderBudget() {
   }
   const hstChk = document.getElementById("hst-toggle");
   if (hstChk) hstChk.checked = !!S.applyHST;
+}
+
+function renderBudget() {
+  // Ensure sub-items arrays exist
+  S.budget.forEach(r => { if (!r.subs) r.subs = []; });
+
+  updateBudgetHeader();
 
   renderHiddenCosts();
 
@@ -2416,9 +2466,9 @@ function renderBudget() {
           ? `<strong style="font-size:13px">${r.cat}</strong> <span style="font-size:11px;color:var(--stone)">(${subs.length})</span>`
           : `<select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:rgba(250,250,247,0.6)" onchange="S.budget[${i}].cat=this.value;saveState();renderBudget()">${getVendorCats().concat(S.customVendorCats||[]).filter((v,j,a)=>a.indexOf(v)===j).map(c => '<option'+(c===r.cat?' selected':'')+'>'+c+'</option>').join('')}${r.cat && !getVendorCats().includes(r.cat) ? '<option selected>'+esc(r.cat)+'</option>' : ''}</select>`}
       </td>
-      <td class="currency">${hasSubs ? '<strong>'+money(catPlanned)+'</strong>' : eCell(r.planned,`S.budget[${i}].planned=+this.value;saveState();renderBudget()`,"number")}</td>
+      <td class="currency">${hasSubs ? '<strong>'+money(catPlanned)+'</strong>' : eCell(r.planned,`S.budget[${i}].planned=+this.value;saveState();scheduleBudgetRefresh()`,"number")}</td>
       <td class="currency" style="color:var(--stone);font-size:12px">${pPct}</td>
-      <td class="currency">${hasSubs ? '<strong>'+money(catActual)+'</strong>' : isVendorSyncedBudget(r.cat) ? '<span title="Auto-synced from Vendors (Signed/Paid)" style="cursor:help">'+money(catActual)+' <span style="font-size:9px;color:var(--taupe)">&#128279;</span></span>' : eCell(r.actual,`S.budget[${i}].actual=+this.value;saveState();renderBudget()`,"number")}</td>
+      <td class="currency">${hasSubs ? '<strong>'+money(catActual)+'</strong>' : isVendorSyncedBudget(r.cat) ? '<span title="Auto-synced from Vendors (Signed/Paid)" style="cursor:help">'+money(catActual)+' <span style="font-size:9px;color:var(--taupe)">&#128279;</span></span>' : eCell(r.actual,`S.budget[${i}].actual=+this.value;saveState();scheduleBudgetRefresh()`,"number")}</td>
       <td class="currency" style="color:var(--stone);font-size:12px">${aPct}</td>
       <td class="currency" style="font-weight:600;color:${diff>=0?'var(--green)':'var(--red)'}">${money(diff)}</td>
       <td>${hasSubs ? '' : eCell(r.notes,`S.budget[${i}].notes=this.value;saveState()`)}</td>
@@ -2441,9 +2491,9 @@ function renderBudget() {
             <input value="${(sub.name||'').replace(/"/g,'&quot;')}" placeholder="Enter item name..." style="min-width:140px" onblur="S.budget[${i}].subs[${si}].name=this.value;saveState()" />
             <div style="margin-top:4px">${tagSelect(i, si, sub.tag)}</div>
           </td>
-          <td class="currency">${eCell(sub.planned,`S.budget[${i}].subs[${si}].planned=+this.value;saveState();renderBudget()`,"number")}</td>
+          <td class="currency">${eCell(sub.planned,`S.budget[${i}].subs[${si}].planned=+this.value;saveState();scheduleBudgetRefresh()`,"number")}</td>
           <td class="currency" style="color:var(--stone);font-size:12px">${sPct}</td>
-          <td class="currency">${eCell(sub.actual,`S.budget[${i}].subs[${si}].actual=+this.value;saveState();renderBudget()`,"number")}</td>
+          <td class="currency">${eCell(sub.actual,`S.budget[${i}].subs[${si}].actual=+this.value;saveState();scheduleBudgetRefresh()`,"number")}</td>
           <td class="currency" style="color:var(--stone);font-size:12px">${sAPct}</td>
           <td class="currency" style="font-weight:600;color:${sDiff>=0?'var(--green)':'var(--red)'}">${money(sDiff)}</td>
           <td>${eCell(sub.notes||'',`S.budget[${i}].subs[${si}].notes=this.value;saveState()`)}</td>
@@ -2604,7 +2654,7 @@ function renderChecklist() {
       const ownerLabel = ownerDisplayName(item.owner);
       const ownerOpts = getOwnerOptions();
       return `<div class="check-item ${item.done?'done':''}" style="display:flex;align-items:center;gap:8px">
-        <div class="check-box ${item.done?'checked':''}" onclick="S.checklist[${idx}].done=!S.checklist[${idx}].done;logActivity('Checklist',S.checklist[${idx}].done?'completed':'reopened',S.checklist[${idx}].task);saveState();renderChecklist()"></div>
+        <div class="check-box ${item.done?'checked':''}" onclick="toggleChecklistItem(${idx}, this)"></div>
         <span class="check-label" style="flex:1">${item.task}</span>
         <select onchange="S.checklist[${idx}].owner=this.value;logActivity('Checklist','assigned',S.checklist[${idx}].task+' → '+this.value);saveState();renderChecklist()" style="font-size:10px;padding:2px 4px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);color:var(--stone);cursor:pointer" title="Assign">
           ${ownerOpts.map(o => `<option value="${esc(o)}" ${(item.owner||'Unassigned')===o?'selected':''}>${esc(ownerDisplayName(o))}</option>`).join('')}
@@ -5728,7 +5778,7 @@ function renderHoneymoon() {
     ${items.map(item => {
       const idx = S.packing.indexOf(item);
       return `<div class="check-item ${item.packed?'done':''}">
-        <div class="check-box ${item.packed?'checked':''}" onclick="S.packing[${idx}].packed=!S.packing[${idx}].packed;saveState();renderHoneymoon()"></div>
+        <div class="check-box ${item.packed?'checked':''}" onclick="togglePackItem(${idx}, this)"></div>
         <span class="check-label">${item.item}</span>
       </div>`;
     }).join("")}</div>`;
@@ -5747,7 +5797,7 @@ function renderKit() {
 
   document.getElementById("kit-grid").innerHTML = S.kit.map((k,i)=>`
     <div class="kit-item" style="${k.got?'opacity:0.5':''};position:relative">
-      <div class="check-box ${k.got?'checked':''}" onclick="S.kit[${i}].got=!S.kit[${i}].got;saveState();renderKit()" style="margin-top:2px"></div>
+      <div class="check-box ${k.got?'checked':''}" onclick="toggleKitItem(${i}, this)" style="margin-top:2px"></div>
       <div style="flex:1">
         <div class="name" style="${k.got?'text-decoration:line-through':''}">${k.item}</div>
         <div class="cat">${k.category}</div>
