@@ -1944,7 +1944,7 @@ function syncVendorsToBudget() {
   S.vendors.forEach(v => {
     const budgetCat = VENDOR_BUDGET_MAP[v.cat];
     if (!budgetCat) return;
-    const cost = parseFloat(v.price) || parseFloat(v.estimatedPrice) || 0;
+    const cost = vendorCost(v);
     const isConfirmed = v.status === 'Signed' || v.status === 'Paid in Full';
     if (isConfirmed) catActual[budgetCat] = (catActual[budgetCat] || 0) + cost;
   });
@@ -2373,7 +2373,7 @@ function budgetTotals() {
   }), { planned: 0, actual: 0, taxPlanned: 0, taxActual: 0 });
   const rate = S.applyHST ? (S.taxRate || 0.13) : 0;
   const tips = (S.vendors || []).reduce((sum, v) =>
-    sum + ((+v.price || 0) * ((typeof v.tipPercent === 'number' ? v.tipPercent : 0) / 100)), 0);
+    sum + (vendorCost(v) * ((typeof v.tipPercent === 'number' ? v.tipPercent : 0) / 100)), 0);
   const budget = (S.totalBudget != null && +S.totalBudget > 0) ? +S.totalBudget : null;
   return {
     rows,
@@ -3549,13 +3549,44 @@ function deleteVendor(i) {
   renderBudget();
 }
 
+// A8: one way to read a vendor's cost, one way to write it.
+function vendorCost(v) {
+  return (v.actualPrice || 0) > 0 ? v.actualPrice
+       : (v.estimatedPrice || 0) > 0 ? v.estimatedPrice
+       : (v.price || 0);
+}
+function setVendorPriceField(i, field, val) {
+  const v = S.vendors[i]; if (!v) return;
+  v[field] = +val || 0;
+  v.price = vendorCost(v);                    // keep the mirror true
+  saveState(); syncVendorsToBudget(); renderBudget();
+}
+function setVendorTableCost(i, val) {
+  // The table's single Cost column: writes the final price once a contract
+  // is signed (or an actual already exists), the estimate before that —
+  // so entering a cost anywhere clears the "missing final price" alert
+  // exactly when it should.
+  const v = S.vendors[i]; if (!v) return;
+  const signed = v.status === 'Signed' || v.status === 'Paid in Full';
+  setVendorPriceField(i, ((v.actualPrice || 0) > 0 || signed) ? 'actualPrice' : 'estimatedPrice', val);
+}
+
 function renderVendors() {
-  // Migrate old estimatedPrice/actualPrice → price
+  // A8 (IVY-14/15): unify cost fields. An earlier half-migration moved the
+  // TABLE to a single `price` while the detail panel, Compare view and
+  // alerts kept reading estimatedPrice/actualPrice — so table-entered costs
+  // showed $0 in Compare and the "missing final price" alert never cleared.
+  // Canonical: estimatedPrice (quote) + actualPrice (final). `price` stays
+  // as a maintained mirror (actual || estimated) for exports/legacy reads.
   S.vendors.forEach(v => {
-    if (v.price === undefined) {
-      v.price = (v.actualPrice || 0) > 0 ? v.actualPrice : (v.estimatedPrice || 0);
-      v.priceConfirmed = (v.actualPrice || 0) > 0;
+    if ((v.price || 0) > 0 && !((v.estimatedPrice || 0) > 0) && !((v.actualPrice || 0) > 0)) {
+      if (v.priceConfirmed || v.status === 'Signed' || v.status === 'Paid in Full') v.actualPrice = v.price;
+      else v.estimatedPrice = v.price;
     }
+    if (v.estimatedPrice === undefined) v.estimatedPrice = 0;
+    if (v.actualPrice === undefined) v.actualPrice = 0;
+    v.price = (v.actualPrice || 0) > 0 ? v.actualPrice : (v.estimatedPrice || 0);
+    delete v.priceConfirmed;
     if (v.deposit === undefined) v.deposit = 0;
     if (v.pros === undefined) v.pros = '';
     if (v.cons === undefined) v.cons = '';
@@ -3593,7 +3624,7 @@ function renderVendors() {
       <td onclick="event.stopPropagation()"><select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:rgba(250,250,247,0.6)" onchange="vendorCatSelect(${i},this.value)">${[''].concat(allCats).concat(['__custom__']).map(c => `<option value="${c==='__custom__'?'__custom__':esc(c)}"${c===v.cat?' selected':''}>${c==='__custom__'?'Custom...':c||'—'}</option>`).join('')}</select></td>
       <td onclick="event.stopPropagation()">${eCell(v.status,`S.vendors[${i}].status=this.value;saveState();syncVendorsToBudget();renderBudget()`,"select",["","Researching","Contacted","Contract Sent","Signed","Paid in Full"])}</td>
       <td><strong style="color:var(--charcoal)">${esc(v.company) || 'Unnamed'}</strong></td>
-      <td class="currency" onclick="event.stopPropagation()">${eCell(v.price,`S.vendors[${i}].price=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
+      <td class="currency" onclick="event.stopPropagation()">${eCell(vendorCost(v),`setVendorTableCost(${i},this.value)`,"number")}</td>
       <td class="currency" onclick="event.stopPropagation()">${eCell(v.deposit,`S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
       <td onclick="event.stopPropagation()">${eCell(v.due,`S.vendors[${i}].due=this.value;saveState()`,"date")}</td>
       <td onclick="event.stopPropagation()">${delBtn(`deleteVendor(${i})`)}</td>
@@ -3620,7 +3651,7 @@ function renderVendors() {
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
           <div><label class="ob-label">Arrival Time</label><input class="ob-input" type="time" value="${esc(v.arrival||'')}" onchange="S.vendors[${i}].arrival=this.value;syncVendorArrival(${i})" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Tip %</label><input class="ob-input" type="number" min="0" max="50" value="${(typeof v.tipPercent==='number')?v.tipPercent:(TIP_DEFAULTS[v.cat]||0)}" onchange="S.vendors[${i}].tipPercent=+this.value;saveState();renderVendors();renderBudget()" placeholder="0" style="padding:8px 12px;font-size:13px"/></div>
-          <div><label class="ob-label">Tip Amount</label><input class="ob-input" value="${money((v.price||0)*((typeof v.tipPercent==='number'?v.tipPercent:(TIP_DEFAULTS[v.cat]||0))/100))}" disabled style="padding:8px 12px;font-size:13px;background:rgba(237,232,224,0.3);color:var(--stone)"/></div>
+          <div><label class="ob-label">Tip Amount</label><input class="ob-input" value="${money(vendorCost(v)*((typeof v.tipPercent==='number'?v.tipPercent:(TIP_DEFAULTS[v.cat]||0))/100))}" disabled style="padding:8px 12px;font-size:13px;background:rgba(237,232,224,0.3);color:var(--stone)"/></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
           <div><label class="ob-label">Pros</label><textarea style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:12px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:50px" onblur="S.vendors[${i}].pros=this.value;saveState()">${esc(v.pros)}</textarea></div>
@@ -4012,8 +4043,8 @@ function renderVendorDetailView() {
       <div><label class="ob-label">Ext</label><input class="ob-input" value="${esc(v.ext||'')}" onblur="S.vendors[${i}].ext=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
-      <div><label class="ob-label">Estimated</label><input class="ob-input" type="number" step="0.01" value="${v.estimatedPrice}" onblur="S.vendors[${i}].estimatedPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()" style="padding:8px 12px;font-size:13px"/></div>
-      <div><label class="ob-label">Actual</label><input class="ob-input" type="number" step="0.01" value="${v.actualPrice}" onblur="S.vendors[${i}].actualPrice=+this.value;saveState();syncVendorsToBudget();renderBudget()" style="padding:8px 12px;font-size:13px"/></div>
+      <div><label class="ob-label">Estimated</label><input class="ob-input" type="number" step="0.01" value="${v.estimatedPrice}" onblur="setVendorPriceField(${i},'estimatedPrice',this.value)" style="padding:8px 12px;font-size:13px"/></div>
+      <div><label class="ob-label">Actual</label><input class="ob-input" type="number" step="0.01" value="${v.actualPrice}" onblur="setVendorPriceField(${i},'actualPrice',this.value)" style="padding:8px 12px;font-size:13px"/></div>
       <div><label class="ob-label">Deposit</label><input class="ob-input" type="number" step="0.01" value="${v.deposit}" onblur="S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()" style="padding:8px 12px;font-size:13px"/></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
@@ -4047,7 +4078,7 @@ function addVendor() {
     const company = document.getElementById('av-company').value.trim();
     if (!company) return;
     const cat = document.getElementById('av-cat').value;
-    const v = {cat, company, contact:document.getElementById('av-contact').value.trim(), email:document.getElementById('av-email').value.trim(), phone:document.getElementById('av-phone').value.trim(), status:'',due:'',arrival:'',price:0,priceConfirmed:false,deposit:0,pros:'',cons:'',packageNotes:'',contractNotes:'',hiddenFeeChecks:{},contractChecks:{}};
+    const v = {cat, company, contact:document.getElementById('av-contact').value.trim(), email:document.getElementById('av-email').value.trim(), phone:document.getElementById('av-phone').value.trim(), status:'',due:'',arrival:'',price:0,estimatedPrice:0,actualPrice:0,deposit:0,pros:'',cons:'',packageNotes:'',contractNotes:'',hiddenFeeChecks:{},contractChecks:{}};
     S.vendors.push(v);
     if (cat === 'Transportation') {
       S.transport.push({label:company, vehicleType:'', company:company, contactName:v.contact, contactPhone:v.phone, pickupLocation:'',pickupTime:'',dropoffLocation:'',dropoffTime:'',includedHours:'',overtimeRate:'',confirmation:'',cost:0,notes:'',vendorIdx:S.vendors.length-1,assignedTo:''});
@@ -4771,8 +4802,8 @@ function exportVendorsCSV() {
   const rows = [['Category','Company','Contact','Email','Phone','Status','Price','Deposit','Due','Arrival','Tip %','Tip Amount','Notes']];
   (S.vendors||[]).forEach(v => {
     const tipPct = (typeof v.tipPercent==='number') ? v.tipPercent : (TIP_DEFAULTS[v.cat]||0);
-    const tipAmt = (v.price||0) * tipPct / 100;
-    rows.push([v.cat||'', v.company||'', v.contact||'', v.email||'', v.phone||'', v.status||'', v.price||0, v.deposit||0, v.due||'', v.arrival||'', tipPct, tipAmt, v.packageNotes||'']);
+    const tipAmt = vendorCost(v) * tipPct / 100;
+    rows.push([v.cat||'', v.company||'', v.contact||'', v.email||'', v.phone||'', v.status||'', vendorCost(v), v.deposit||0, v.due||'', v.arrival||'', tipPct, tipAmt, v.packageNotes||'']);
   });
   downloadCSV('ivory-vendors.csv', rows);
   logActivity('Vendors','exported','CSV'); saveState();
@@ -6767,7 +6798,7 @@ function renderPostWeddingSummary() {
   const plannedTotal = (S.budget||[]).reduce((s,r) => s + (r.planned||0) + (r.subs||[]).reduce((s2,sb) => s2 + (sb.planned||0), 0), 0);
   const actualTotal = (S.budget||[]).reduce((s,r) => s + (r.actual||0) + (r.subs||[]).reduce((s2,sb) => s2 + (sb.actual||0), 0), 0);
   const variance = actualTotal - plannedTotal;
-  const vendorCost = (S.vendors||[]).reduce((s,v) => s + (v.price||0), 0);
+  const vendorCostTotal = (S.vendors||[]).reduce((t,v) => t + vendorCost(v), 0);
   const photoCount = (S.cameraPhotos||[]).length;
   const ratings = (S.vendors||[]).filter(v => (v.rating||0) > 0);
   const avgRating = ratings.length ? (ratings.reduce((s,v) => s + v.rating, 0) / ratings.length).toFixed(1) : '—';
@@ -6780,7 +6811,7 @@ function renderPostWeddingSummary() {
   content.innerHTML = `
     <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Attended</div><div style="font-family:var(--font-serif);font-size:22px">${attending}</div></div>
     <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Final spend</div><div style="font-family:var(--font-serif);font-size:22px">${money(actualTotal)}</div><div style="font-size:10px;color:${variance > 0 ? 'var(--red)' : 'var(--green)'}">${variance > 0 ? '+' : ''}${money(variance)} vs planned</div></div>
-    <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Vendor cost</div><div style="font-family:var(--font-serif);font-size:22px">${money(vendorCost)}</div></div>
+    <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Vendor cost</div><div style="font-family:var(--font-serif);font-size:22px">${money(vendorCostTotal)}</div></div>
     <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Guest photos</div><div style="font-family:var(--font-serif);font-size:22px">${photoCount}</div></div>
     <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Avg vendor rating</div><div style="font-family:var(--font-serif);font-size:22px">${avgRating}</div>${topVendor ? `<div style="font-size:10px;color:var(--stone)">&#11088; ${esc(topVendor.company)}</div>` : ''}</div>
     <div><div style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em">Thank-yous</div><div style="font-family:var(--font-serif);font-size:22px">${thanksSent}<span style="font-size:14px;color:var(--stone)"> / ${thanksSent+thanksPending}</span></div>${thanksPending ? `<div style="font-size:10px;color:var(--red)">${thanksPending} to send</div>` : ''}</div>
@@ -6789,8 +6820,8 @@ function renderPostWeddingSummary() {
 function copyPostWeddingSummary(btn) {
   const attending = (S.guests||[]).filter(g => g.rsvp === 'Attending').length + (S.guests||[]).reduce((s,g) => s + ((g.plusGuests||[]).length), 0);
   const actualTotal = (S.budget||[]).reduce((s,r) => s + (r.actual||0) + (r.subs||[]).reduce((s2,sb) => s2 + (sb.actual||0), 0), 0);
-  const vendorCost = (S.vendors||[]).reduce((s,v) => s + (v.price||0), 0);
-  const txt = `${(S.coupleName1||'')} & ${(S.coupleName2||'')} — ${S.weddingDate}\nGuests: ${attending}\nFinal spend: ${money(actualTotal)}\nVendor cost: ${money(vendorCost)}`;
+  const vendorCostTotal = (S.vendors||[]).reduce((t,v) => t + vendorCost(v), 0);
+  const txt = `${(S.coupleName1||'')} & ${(S.coupleName2||'')} — ${S.weddingDate}\nGuests: ${attending}\nFinal spend: ${money(actualTotal)}\nVendor cost: ${money(vendorCostTotal)}`;
   navigator.clipboard.writeText(txt).then(() => {
     if (btn) { const t = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = t, 1200); }
   });
