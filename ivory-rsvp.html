@@ -99,6 +99,9 @@ input,select,textarea{font-family:inherit}
 .confirm-icon{width:56px;height:56px;border-radius:50%;background:rgba(74,122,91,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:24px}
 .confirm-title{font-family:var(--font-serif);font-size:26px;margin-bottom:8px}
 .confirm-sub{font-size:14px;color:var(--stone);line-height:1.6;margin-bottom:24px}
+.event-pills{margin:0 0 20px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.event-pill{padding:8px 16px;border:1px solid var(--sand,#e7e0d5);border-radius:100px;background:#fff;font-size:13px;color:var(--stone,#6b6560);cursor:pointer;font-family:inherit;transition:all .15s}
+.event-pill.active{background:var(--charcoal,#1c1917);border-color:var(--charcoal,#1c1917);color:#fff}
 .confirm-details{text-align:left;background:var(--ivory);border-radius:12px;padding:20px;margin-bottom:20px}
 .confirm-row{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}
 .confirm-row:not(:last-child){border-bottom:1px solid var(--border-light)}
@@ -149,6 +152,9 @@ input,select,textarea{font-family:inherit}
     <div class="rsvp-card">
       <p class="guest-greeting" id="rsvp-greeting">Hi, Sarah!</p>
       <p class="guest-sub">We're so glad you're here. Let us know if you can make it.</p>
+
+      <!-- B2.2: shown only when this guest is invited to more than one event -->
+      <div id="rsvp-event-pills" style="display:none"></div>
 
       <div class="form-group">
         <span class="form-label">Will you be attending?</span>
@@ -222,6 +228,9 @@ input,select,textarea{font-family:inherit}
 // no localStorage-of-someone-else's-data. Falls back to a local demo
 // only when opened without a token (e.g. the couple's own Preview).
 let plannerState = null;      // { guests, mealOptions, coupleName1, coupleName2, weddingDate }
+let weddingEvents = [];        // B2.2: [{id,name,type,date,time,venue,primary}]
+let weddingInvitations = [];   // B2.2: [{guestId,eventId}] pairs
+let currentEventId = null;     // B2.2: null = the primary Wedding Day
 let selectedGuestIdx = -1;
 let plusGuestsList = [];       // [{name, meal}]
 let currentPlusLimit = 0;
@@ -261,6 +270,7 @@ async function loadWedding() {
   }
   plannerState = {
     guests: (data.guests || []).map(g => ({
+      id: g.id || '',
       name: g.name,
       allowPlusOne: (typeof g.allow_plus_one === 'number') ? g.allow_plus_one : 0,
       plusGuests: []
@@ -270,6 +280,8 @@ async function loadWedding() {
     coupleName2: data.couple_name_2 || '',
     weddingDate: data.wedding_date || ''
   };
+  weddingEvents = Array.isArray(data.events) ? data.events : [];
+  weddingInvitations = Array.isArray(data.invitations) ? data.invitations : [];
 }
 
 function seedDemo() {
@@ -336,6 +348,56 @@ function mealOptionsHTML(selected) {
   return '<option value="">Select meal...</option>' + meals.map(m => `<option${m===selected?' selected':''}>${m}</option>`).join('');
 }
 
+// ─── B2.2: per-event RSVP ───
+function eventsForGuest(guest) {
+  const evs = weddingEvents || [];
+  if (!evs.length) return [];
+  const primary = evs.filter(e => e.primary);
+  const invited = evs.filter(e => !e.primary && guest.id &&
+    (weddingInvitations || []).some(iv => iv.eventId === e.id && iv.guestId === guest.id));
+  return primary.concat(invited);
+}
+
+function fmtEventDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return isNaN(dt) ? d : dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+
+function eventName(eventId) {
+  const ev = (weddingEvents || []).find(e => e.id === eventId);
+  return ev ? (ev.name || 'Event') : '';
+}
+
+function renderEventPills(guest) {
+  const wrap = document.getElementById('rsvp-event-pills');
+  if (!wrap) return;
+  const evs = eventsForGuest(guest);
+  if (evs.length < 2) { wrap.style.display = 'none'; wrap.innerHTML = ''; currentEventId = null; return; }
+  wrap.style.display = '';
+  wrap.innerHTML = '<span class="form-label" style="display:block;margin-bottom:10px">You\'re invited to more than one event — respond to each</span>' +
+    '<div class="event-pills">' +
+    evs.map(e => {
+      const id = e.primary ? '' : (e.id || '');
+      const active = (currentEventId || '') === id;
+      return `<button type="button" class="event-pill${active ? ' active' : ''}" onclick="selectRsvpEvent('${escHtml(id)}')">${escHtml(e.name || 'Wedding Day')}${e.date ? ' &middot; ' + escHtml(fmtEventDate(e.date)) : ''}</button>`;
+    }).join('') + '</div>';
+}
+
+function selectRsvpEvent(eventId) {
+  currentEventId = eventId || null;
+  const guest = plannerState.guests[selectedGuestIdx];
+  if (!guest) return;
+  // Fresh form for this event, then prefill from the server if they've answered
+  document.getElementById('rsvp-yes').checked = false;
+  document.getElementById('rsvp-no').checked = false;
+  document.getElementById('rsvp-meal').innerHTML = mealOptionsHTML('');
+  document.getElementById('rsvp-dietary').value = '';
+  document.getElementById('rsvp-message').value = '';
+  renderEventPills(guest);
+  updateRsvpForm();
+  loadExistingRsvp(guest);
+}
+
 // ─── Select guest & show form ───
 function selectGuest(idx) {
   selectedGuestIdx = idx;
@@ -373,6 +435,10 @@ function selectGuest(idx) {
   // Reset form fields
   document.getElementById('rsvp-yes').checked = guest.rsvp === 'Attending';
   document.getElementById('rsvp-no').checked = guest.rsvp === 'Declined';
+
+  // B2.2: start on the primary Wedding Day; pills appear if they have more events
+  currentEventId = null;
+  renderEventPills(guest);
 
   // IVY-01: a returning guest sees their previous answer, not a blank form
   loadExistingRsvp(guest);
@@ -463,9 +529,12 @@ async function loadExistingRsvp(guest) {
   if (old) old.remove();
   if (isDemo || !supa || !shareToken || !guest || !guest.name) return;
   try {
+    const forEventId = currentEventId;
     const { data, error } = await supa.rpc('guest_get_my_rsvp', {
-      p_token: shareToken, p_guest_name: guest.name
+      p_token: shareToken, p_guest_name: guest.name, p_event_id: forEventId
     });
+    // Ignore a reply that arrives after the guest switched events
+    if (forEventId !== currentEventId) return;
     if (error || !data || data.found !== true) return;
 
     // Prefill the form with what the server has
@@ -484,7 +553,8 @@ async function loadExistingRsvp(guest) {
     banner.id = 'rsvp-prev-banner';
     banner.setAttribute('role', 'status');
     banner.style.cssText = 'margin:0 0 18px;padding:12px 16px;background:rgba(74,122,91,0.08);border:1px solid rgba(74,122,91,0.25);border-radius:10px;font-size:13px;color:var(--charcoal,#1c1917);line-height:1.5';
-    banner.innerHTML = '&#10003; <strong>We have your response</strong> — ' +
+    const evLabel = currentEventId ? eventName(currentEventId) : '';
+    banner.innerHTML = '&#10003; <strong>We have your response' + (evLabel ? ' for ' + escHtml(evLabel) : '') + '</strong> — ' +
       (isAttending ? 'Attending' : 'Declined') +
       (data.meal ? ', ' + escHtml(data.meal) : '') +
       (whenStr ? ', received ' + whenStr : '') +
@@ -545,7 +615,8 @@ async function submitRsvp() {
       p_party_size: partySize,
       p_meal: attending ? (guest.meal || '') : '',
       p_dietary: attending ? (guest.dietary || '') : '',
-      p_message: guest.message || ''
+      p_message: guest.message || '',
+      p_event_id: currentEventId
     });
     if (error || (data && data.error) || !(data && data.ok === true)) {
       console.warn('[Ivory RSVP] submit failed:', error || (data && data.error) || data);
@@ -556,7 +627,7 @@ async function submitRsvp() {
     // Read the submission back from the server so the confirmation screen
     // is only ever shown for a response that verifiably exists.
     const verify = await supa.rpc('guest_get_my_rsvp', {
-      p_token: shareToken, p_guest_name: guest.name
+      p_token: shareToken, p_guest_name: guest.name, p_event_id: currentEventId
     });
     const fnMissing = verify.error && /guest_get_my_rsvp/.test(verify.error.message || '');
     if (fnMissing) {
@@ -574,6 +645,7 @@ async function submitRsvp() {
   if (attending) {
     // Build confirmation summary
     let rows = `<div class="confirm-row"><span class="label">Name</span><span class="value">${guest.name}</span></div>`;
+    if (currentEventId && eventName(currentEventId)) rows += `<div class="confirm-row"><span class="label">Event</span><span class="value">${escHtml(eventName(currentEventId))}</span></div>`;
     rows += `<div class="confirm-row"><span class="label">Response</span><span class="value" style="color:var(--green)">Attending</span></div>`;
     if (guest.meal) rows += `<div class="confirm-row"><span class="label">Meal</span><span class="value">${guest.meal}</span></div>`;
 

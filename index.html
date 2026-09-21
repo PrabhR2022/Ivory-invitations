@@ -3414,7 +3414,7 @@ async function fetchAndRenderOnlineRsvps() {
 
   const { data: subs, error } = await supa
     .from('rsvp_submissions')
-    .select('id, guest_name, guest_name_key, status, party_size, meal, dietary, message, applied, submitted_at')
+    .select('id, guest_name, guest_name_key, status, party_size, meal, dietary, message, applied, submitted_at, event_id')
     .eq('wedding_id', currentWeddingId)
     .order('submitted_at', { ascending: false });
 
@@ -3437,7 +3437,7 @@ async function fetchAndRenderOnlineRsvps() {
     const statusColor = s.status === 'Attending' ? 'var(--green)' : 'var(--red)';
     return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border-light);border-radius:10px;margin-bottom:8px;${s.applied?'opacity:0.55':''}">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600">${esc(s.guest_name)}${known?'':' <span style="font-size:10px;color:var(--taupe)">(not on your list)</span>'}</div>
+        <div style="font-size:13px;font-weight:600">${esc(s.guest_name)}${known?'':' <span style="font-size:10px;color:var(--taupe)">(not on your list)</span>'}${s.event_id ? ` <span style="font-size:10px;padding:1px 8px;border-radius:100px;background:rgba(184,150,100,0.15);color:var(--taupe)">${esc((eventById(s.event_id)||{}).name || 'other event')}</span>` : ((S.events||[]).length > 1 ? ' <span style="font-size:10px;padding:1px 8px;border-radius:100px;background:rgba(184,150,100,0.15);color:var(--taupe)">Wedding Day</span>' : '')}</div>
         <div style="font-size:11px;color:var(--stone)">
           <span style="color:${statusColor};font-weight:600">${esc(s.status)}</span>
           ${s.party_size>1?` · party of ${s.party_size}`:''}
@@ -3468,22 +3468,35 @@ async function applyOnlineRsvp(subId) {
     if (!Array.isArray(S.guests)) S.guests = [];
     g = { name: s.guest_name, rsvp: 'Pending', allowPlusOne: Math.max(0, (s.party_size||1) - 1) };
     S.guests.push(g);
+    ensureStableIds();
   }
-  g.rsvp = s.status === 'Declined' ? 'Declined' : 'Attending';
-  g.rsvpDate = new Date().toISOString().slice(0, 10);
-  if (s.meal) g.meal = s.meal;
-  if (s.dietary) g.dietary = s.dietary;
-  // Plus-ones: record count so the guest-list plus math is consistent
-  if (s.party_size > 1) {
-    g.plusGuests = g.plusGuests || [];
-    const need = (s.party_size - 1) - g.plusGuests.length;
-    for (let k = 0; k < need; k++) g.plusGuests.push({ name: '(guest)', meal: '' });
+  // B2.2: a reply for a specific (non-primary) event applies to that
+  // event's invitation row, never the wedding-day guest record.
+  const targetEvent = s.event_id ? eventById(s.event_id) : null;
+  if (targetEvent && !targetEvent.primary) {
+    let iv = getInvite(targetEvent.id, g.id);
+    if (!iv) { iv = { guestId: g.id, eventId: targetEvent.id, rsvp: 'Pending', meal: '' }; S.invitations.push(iv); }
+    iv.rsvp = s.status === 'Declined' ? 'Declined' : 'Attending';
+    if (s.meal) iv.meal = s.meal;
+    if (typeof logActivity === 'function') logActivity('RSVP', 'applied online RSVP (' + (targetEvent.name || 'event') + ')', s.guest_name + ' — ' + iv.rsvp);
+  } else {
+    g.rsvp = s.status === 'Declined' ? 'Declined' : 'Attending';
+    g.rsvpDate = new Date().toISOString().slice(0, 10);
+    if (s.meal) g.meal = s.meal;
+    if (s.dietary) g.dietary = s.dietary;
+    // Plus-ones: record count so the guest-list plus math is consistent
+    if (s.party_size > 1) {
+      g.plusGuests = g.plusGuests || [];
+      const need = (s.party_size - 1) - g.plusGuests.length;
+      for (let k = 0; k < need; k++) g.plusGuests.push({ name: '(guest)', meal: '' });
+    }
+    if (typeof logActivity === 'function') logActivity('RSVP', 'applied online RSVP', s.guest_name + ' — ' + g.rsvp);
   }
-  if (typeof logActivity === 'function') logActivity('RSVP', 'applied online RSVP', s.guest_name + ' — ' + g.rsvp);
   saveState();
 
   await supa.from('rsvp_submissions').update({ applied: true }).eq('id', subId);
   if (typeof renderGuests === 'function') renderGuests();
+  if (typeof renderPreEvents === 'function' && document.getElementById('tab-preevents')?.classList.contains('active')) renderPreEvents();
   fetchAndRenderOnlineRsvps();
 }
 
