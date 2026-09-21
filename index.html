@@ -959,6 +959,9 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
           <button class="budget-filter-btn" onclick="setBudgetFilter('groom')">Groom</button>
           <button class="budget-filter-btn" onclick="setBudgetFilter('shared')">Shared</button>
         </div>
+        <!-- B2.3: per-event budget filter (appears once other events exist) -->
+        <div id="budget-event-pills" class="budget-filter" style="display:none;flex-wrap:wrap"></div>
+        <div id="budget-event-summary" style="display:none;font-size:12px;color:var(--stone);margin:-8px 0 14px"></div>
         <div class="tbl-wrap">
           <table id="budget-table" style="min-width:900px">
             <thead><tr><th style="min-width:200px">Category</th><th style="text-align:right">Planned</th><th style="text-align:right">%</th><th style="text-align:right">Actual</th><th style="text-align:right">%</th><th style="text-align:right">Difference</th><th>Notes</th><th></th></tr></thead>
@@ -1156,6 +1159,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
       <!-- Floor Plan sub-section inside guests -->
       <div class="tl-section" id="guest-sub-floorplan">
         <p class="page-desc" style="margin-bottom:16px">Drag and drop to arrange your venue — tables, stage, dance floor and more</p>
+        <div id="fp-event-pills" class="budget-filter" style="display:none;flex-wrap:wrap"></div>
         <div class="fp-canvas-wrap">
           <div class="fp-toolbar">
             <button class="fp-tool-btn" onclick="addFpItem('round')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/></svg> Round Table</button>
@@ -1853,6 +1857,7 @@ function migrateToEvents() {
     });
     S.preEvents = [];
   }
+  ensureEventLayouts();
 }
 function eventById(id) { return (S.events || []).find(e => e.id === id) || null; }
 function primaryEvent() { return (S.events || []).find(e => e.primary) || null; }
@@ -1882,13 +1887,70 @@ function eventStats(eventId) {
 function deleteEvent(eventId) {
   const ev = eventById(eventId);
   if (!ev || ev.primary) return;
-  if (!confirm('Delete "' + (ev.name || 'this event') + '"? Its guest list and RSVPs for this event are removed; the guests themselves are untouched.')) return;
+  if (!confirm('Delete "' + (ev.name || 'this event') + '"? Its guest list, RSVPs, floor plan and seating for this event are removed; its budget lines move to the wedding day. The guests themselves are untouched.')) return;
   S.events = S.events.filter(e => e.id !== eventId);
   S.invitations = (S.invitations || []).filter(iv => iv.eventId !== eventId);
   (S.timeline || []).forEach(b => { if (b.eventId === eventId) delete b.eventId; });
   if (typeof schEventFilter !== 'undefined' && schEventFilter === eventId) schEventFilter = 'all';
+  // B2.3: per-event layout dies with the event; budget lines are money — keep them, untagged
+  if (S.eventLayouts) delete S.eventLayouts[eventId];
+  if (seatingEventId === eventId) seatingEventId = null;
+  (S.budget || []).forEach(b => { if (b.eventId === eventId) delete b.eventId; });
+  if (typeof budEventFilter !== 'undefined' && budEventFilter === eventId) budEventFilter = 'all';
   saveState(); renderPreEvents();
 }
+// ══ B2.3 · Per-event layouts (floor plan + seating) + budgets ══════
+// Storage: S.eventLayouts = { primary: {...}, [eventId]: {...} }, each
+// {floorPlan, seatAssignments, floorPlanCleared}. S.floorPlan /
+// S.seatAssignments / S.floorPlanCleared become NON-ENUMERABLE
+// accessors onto the ACTIVE event's layout, so every existing call
+// site and inline handler works unchanged, and JSON.stringify(S)
+// (localStorage + cloud blob) persists only eventLayouts.
+let seatingEventId = null;       // null = primary Wedding Day
+let pendingSeatingEventId;       // set by openEventFloorPlan, consumed by renderFloorPlan
+function activeLayout() {
+  const ev = seatingEventId ? eventById(seatingEventId) : null;
+  const key = (ev && !ev.primary) ? seatingEventId : 'primary';
+  if (!S.eventLayouts[key]) S.eventLayouts[key] = { floorPlan: [], seatAssignments: {}, floorPlanCleared: false };
+  const L = S.eventLayouts[key];
+  if (!Array.isArray(L.floorPlan)) L.floorPlan = [];
+  if (!L.seatAssignments || typeof L.seatAssignments !== 'object') L.seatAssignments = {};
+  return L;
+}
+function ensureEventLayouts() {
+  if (!S.eventLayouts || typeof S.eventLayouts !== 'object') S.eventLayouts = {};
+  const own = Object.getOwnPropertyDescriptor(S, 'floorPlan');
+  const hasPlain = !!(own && ('value' in own));
+  if (!S.eventLayouts.primary) {
+    // One-time migration: legacy top-level layout becomes the primary one
+    S.eventLayouts.primary = {
+      floorPlan: (hasPlain && Array.isArray(S.floorPlan)) ? S.floorPlan : [],
+      seatAssignments: (hasPlain && S.seatAssignments && typeof S.seatAssignments === 'object') ? S.seatAssignments : {},
+      floorPlanCleared: hasPlain ? !!S.floorPlanCleared : false
+    };
+  }
+  if (hasPlain) { delete S.floorPlan; delete S.seatAssignments; delete S.floorPlanCleared; }
+  ['floorPlan', 'seatAssignments', 'floorPlanCleared'].forEach(prop => {
+    Object.defineProperty(S, prop, {
+      configurable: true, enumerable: false,
+      get() { return activeLayout()[prop]; },
+      set(v) { activeLayout()[prop] = v; }
+    });
+  });
+}
+function eventBudgetTotals(eventId) {
+  let planned = 0, actual = 0;
+  (S.budget || []).forEach(r => {
+    if (r.eventId !== eventId) return;
+    const subs = Array.isArray(r.subs) ? r.subs : [];
+    if (subs.length) subs.forEach(x => { planned += +x.planned || 0; actual += +x.actual || 0; });
+    else { planned += +r.planned || 0; actual += +r.actual || 0; }
+  });
+  return { planned, actual };
+}
+function openEventBudget(eventId) { budEventFilter = eventId; showTab('budget'); }
+function openEventFloorPlan(eventId) { pendingSeatingEventId = eventId; showTab('floorplan'); }
+
 migrateToEvents();
 // U4: prune abandoned nameless guest rows left over from previous sessions
 if (Array.isArray(S.guests)) {
@@ -2140,6 +2202,8 @@ function buildKit() {
 let guestActiveSub = 'list';
 function showGuestSub(sub) {
   guestActiveSub = sub;
+  // B2.3: the guest-list table popover must always bind the wedding-day layout
+  if (sub !== 'floorplan') seatingEventId = null;
   document.querySelectorAll('#guest-subtabs .tl-tab').forEach(b => b.classList.remove('active'));
   const order = ['list','rsvp','thankyous','floorplan'];
   document.querySelectorAll('#guest-subtabs .tl-tab').forEach((b,i) => { if(order[i] === sub) b.classList.add('active'); });
@@ -2429,6 +2493,7 @@ function closeAlertModal() {
 // BUDGET
 // ══════════════════════════════════════════════════
 let budgetFilter = 'all';
+let budEventFilter = 'all';   // B2.3: 'all' | 'primary' | eventId
 let expandedCategories = {};
 
 function setBudgetFilter(f) {
@@ -2615,6 +2680,52 @@ function updateBudgetHeader() {
   if (hstChk) hstChk.checked = !!S.applyHST;
 }
 
+function setBudEventFilter(f) { budEventFilter = f; renderBudget(); }
+function budgetRowEventKey(r) {
+  return (r.eventId && eventById(r.eventId) && !eventById(r.eventId).primary) ? r.eventId : 'primary';
+}
+function renderBudgetEventPills() {
+  const wrap = document.getElementById('budget-event-pills');
+  const summary = document.getElementById('budget-event-summary');
+  if (!wrap) return;
+  const others = (S.events || []).filter(e => !e.primary);
+  if (!others.length) {
+    wrap.style.display = 'none'; wrap.innerHTML = ''; budEventFilter = 'all';
+    if (summary) summary.style.display = 'none';
+    return;
+  }
+  if (budEventFilter !== 'all' && budEventFilter !== 'primary' && !eventById(budEventFilter)) budEventFilter = 'all';
+  const pe = primaryEvent();
+  wrap.style.display = 'flex';
+  wrap.innerHTML =
+    `<button class="budget-filter-btn ${budEventFilter === 'all' ? 'active' : ''}" onclick="setBudEventFilter('all')">All events</button>` +
+    `<button class="budget-filter-btn ${budEventFilter === 'primary' ? 'active' : ''}" onclick="setBudEventFilter('primary')">${esc((pe && pe.name) || 'Wedding Day')}</button>` +
+    others.map(e => `<button class="budget-filter-btn ${budEventFilter === e.id ? 'active' : ''}" onclick="setBudEventFilter('${e.id}')">${esc(e.name || 'Event')}</button>`).join('');
+  if (summary) {
+    if (budEventFilter === 'all') { summary.style.display = 'none'; summary.innerHTML = ''; }
+    else {
+      let planned = 0, actual = 0;
+      (S.budget || []).forEach(r => {
+        if (budgetRowEventKey(r) !== budEventFilter) return;
+        const subs = Array.isArray(r.subs) ? r.subs : [];
+        if (subs.length) subs.forEach(x => { planned += +x.planned || 0; actual += +x.actual || 0; });
+        else { planned += +r.planned || 0; actual += +r.actual || 0; }
+      });
+      const evName = budEventFilter === 'primary' ? ((pe && pe.name) || 'Wedding Day') : ((eventById(budEventFilter) || {}).name || 'Event');
+      summary.style.display = '';
+      summary.innerHTML = `Showing <strong>${esc(evName)}</strong> only — ${money(planned)} planned · ${money(actual)} spent. Totals above cover the whole wedding.`;
+    }
+  }
+}
+function budgetEventSelectHTML(i, eventId) {
+  const others = (S.events || []).filter(e => !e.primary);
+  if (!others.length) return '';
+  const cur = (eventId && eventById(eventId) && !eventById(eventId).primary) ? eventId : '';
+  return `<div style="margin-top:4px"><select style="font-size:10px;padding:2px 6px;border:1px solid var(--border-light);border-radius:6px;color:var(--stone);background:none;max-width:150px" title="Which event this line belongs to" onchange="if(this.value)S.budget[${i}].eventId=this.value;else delete S.budget[${i}].eventId;saveState();renderBudget()">
+    <option value=""${!cur ? ' selected' : ''}>${esc((primaryEvent() || {}).name || 'Wedding Day')}</option>
+    ${others.map(e => `<option value="${e.id}"${cur === e.id ? ' selected' : ''}>${esc(e.name || 'Event')}</option>`).join('')}
+  </select></div>`;
+}
 function renderBudget() {
   // Ensure sub-items arrays exist
   S.budget.forEach(r => { if (!r.subs) r.subs = []; });
@@ -2623,6 +2734,8 @@ function renderBudget() {
 
   renderHiddenCosts();
 
+  renderBudgetEventPills();
+
   const tb = document.getElementById("budget-body");
   let html = '';
 
@@ -2630,6 +2743,9 @@ function renderBudget() {
     const subs = r.subs || [];
     const hasSubs = subs.length > 0;
     const expanded = expandedCategories[i];
+
+    // B2.3: per-event filter — untagged rows belong to the wedding day
+    if (budEventFilter !== 'all' && budgetRowEventKey(r) !== budEventFilter) return;
 
     // If category has subs, calculate totals from filtered subs
     let catPlanned = r.planned || 0;
@@ -2659,6 +2775,7 @@ function renderBudget() {
         ${hasSubs
           ? `<strong style="font-size:13px">${r.cat}</strong> <span style="font-size:11px;color:var(--stone)">(${subs.length})</span>`
           : `<select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:rgba(250,250,247,0.6)" onchange="S.budget[${i}].cat=this.value;saveState();renderBudget()">${getVendorCats().concat(S.customVendorCats||[]).filter((v,j,a)=>a.indexOf(v)===j).map(c => '<option'+(c===r.cat?' selected':'')+'>'+c+'</option>').join('')}${r.cat && !getVendorCats().includes(r.cat) ? '<option selected>'+esc(r.cat)+'</option>' : ''}</select>`}
+        ${budgetEventSelectHTML(i, r.eventId)}
       </td>
       <td class="currency">${hasSubs ? '<strong>'+money(catPlanned)+'</strong>' : eCell(r.planned,`S.budget[${i}].planned=+this.value;saveState();scheduleBudgetRefresh()`,"number")}</td>
       <td class="currency" style="color:var(--stone);font-size:12px">${pPct}</td>
@@ -2780,7 +2897,9 @@ function addBudgetRow() {
     if (!cat) return;
     const planned = parseFloat(document.getElementById('br-planned').value) || 0;
     const notes = document.getElementById('br-notes').value.trim();
-    S.budget.push({cat, planned, actual:0, notes, subs:[]});
+    const row = {cat, planned, actual:0, notes, subs:[]};
+    if (budEventFilter !== 'all' && budEventFilter !== 'primary' && eventById(budEventFilter)) row.eventId = budEventFilter;
+    S.budget.push(row);
     saveState(); renderBudget(); closeInputModal();
   });
 }
@@ -6370,7 +6489,25 @@ function fpFreeSpot() {
   return {x: 40 + (n % 8) * 32, y: 40 + n * 26};   // crowded plan: stagger
 }
 
+function renderFpEventPills() {
+  const wrap = document.getElementById('fp-event-pills');
+  if (!wrap) return;
+  const others = (S.events || []).filter(e => !e.primary);
+  if (!others.length) { wrap.style.display = 'none'; wrap.innerHTML = ''; seatingEventId = null; return; }
+  const pe = primaryEvent();
+  wrap.style.display = 'flex';
+  wrap.innerHTML =
+    `<button class="budget-filter-btn ${!seatingEventId ? 'active' : ''}" onclick="setSeatingEvent('')">${esc((pe && pe.name) || 'Wedding Day')}</button>` +
+    others.map(e => `<button class="budget-filter-btn ${seatingEventId === e.id ? 'active' : ''}" onclick="setSeatingEvent('${e.id}')">${esc(e.name || 'Event')}</button>`).join('');
+}
+function setSeatingEvent(eventId) {
+  seatingEventId = eventId || null;
+  renderFloorPlan();
+}
 function renderFloorPlan() {
+  // B2.3: an events-hub "open floor plan" jump lands here with the event queued
+  if (pendingSeatingEventId !== undefined) { seatingEventId = pendingSeatingEventId || null; pendingSeatingEventId = undefined; }
+  renderFpEventPills();
   if (!S.floorPlan) S.floorPlan = [];
   if (!S.seatAssignments) S.seatAssignments = {};
   // Pre-add dance floor on first visit (unless user explicitly cleared)
@@ -6791,7 +6928,7 @@ function printFloorPlan() {
   @media print{body{padding:16px;background:white}.no-print{display:none}}
 </style>
 </head><body>
-<h1>Floor Plan</h1>
+<h1>Floor Plan${seatingEventId && eventById(seatingEventId) ? ' — ' + esc(eventById(seatingEventId).name || 'Event') : ''}</h1>
 <div class="meta">${esc(couple)}${date?' · '+esc(date):''}${venue?' · '+esc(venue):''}</div>
 <div class="stats">
   <div><strong>${tables.length}</strong> tables</div>
@@ -7615,6 +7752,11 @@ function renderPreEvents() {
 
       const st = eventStats(e.id);
       const mealsLine = Object.entries(st.meals).map(([m, n]) => n + ' ' + esc(m)).join(' · ');
+      // B2.3: this event's own budget lines + floor plan at a glance
+      const evBud = eventBudgetTotals(e.id);
+      const evLayout = (S.eventLayouts || {})[e.id];
+      const evTables = evLayout ? (evLayout.floorPlan || []).filter(f => FP_TYPES[f.type] && FP_TYPES[f.type].isTable).length : 0;
+      const evSeated = evLayout ? Object.values(evLayout.seatAssignments || {}).reduce((a, arr) => a + (arr || []).length, 0) : 0;
       const guests = (S.guests || []).filter(g => g.name);
       const guestRows = guests.map(g => {
         const iv = getInvite(e.id, g.id);
@@ -7663,6 +7805,11 @@ function renderPreEvents() {
             : `<div style="max-height:260px;overflow-y:auto;margin-top:8px;padding-right:4px">${guestRows}</div>
                ${mealsLine ? `<div style="margin-top:8px;font-size:11px;color:var(--stone)"><strong style="color:var(--charcoal)">Meals:</strong> ${mealsLine}</div>` : ''}`}
         </details>
+
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);font-size:11.5px;color:var(--stone)">
+          <span><strong style="color:var(--charcoal)">Budget:</strong> ${(evBud.planned || evBud.actual) ? money(evBud.planned) + ' planned · ' + money(evBud.actual) + ' spent' : 'no lines yet'} <a style="color:var(--taupe);text-decoration:underline;cursor:pointer" onclick="openEventBudget('${e.id}')">open &rarr;</a></span>
+          <span><strong style="color:var(--charcoal)">Floor plan:</strong> ${evTables ? evTables + ' table' + (evTables > 1 ? 's' : '') + ' · ' + evSeated + ' seated' : 'not started'} <a style="color:var(--taupe);text-decoration:underline;cursor:pointer" onclick="openEventFloorPlan('${e.id}')">open &rarr;</a></span>
+        </div>
       </div>`;
     }).join('');
 
@@ -9426,6 +9573,7 @@ async function checkUrlForInvite() {
   if (wedding) {
     S = Object.assign({}, defaultState(), wedding.state || {});
     localStorage.setItem(STATE_KEY, JSON.stringify(S));
+    migratePositionalRefs(); migrateToEvents();
     cloudHydrated = true;
     setSyncStatus('synced');
     if (typeof renderTab === 'function') renderTab('notifications');
@@ -9498,6 +9646,7 @@ async function acceptPendingEmailInvite(user) {
 
   S = Object.assign({}, defaultState(), wedding.state || {});
   localStorage.setItem(STATE_KEY, JSON.stringify(S));
+  migratePositionalRefs(); migrateToEvents();
   cloudHydrated = true;
   setSyncStatus('synced');
   lastSyncedStateHash = JSON.stringify(S).length + '_synced';
@@ -9547,6 +9696,7 @@ function handleRealtimeWeddingUpdate(newRow) {
   // Replace local state with cloud version
   S = Object.assign({}, defaultState(), newRow.state);
   localStorage.setItem(STATE_KEY, JSON.stringify(S));
+  migratePositionalRefs(); migrateToEvents();
   // Re-render whatever tab is active
   const activeTab = document.querySelector('.tab-content.active');
   if (activeTab && typeof renderTab === 'function') {
