@@ -272,6 +272,7 @@ function toggleShot(section, idx, el) {
   // rapid clicks land on detached nodes and vanish (45 ticks → 43 saved).
   if (el) {
     el.classList.toggle('checked', shot.checked);
+    el.setAttribute('aria-checked', shot.checked ? 'true' : 'false');
     const row = el.closest('.shot-row');
     if (row) row.classList.toggle('done', shot.checked);
     const count = document.getElementById('count-' + section.replace(/\s/g, '-'));
@@ -341,7 +342,7 @@ function renderAll() {
     sectionShots.forEach((shot, idx) => {
       const priorityClass = shot.priority === "essential" ? "priority-essential" : shot.priority === "important" ? "priority-important" : "priority-nice";
       html += `<div class="shot-row ${shot.checked ? 'done' : ''}">
-        <div class="shot-check ${shot.checked ? 'checked' : ''}" onclick="toggleShot('${sectionName}', ${idx}, this)"></div>
+        <div class="shot-check ${shot.checked ? 'checked' : ''}" role="checkbox" tabindex="0" aria-checked="${shot.checked ? 'true' : 'false'}" aria-label="${shot.name}" onclick="toggleShot('${sectionName}', ${idx}, this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click()}"></div>
         <div class="shot-info">
           <div class="shot-name">${shot.name}</div>
           ${shot.note ? `<div class="shot-note">${shot.note}</div>` : ''}

@@ -535,6 +535,17 @@ table input[type="number"]{text-align:right;width:90px}
 .auth-page .auth-trust{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;font-size:8.5px;letter-spacing:0.26em;text-transform:uppercase;color:var(--taupe);margin-top:48px}
 .auth-page .auth-trust .dot{color:var(--gold)}
 @media(max-width:560px){.auth-page .ob-modal{padding:60px 24px 44px}.auth-page .auth-brand{font-size:24px}.auth-page .auth-head{font-size:23px}.auth-page .auth-features{font-size:8.5px;letter-spacing:0.14em}.auth-page .auth-features .dot{padding:0 5px}}
+/* A9 (IVY-23): phone-width guest table — the Name column keeps a usable
+   width (it was crushed to ~30px while Role kept full size), and the
+   stat-card pile collapses to a compact 2-per-row strip. */
+@media(max-width:640px){
+  #guest-body td:nth-child(2){min-width:150px}
+  #guest-body td:nth-child(2) input{min-width:140px}
+  #tab-guests .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #tab-guests .stats .stat-card{padding:10px 8px}
+  #tab-guests .stats .stat-card .val{font-size:18px}
+}
+
 /* U3: reusable two-column grid that stacks on phones (inline styles can't be
    overridden by media queries, so these grids use this class instead) */
 .dash-two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -2308,12 +2319,44 @@ function isVendorSyncedBudget(catName) {
   return Object.values(VENDOR_BUDGET_MAP).includes(catName) && S.vendors.some(v => VENDOR_BUDGET_MAP[v.cat] === catName && ((v.estimatedPrice||0) > 0 || (v.actualPrice||0) > 0 || (v.deposit||0) > 0));
 }
 
+// A9 (IVY-16): destructive deletes get a 6-second undo instead of vanishing
+// on a single mis-click.
+let _undoTimer = null;
+function showUndoToast(msg, undoFn) {
+  const old = document.getElementById('undo-toast'); if (old) old.remove();
+  clearTimeout(_undoTimer);
+  const t = document.createElement('div');
+  t.id = 'undo-toast';
+  t.setAttribute('role', 'status');
+  t.style.cssText = 'position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--charcoal);color:var(--ivory);padding:11px 16px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:14px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:400';
+  const span = document.createElement('span'); span.textContent = msg;
+  const btn = document.createElement('button');
+  btn.textContent = 'Undo';
+  btn.style.cssText = 'background:var(--gold);color:var(--charcoal);border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit';
+  btn.onclick = () => { t.remove(); clearTimeout(_undoTimer); undoFn(); };
+  t.appendChild(span); t.appendChild(btn);
+  document.body.appendChild(t);
+  _undoTimer = setTimeout(() => t.remove(), 6000);
+}
+function deleteBudgetRow(i) {
+  const removed = S.budget.splice(i, 1)[0];
+  saveState(); renderBudget();
+  showUndoToast('Removed "' + ((removed && removed.cat) || 'category') + '"',
+    () => { S.budget.splice(Math.min(i, S.budget.length), 0, removed); saveState(); renderBudget(); });
+}
+function deleteChecklistItem(idx) {
+  const removed = S.checklist.splice(idx, 1)[0];
+  saveState(); renderChecklist();
+  showUndoToast('Removed "' + ((removed && removed.task) || 'task') + '"',
+    () => { S.checklist.splice(Math.min(idx, S.checklist.length), 0, removed); saveState(); renderChecklist(); });
+}
+
 // A5 (IVY-07): tick helper — instant visual + synchronous save, with the
 // full rebuild deferred until the burst of clicks ends. Rebuilding the
 // whole list per tick made rapid clicks land on detached nodes and vanish.
 const _tickTimers = {};
 function tickAndRender(el, checked, renderFn, key) {
-  if (el) el.classList.toggle('checked', checked);
+  if (el) { el.classList.toggle('checked', checked); el.setAttribute('aria-checked', checked ? 'true' : 'false'); }
   clearTimeout(_tickTimers[key]);
   _tickTimers[key] = setTimeout(renderFn, 350);
 }
@@ -2490,7 +2533,7 @@ function renderBudget() {
       <td>${hasSubs ? '' : eCell(r.notes,`S.budget[${i}].notes=this.value;saveState()`)}</td>
       <td style="white-space:nowrap">
         <button class="add-sub-btn" onclick="addSubItem(${i})" title="Add sub-item">+ Sub</button>
-        ${delBtn(`S.budget.splice(${i},1);saveState();renderBudget()`)}
+        ${delBtn(`deleteBudgetRow(${i})`)}
       </td>
     </tr>`;
 
@@ -2670,13 +2713,13 @@ function renderChecklist() {
       const ownerLabel = ownerDisplayName(item.owner);
       const ownerOpts = getOwnerOptions();
       return `<div class="check-item ${item.done?'done':''}" style="display:flex;align-items:center;gap:8px">
-        <div class="check-box ${item.done?'checked':''}" onclick="toggleChecklistItem(${idx}, this)"></div>
+        <div class="check-box ${item.done?'checked':''}" role="checkbox" tabindex="0" aria-checked="${item.done?'true':'false'}" aria-label="${esc(item.task||'task')}" onclick="toggleChecklistItem(${idx}, this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click()}"></div>
         <span class="check-label" style="flex:1">${item.task}</span>
         <select onchange="S.checklist[${idx}].owner=this.value;logActivity('Checklist','assigned',S.checklist[${idx}].task+' → '+this.value);saveState();renderChecklist()" style="font-size:10px;padding:2px 4px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);color:var(--stone);cursor:pointer" title="Assign">
           ${ownerOpts.map(o => `<option value="${esc(o)}" ${(item.owner||'Unassigned')===o?'selected':''}>${esc(ownerDisplayName(o))}</option>`).join('')}
         </select>
         <span class="priority-tag ${priClass}" style="cursor:pointer" onclick="event.stopPropagation();cyclePriority(${idx})" title="Click to change">${item.priority}</span>
-        <button onclick="S.checklist.splice(${idx},1);saveState();renderChecklist()" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:14px;opacity:0.4;padding:2px 4px" title="Remove">&times;</button>
+        <button onclick="deleteChecklistItem(${idx})" style="background:none;border:none;color:var(--stone);cursor:pointer;font-size:14px;opacity:0.4;padding:2px 4px" title="Remove">&times;</button>
       </div>`;
     }).join("")}
     <div style="margin-top:8px;display:flex;gap:6px">
@@ -4450,7 +4493,10 @@ function schSidebarHtml() {
     if (s !== null && s < firstMin) firstMin = s;
     if (e !== null && e > lastMin) lastMin = e;
   });
-  const totalHrs = firstMin < Infinity ? Math.round((lastMin - firstMin) / 60) : 0;
+  // A9 (IVY-11): both bounds must be real — one start-only event used to
+  // print "−Infinityh" as the total.
+  const totalHrs = (firstMin < Infinity && lastMin > -Infinity && lastMin > firstMin)
+    ? Math.round((lastMin - firstMin) / 60) : 0;
 
   // Up next (first block after now — for demo, show first future block)
   const now = new Date();
@@ -4474,7 +4520,15 @@ function schSidebarHtml() {
   if (nextBlock) {
     const ns = tlParseTime(nextBlock.time);
     const diff = ns !== null ? ns - nowMin : 0;
-    const countText = diff > 0 ? `${diff} <span>min away</span>` : `<span>Starting now</span>`;
+    // A9 (IVY-12): minutes-away only makes sense ON the day. Before it,
+    // say how far out the day is; with no date set, just show the time.
+    const wd = S.weddingDate ? new Date(S.weddingDate + 'T00:00:00') : null;
+    const midnight = new Date(); midnight.setHours(0,0,0,0);
+    const daysOut = (wd && !isNaN(wd)) ? Math.round((wd - midnight) / 86400000) : 0;
+    let countText;
+    if (daysOut > 0) countText = `<span>in ${daysOut} day${daysOut !== 1 ? 's' : ''}</span>`;
+    else if (daysOut < 0) countText = `<span>${esc(nextBlock.time || '')}</span>`;
+    else countText = diff > 0 ? `${diff} <span>min away</span>` : `<span>Starting now</span>`;
     html += `<div class="sch-next"><div class="nc-label">Up Next</div><div class="nc-name">${esc(nextBlock.activity)}</div><div class="nc-time">${esc(nextBlock.time)}${nextBlock.end ? ' – '+esc(nextBlock.end) : ''}</div>${nextBlock.who ? `<div class="nc-vendor">${esc(nextBlock.who)}</div>` : ''}<div class="nc-countdown">${countText}</div></div>`;
   }
   // Summary
@@ -4887,6 +4941,7 @@ function renderSchCalendar() {
     if (e !== null && e > maxT) maxT = e;
   });
   if (minT === Infinity) { minT = 7*60; maxT = 23*60; }
+  else if (maxT === -Infinity || maxT <= minT) { maxT = minT + 120; }   // A9 (IVY-11)
   const startHour = Math.floor(minT / 60);
   const endHour = Math.ceil(maxT / 60) + 1;
 
@@ -5281,7 +5336,9 @@ function renderTlCeremonies() {
   const sel = document.getElementById('tl-ceremony-select');
   const delBtn2 = document.getElementById('tl-del-ceremony-btn');
   if (!con || !sel) return;
-  if (!S.ceremonies) S.ceremonies = [{name:"Main Ceremony", date:"", timeline:[]}];
+  // A9 (IVY-13): an EMPTY array crashed on ceremonies[0].name — treat it
+  // like the null case and seed the default.
+  if (!S.ceremonies || S.ceremonies.length === 0) S.ceremonies = [{name:"Main Ceremony", date:"", timeline:[]}];
   if (selectedCeremonyIdx >= S.ceremonies.length) selectedCeremonyIdx = 0;
 
   // Populate dropdown
@@ -5867,7 +5924,7 @@ function renderHoneymoon() {
     ${items.map(item => {
       const idx = S.packing.indexOf(item);
       return `<div class="check-item ${item.packed?'done':''}">
-        <div class="check-box ${item.packed?'checked':''}" onclick="togglePackItem(${idx}, this)"></div>
+        <div class="check-box ${item.packed?'checked':''}" role="checkbox" tabindex="0" aria-checked="${item.packed?'true':'false'}" aria-label="${esc(item.item||'item')}" onclick="togglePackItem(${idx}, this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click()}"></div>
         <span class="check-label">${item.item}</span>
       </div>`;
     }).join("")}</div>`;
@@ -5886,7 +5943,7 @@ function renderKit() {
 
   document.getElementById("kit-grid").innerHTML = S.kit.map((k,i)=>`
     <div class="kit-item" style="${k.got?'opacity:0.5':''};position:relative">
-      <div class="check-box ${k.got?'checked':''}" onclick="toggleKitItem(${i}, this)" style="margin-top:2px"></div>
+      <div class="check-box ${k.got?'checked':''}" role="checkbox" tabindex="0" aria-checked="${k.got?'true':'false'}" aria-label="${esc(k.item||'item')}" onclick="toggleKitItem(${i}, this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click()}" style="margin-top:2px"></div>
       <div style="flex:1">
         <div class="name" style="${k.got?'text-decoration:line-through':''}">${k.item}</div>
         <div class="cat">${k.category}</div>
