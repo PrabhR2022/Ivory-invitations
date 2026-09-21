@@ -263,12 +263,42 @@ async function loadRegistryCloud() {
 
 function setTab(cat){ activeTab = cat; render(); }
 
+// A8 (IVY-22): styled in-page dialog instead of native prompt() — several
+// in-app browsers (Instagram, Facebook) suppress prompt() entirely, which
+// made the Claim button do nothing at all there.
+function askClaimerName() {
+  return new Promise(resolve => {
+    const old = document.getElementById('claim-modal'); if (old) old.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'claim-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(28,25,23,0.45);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px';
+    wrap.innerHTML = `
+      <div style="background:#faf9f7;border-radius:14px;max-width:340px;width:100%;padding:24px;text-align:center" role="dialog" aria-modal="true" aria-labelledby="claim-modal-title">
+        <h3 id="claim-modal-title" style="font-family:Georgia,serif;font-size:19px;font-weight:400;margin:0 0 6px;color:#1c1917">Who&rsquo;s claiming this gift?</h3>
+        <p style="font-size:12.5px;color:#78716c;margin:0 0 16px">So the couple knows who it&rsquo;s from &mdash; only they can see this.</p>
+        <input id="claim-name-input" placeholder="Your name" autocomplete="name" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid #d6d0c8;border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:12px"/>
+        <div style="display:flex;gap:8px">
+          <button id="claim-cancel" type="button" style="flex:1;padding:11px;border:1px solid #d6d0c8;border-radius:10px;background:white;font-size:13px;cursor:pointer;font-family:inherit;color:#1c1917">Cancel</button>
+          <button id="claim-ok" type="button" style="flex:1;padding:11px;border:none;border-radius:10px;background:#1c1917;color:#faf9f7;font-size:13px;cursor:pointer;font-family:inherit">Claim gift</button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    const input = wrap.querySelector('#claim-name-input');
+    const done = v => { wrap.remove(); resolve(v); };
+    wrap.querySelector('#claim-cancel').onclick = () => done(null);
+    wrap.querySelector('#claim-ok').onclick = () => done(input.value.trim() || null);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') done(input.value.trim() || null); if (e.key === 'Escape') done(null); });
+    wrap.addEventListener('click', e => { if (e.target === wrap) done(null); });
+    setTimeout(() => input.focus(), 50);
+  });
+}
+
 async function claimItem(id) {
   const item = items.find(i => i.id === id);
   if (!item || item.claimed) return;
   let name = claimerName;
   if (!name) {
-    name = (prompt('Your name (so the couple knows who claimed it):') || '').trim();
+    name = await askClaimerName();
     if (!name) return;
     claimerName = name; try { localStorage.setItem('ivory_registry_claimer', name); } catch(e){}
   }

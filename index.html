@@ -767,22 +767,22 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div onclick="showTab('budget')" style="padding:12px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">
-            <span style="font-size:20px">💰</span>
+            <span style="font-size:20px">💰</span><span class="gs-done" id="gs-done-budget" style="float:right;color:var(--green);font-size:11px;font-weight:600;display:none">&#10003; Done</span>
             <p style="font-size:13px;font-weight:600;margin:4px 0 2px">Set Your Budget</p>
             <p style="font-size:11px;color:var(--stone)">Plan how much to spend on each category</p>
           </div>
           <div onclick="showTab('guests')" style="padding:12px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">
-            <span style="font-size:20px">👥</span>
+            <span style="font-size:20px">👥</span><span class="gs-done" id="gs-done-guests" style="float:right;color:var(--green);font-size:11px;font-weight:600;display:none">&#10003; Done</span>
             <p style="font-size:13px;font-weight:600;margin:4px 0 2px">Add Guests</p>
             <p style="font-size:11px;color:var(--stone)">Import or add your guest list</p>
           </div>
           <div onclick="showTab('vendors')" style="padding:12px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">
-            <span style="font-size:20px">🤝</span>
+            <span style="font-size:20px">🤝</span><span class="gs-done" id="gs-done-vendors" style="float:right;color:var(--green);font-size:11px;font-weight:600;display:none">&#10003; Done</span>
             <p style="font-size:13px;font-weight:600;margin:4px 0 2px">Find Vendors</p>
             <p style="font-size:11px;color:var(--stone)">Track contacts, costs & contracts</p>
           </div>
           <div onclick="showTab('timeline')" style="padding:12px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 150ms" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background=''">
-            <span style="font-size:20px">📋</span>
+            <span style="font-size:20px">📋</span><span class="gs-done" id="gs-done-day" style="float:right;color:var(--green);font-size:11px;font-weight:600;display:none">&#10003; Done</span>
             <p style="font-size:13px;font-weight:600;margin:4px 0 2px">Plan Your Day</p>
             <p style="font-size:11px;color:var(--stone)">Build your wedding day itinerary</p>
           </div>
@@ -939,7 +939,10 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
             <button class="btn btn-sm btn-dark" onclick="addBudgetRow()">+ Add Category</button>
           </div>
         </div>
-        <div class="budget-filter">
+        <!-- A8 dead-control: hidden until D2 (who-pays-for-what) makes payer a
+             real dimension — today parents can't be tagged, so the filter reads
+             as broken on every normal budget. Code kept for D2. -->
+        <div class="budget-filter" style="display:none">
           <button class="budget-filter-btn active" onclick="setBudgetFilter('all')">All</button>
           <button class="budget-filter-btn" onclick="setBudgetFilter('bride')">Bride</button>
           <button class="budget-filter-btn" onclick="setBudgetFilter('groom')">Groom</button>
@@ -2245,6 +2248,9 @@ function showInputModal(title, fields, onSave) {
   document.getElementById('input-modal-title').textContent = title;
   const body = document.getElementById('input-modal-body');
   body.innerHTML = fields.map(f => {
+    if (f.type === 'note') {
+      return `<p style="font-size:12px;color:var(--stone);line-height:1.6;margin:0 0 14px">${f.text || ''}</p>`;
+    }
     if (f.type === 'select') {
       return `<div class="ob-field"><label class="ob-label">${f.label}</label><select class="ob-input" id="${f.id}">${(f.opts||[]).map(o => `<option${o===(f.value||'')?' selected':''}>${o}</option>`).join('')}</select></div>`;
     }
@@ -3087,8 +3093,7 @@ function quickAddTableAndAssign(guestIdx) {
     id: 'fp-' + Date.now() + '-' + tableNum,
     type: 'round',
     label: 'Table ' + tableNum,
-    x: 40 + Math.random() * 200,
-    y: 40 + Math.random() * 200,
+    ...fpFreeSpot(),
     seats: 6
   };
   S.floorPlan.push(item);
@@ -3616,6 +3621,13 @@ function renderVendors() {
   const allCats = getVendorCats();
   const catOpts = allCats.map(c => `<option value="${esc(c)}">`).join('') + '<option value="__custom__">Custom...</option>';
 
+  if (filtered.length === 0) {
+    document.getElementById("vendor-body").innerHTML =
+      `<tr><td colspan="12" style="text-align:center;padding:36px 12px;color:var(--stone);font-size:13px">No vendors yet — click <strong>+ Add Vendor</strong> to start tracking quotes, contracts and payments.<br/><span style="font-size:11px;color:var(--taupe)">Tip: the Ontario pricing guide below shows typical ranges per category.</span></td></tr>`;
+    renderRegionalPricing();
+    renderTipPlanner();
+    return;
+  }
   document.getElementById("vendor-body").innerHTML = filtered.map((v) => {
     const i = S.vendors.indexOf(v);
     const isExpanded = expandedVendor === i;
@@ -3905,6 +3917,11 @@ function renderVendorCompareDropdown() {
   renderVendorCompare();
 }
 
+function setVendorRating(i, n) {
+  const v = S.vendors[i]; if (!v) return;
+  v.rating = (v.rating === n) ? 0 : n;
+  saveState(); renderVendorCompare();
+}
 function renderVendorCompare() {
   const cat = document.getElementById('vendor-compare-cat').value;
   const body = document.getElementById('vendor-compare-body');
@@ -3913,13 +3930,14 @@ function renderVendorCompare() {
   const vendors = S.vendors.filter(v => v.cat === cat && v.company);
   if (vendors.length === 0) { body.innerHTML = ''; empty.style.display = ''; empty.textContent = 'No vendors with names found in this category.'; return; }
   empty.style.display = 'none';
-  const stars = r => [1,2,3,4,5].map(s => `<span style="color:${s<=r?'var(--yellow)':'var(--border)'}">${s<=r?'&#9733;':'&#9734;'}</span>`).join('');
+  // A8: stars are a real control — click to rate (click the same star to clear)
+  const stars = (r, vi) => [1,2,3,4,5].map(st => `<span style="color:${st<=r?'var(--yellow)':'var(--border)'};cursor:pointer" title="Rate ${st}/5" onclick="setVendorRating(${vi},${st})">${st<=r?'&#9733;':'&#9734;'}</span>`).join('');
   body.style.gridTemplateColumns = `repeat(${Math.min(vendors.length, 3)}, 1fr)`;
   body.innerHTML = vendors.map(v => `
     <div style="border:1px solid var(--border-light);border-radius:12px;padding:20px;background:white">
       <h3 style="font-size:15px;font-weight:600;margin-bottom:4px">${esc(v.company)}</h3>
       <p style="font-size:11px;color:var(--stone);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">${esc(v.cat)}</p>
-      <div style="margin-bottom:8px">${stars(v.rating || 0)}</div>
+      <div style="margin-bottom:8px">${stars(v.rating || 0, S.vendors.indexOf(v))}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-bottom:12px">
         <div><span style="color:var(--stone)">Estimated:</span> <strong>${money(v.estimatedPrice||0)}</strong></div>
         <div><span style="color:var(--stone)">Actual:</span> <strong>${money(v.actualPrice||0)}</strong></div>
@@ -4304,8 +4322,26 @@ function addTransport() {
 function renderCeremony() {
   // Populate ceremony selector dropdown
   const sel = document.getElementById('ceremony-selector');
-  if (sel && S.ceremonies) {
-    sel.innerHTML = S.ceremonies.map((c, i) => `<option value="${i}" ${i===selectedCeremonyIdx?'selected':''}>${esc(c.name)}</option>`).join('');
+  if (sel) {
+    if (S.ceremonies && S.ceremonies.length > 0) {
+      sel.style.display = '';
+      sel.innerHTML = S.ceremonies.map((c, i) => `<option value="${i}" ${i===selectedCeremonyIdx?'selected':''}>${esc(c.name)}</option>`).join('');
+      const hint = document.getElementById('ceremony-selector-hint'); if (hint) hint.style.display = 'none';
+    } else {
+      // A8 dead-control: an empty select explained nothing — link to where
+      // ceremonies (and the template library) actually live.
+      sel.style.display = 'none';
+      let hint = document.getElementById('ceremony-selector-hint');
+      if (!hint) {
+        hint = document.createElement('a');
+        hint.id = 'ceremony-selector-hint';
+        hint.style.cssText = 'font-size:12px;color:var(--taupe);text-decoration:underline;cursor:pointer';
+        hint.textContent = 'No ceremonies yet — add one from the template library (Sikh, Hindu, Jewish, Muslim, Christian…) →';
+        hint.onclick = () => { showTab('timeline'); setTimeout(() => { if (typeof showTimelineSub === 'function') showTimelineSub('ceremonies'); }, 80); };
+        sel.parentNode.appendChild(hint);
+      }
+      hint.style.display = '';
+    }
   }
 
   ["ceremony","reception"].forEach(key => {
@@ -6029,14 +6065,27 @@ function addFpItem(type) {
     id: 'fp-' + Date.now() + '-' + fpCounter,
     type: type,
     label: def.isTable ? def.label + ' ' + tableNum : def.label,
-    x: 40 + Math.random() * 200,
-    y: 40 + Math.random() * 200,
+    ...fpFreeSpot(),
     seats: def.isTable ? (type === 'rect' ? 8 : 6) : 0,
   };
   if (type === 'entrance' || type === 'exit') item.showArrow = true;
   S.floorPlan.push(item);
   saveState();
   renderFloorPlan();
+}
+
+// A8 (IVY-24): place new floor-plan objects in free space instead of a
+// random pile in one corner (four new tables used to stack on the dance floor).
+function fpFreeSpot() {
+  const W = 95, H = 95, PAD = 18;
+  const taken = (S.floorPlan || []).map(it => ({x: +it.x || 0, y: +it.y || 0}));
+  for (let y = 40; y <= 520; y += H + PAD) {
+    for (let x = 40; x <= 620; x += W + PAD) {
+      if (!taken.some(t => Math.abs(t.x - x) < W && Math.abs(t.y - y) < H)) return {x, y};
+    }
+  }
+  const n = taken.length;
+  return {x: 40 + (n % 8) * 32, y: 40 + n * 26};   // crowded plan: stagger
 }
 
 function renderFloorPlan() {
@@ -6827,7 +6876,33 @@ function copyPostWeddingSummary(btn) {
   });
 }
 
+// A8: Getting Started reflects real progress — done steps get a check and
+// dim; the card retires itself once all four are complete. Standalone so it
+// runs regardless of whether the couple banner has anything to show.
+function updateGettingStarted() {
+  const gsEl = document.getElementById('notif-getting-started');
+  if (!gsEl) return;
+  const gsDone = {
+    budget: (S.totalBudget || 0) > 0 || budgetTotals().planned > 0,
+    guests: (typeof namedGuests === 'function' ? namedGuests().length : 0) > 0,
+    vendors: (S.vendors || []).some(v => v.company),
+    day: (S.timeline || []).length > 0 || (S.ceremonies || []).length > 0,
+  };
+  Object.entries(gsDone).forEach(([k, done]) => {
+    const badge = document.getElementById('gs-done-' + k);
+    if (badge) {
+      badge.style.display = done ? '' : 'none';
+      const tile = badge.closest('div[onclick]');
+      if (tile) tile.style.opacity = done ? '0.55' : '';
+    }
+  });
+  const allDone = Object.values(gsDone).every(Boolean);
+  gsEl.style.display = (S.hideGettingStarted || allDone) ? 'none' : 'block';
+}
+
 function renderNotifications() {
+  renderNotifCoupleBanner();
+  updateGettingStarted();
   renderPostWeddingSummary();
   renderWeatherCard();
   renderActivityLog();
@@ -6947,9 +7022,7 @@ function renderNotifCoupleBanner() {
     const diff = Math.ceil((new Date(S.weddingDate) - new Date()) / (1000*60*60*24));
     cd.textContent = diff > 0 ? diff + ' days to go' : diff === 0 ? 'Today is the day!' : 'Congratulations!';
   } else { cd.textContent = ''; }
-  // Getting started guide
-  const gsEl = document.getElementById('notif-getting-started');
-  if (gsEl) gsEl.style.display = S.hideGettingStarted ? 'none' : 'block';
+
 }
 
 function renderNotifBudgetPie() {
@@ -8371,6 +8444,7 @@ function showPinSetup() {
   }
 
   showInputModal('Set Up PIN Protection', [
+    {id:'pin-info', type:'note', label:'', text:'Locks this planner on THIS device: anyone opening it must enter a 4-digit PIN first. Useful on a shared computer or tablet. We email the PIN to you so it can be recovered if forgotten. It does not replace your account sign-in.'},
     {id:'pin-email', label:'Email for PIN delivery', type:'email', required:true, placeholder:'your@email.com'}
   ], function() {
     const email = document.getElementById('pin-email').value.trim();
