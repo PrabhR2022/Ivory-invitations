@@ -725,7 +725,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
       <button class="sidebar-btn" onclick="showTab('music')"><span class="icon">&#9835;</span>Music Planner</button>
       <button class="sidebar-btn" onclick="showTab('timeline')"><span class="icon">&#9200;</span>Itinerary</button>
       <button class="sidebar-btn" onclick="showTab('transport')"><span class="icon">&#128663;</span>Transportation</button>
-      <button class="sidebar-btn" onclick="showTab('preevents')"><span class="icon">&#127881;</span>Pre-Wedding Events</button>
+      <button class="sidebar-btn" onclick="showTab('preevents')"><span class="icon">&#127881;</span>Events</button>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Details</div>
@@ -1629,8 +1629,8 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 
     <!-- ═══ PRE-WEDDING EVENTS (Phase 6) ═══ -->
     <div class="tab-content" id="tab-preevents">
-      <h1 class="page-title">Pre-Wedding Events</h1>
-      <p class="page-desc">Rehearsal dinner, shower, bachelor/bachelorette, engagement party — mini-planners for the lead-up events</p>
+      <h1 class="page-title">Events</h1>
+      <p class="page-desc">Every event of your wedding — Mehndi, Sangeet, ceremonies, receptions and the lead-up parties — each with its own guest list, RSVPs and meals</p>
 
       <!-- Rehearsal Dinner -->
       <div class="card">
@@ -1649,7 +1649,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 
       <!-- Other Events -->
       <div class="card">
-        <div class="card-title">Other Events
+        <div class="card-title">All Events
           <button class="btn btn-sm btn-dark" onclick="addPreEvent()">+ Add Event</button>
         </div>
         <div id="pre-events-list"></div>
@@ -1823,6 +1823,73 @@ function migratePositionalRefs() {
   }
 }
 migratePositionalRefs();
+
+// ══ B2 · Events first-class ════════════════════════════════════════
+// One wedding contains N events (Mehndi, Anand Karaj, reception, …).
+// S.events[] holds them; S.invitations[] is the guest × event join
+// carrying per-event RSVP and meal. The PRIMARY event ("Wedding Day")
+// keeps using the guest record's own rsvp/meal fields, so every
+// existing surface (RSVP page, counts, seating) works unchanged —
+// invitations rows exist only for the other events.
+function ensureEvents() {
+  if (!Array.isArray(S.events)) S.events = [];
+  if (!Array.isArray(S.invitations)) S.invitations = [];
+  if (!S.events.some(e => e && e.primary)) {
+    S.events.unshift({ id: newId('event'), name: 'Wedding Day', type: 'wedding',
+      date: S.weddingDate || '', time: '', venue: '', host: '', notes: '', primary: true });
+  }
+  // The wedding date is the source of truth for the primary event's date
+  const pe = S.events.find(e => e.primary);
+  if (pe && S.weddingDate) pe.date = S.weddingDate;
+}
+function migrateToEvents() {
+  ensureEvents();
+  // Absorb the old preEvents stopgap as real events (one-time)
+  if (Array.isArray(S.preEvents) && S.preEvents.length > 0) {
+    S.preEvents.forEach(pe => {
+      S.events.push({ id: newId('event'), name: pe.name || 'Event', type: pe.type || 'other',
+        date: pe.date || '', time: pe.time || '', venue: pe.venue || '', host: pe.host || '',
+        notes: pe.notes || '', primary: false });
+    });
+    S.preEvents = [];
+  }
+}
+function eventById(id) { return (S.events || []).find(e => e.id === id) || null; }
+function primaryEvent() { return (S.events || []).find(e => e.primary) || null; }
+function getInvite(eventId, guestId) {
+  return (S.invitations || []).find(iv => iv.eventId === eventId && iv.guestId === guestId) || null;
+}
+function toggleEventInvite(eventId, guestId) {
+  const existing = getInvite(eventId, guestId);
+  if (existing) S.invitations = S.invitations.filter(iv => iv !== existing);
+  else S.invitations.push({ guestId, eventId, rsvp: 'Pending', meal: '' });
+  saveState(); renderPreEvents();
+}
+function setInviteField(eventId, guestId, field, val) {
+  const iv = getInvite(eventId, guestId);
+  if (!iv) return;
+  iv[field] = val;
+  saveState(); renderPreEvents();
+}
+function eventStats(eventId) {
+  const ivs = (S.invitations || []).filter(iv => iv.eventId === eventId && guestById(iv.guestId));
+  const attending = ivs.filter(iv => iv.rsvp === 'Attending');
+  const meals = {};
+  attending.forEach(iv => { if (iv.meal) meals[iv.meal] = (meals[iv.meal] || 0) + 1; });
+  return { invited: ivs.length, attending: attending.length,
+           declined: ivs.filter(iv => iv.rsvp === 'Declined').length, meals };
+}
+function deleteEvent(eventId) {
+  const ev = eventById(eventId);
+  if (!ev || ev.primary) return;
+  if (!confirm('Delete "' + (ev.name || 'this event') + '"? Its guest list and RSVPs for this event are removed; the guests themselves are untouched.')) return;
+  S.events = S.events.filter(e => e.id !== eventId);
+  S.invitations = (S.invitations || []).filter(iv => iv.eventId !== eventId);
+  (S.timeline || []).forEach(b => { if (b.eventId === eventId) delete b.eventId; });
+  if (typeof schEventFilter !== 'undefined' && schEventFilter === eventId) schEventFilter = 'all';
+  saveState(); renderPreEvents();
+}
+migrateToEvents();
 // U4: prune abandoned nameless guest rows left over from previous sessions
 if (Array.isArray(S.guests)) {
   const pruned = S.guests.filter(g => g && g.name && g.name.trim());
@@ -2120,7 +2187,7 @@ const LAUNCHER_TABS = [
   {id:'music',         icon:'♫',   label:'Music',            short:'Music'},
   {id:'timeline',      icon:'⏱',   label:'Timeline',         short:'Timeline'},
   {id:'transport',     icon:'\u{1F697}',label:'Transport',        short:'Transport'},
-  {id:'preevents',     icon:'\u{1F389}',label:'Pre-Events',       short:'Pre-Events'},
+  {id:'preevents',     icon:'\u{1F389}',label:'Events',           short:'Events'},
   {id:'attire',        icon:'★',   label:'Attire',           short:'Attire'},
   {id:'registry',      icon:'\u{1F381}',label:'Registry',         short:'Registry'},
   {id:'stationery',    icon:'✉',   label:'Stationery',       short:'Stationery'},
@@ -3114,6 +3181,8 @@ function deleteGuest(i) {
       S.seatAssignments[tid] = S.seatAssignments[tid].filter(e => !ids.includes(e) && !names.includes(e));
     });
   }
+  // B2: per-event invitations for this guest go with them
+  if (Array.isArray(S.invitations)) S.invitations = S.invitations.filter(iv => !ids.includes(iv.guestId));
   saveState();
   renderGuests();
 }
@@ -4696,6 +4765,11 @@ function getScheduleBlocks() {
       }));
     }
   }
+  // B2: event filter — untagged blocks belong to the primary event
+  if (schEventFilter !== 'all') {
+    const pid = (primaryEvent() || {}).id;
+    blocks = blocks.filter(b => (b.eventId || pid) === schEventFilter);
+  }
   // Apply tag filter
   if (schTagFilter !== 'all') {
     blocks = blocks.filter(b => (b.cat || 'other') === schTagFilter);
@@ -4722,6 +4796,16 @@ function setSchTagFilter(tag) {
 function renderSchTagBar() {
   const bar = document.getElementById('sch-tag-bar');
   if (!bar) return;
+  // B2: event switcher — its own row above the category tags
+  let evHtml = '';
+  const evs = S.events || [];
+  if (evs.length > 1) {
+    evHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center">' +
+      '<span style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--stone)">Event:</span>' +
+      `<button class="sch-tag-pill ${schEventFilter === 'all' ? 'active' : ''}" onclick="setSchEventFilter('all')">All events</button>` +
+      evs.map(e => `<button class="sch-tag-pill ${schEventFilter === e.id ? 'active' : ''}" onclick="setSchEventFilter('${e.id}')">${esc(e.name)}</button>`).join('') +
+      '</div>';
+  }
   const tags = ['all','prep','ceremony','photos','reception','other'];
   const labels = {all:'All',prep:'Prep',ceremony:'Ceremony',photos:'Photos',reception:'Reception',other:'Other'};
   let html = '';
@@ -4736,7 +4820,7 @@ function renderSchTagBar() {
     const isActive = schCeremonyFilter === 'cer-'+i ? 'active tag-ceremony' : '';
     html += `<button class="sch-tag-pill ${isActive}" onclick="setSchTagFilter('cer-${i}')">${esc(c.name)}</button>`;
   });
-  bar.innerHTML = html;
+  bar.innerHTML = evHtml + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + html + '</div>';
 }
 
 // ── RENDER SCHEDULE (dispatches to active view) ──
@@ -5276,7 +5360,9 @@ function addTlBlock() {
     const m = tlParseTime(last.end);
     if (m !== null) nextEnd = tlFormatTime(m + 30);
   }
-  S.timeline.push({time:nextStart, end:nextEnd, activity:'New event', who:'', notes:'', cat:'other'});
+  const blk = {time:nextStart, end:nextEnd, activity:'New event', who:'', notes:'', cat:'other'};
+  if (schEventFilter !== 'all' && eventById(schEventFilter) && !eventById(schEventFilter).primary) blk.eventId = schEventFilter;
+  S.timeline.push(blk);
   saveState();
   editTlBlock(S.timeline.length - 1);
   renderTlSchedule();
@@ -5311,6 +5397,10 @@ function editTlBlock(idx) {
     </div>
     <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Notes</label>
       <input id="tl-ed-notes" value="${esc(b.notes)}" placeholder="Optional notes" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px"/></div>
+    <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Event</label>
+      <select id="tl-ed-event" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px;background:white">
+        ${(S.events || []).map(ev => `<option value="${esc(ev.id)}"${(b.eventId || (primaryEvent()||{}).id) === ev.id ? ' selected' : ''}>${esc(ev.name)}</option>`).join('')}
+      </select></div>
     <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Linked Vendor</label>
       <select id="tl-ed-vendor" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px;background:white">
         <option value="">— None —</option>
@@ -5352,6 +5442,11 @@ function saveTlBlock(idx) {
   const vendorVal = document.getElementById('tl-ed-vendor').value;
   b.vendorId = vendorVal !== '' ? vendorVal : undefined;
   if (b.vendorId === undefined) delete b.vendorId;
+  const evSel = document.getElementById('tl-ed-event');
+  if (evSel) {
+    const pid = (primaryEvent() || {}).id;
+    if (evSel.value && evSel.value !== pid) b.eventId = evSel.value; else delete b.eventId;
+  }
   const selCat = document.querySelector('.tl-cat-btn[style*="opacity: 1"], .tl-cat-btn[style*="opacity:1"]');
   if (selCat) b.cat = selCat.dataset.cat;
   // Sync back to ceremony if linked
@@ -5686,7 +5781,16 @@ function createCeremonyFromTemplate(type) {
   const rows = tmpl.rows.map(r => ({...r}));
   const name = tmpl.label === 'Custom' ? 'Ceremony ' + (S.ceremonies.length + 1) : tmpl.label + ' Ceremony';
   const cerIdx = S.ceremonies.length;
-  S.ceremonies.push({name, date:'', timeline: rows});
+  // B2: each templated ceremony becomes its own EVENT, so its fifteen
+  // blocks no longer collide with the wedding-day prep schedule — switch
+  // events on the Itinerary to see each on its own.
+  ensureEvents();
+  let cerEvent = (S.events || []).find(ev => !ev.primary && ev.name === name);
+  if (!cerEvent) {
+    cerEvent = { id: newId('event'), name, type: 'ceremony', date: S.weddingDate || '', time: '', venue: '', host: '', notes: 'Created from the ' + (tmpl.label || 'ceremony') + ' template', primary: false };
+    S.events.push(cerEvent);
+  }
+  S.ceremonies.push({name, date:'', timeline: rows, eventId: cerEvent.id});
   selectedCeremonyIdx = cerIdx;
   // Also add ceremony events to the main schedule (linked)
   rows.forEach((r, ri) => {
@@ -5702,7 +5806,8 @@ function createCeremonyFromTemplate(type) {
       notes: r.music ? 'Music: ' + r.music : '',
       cat: 'ceremony',
       cerIdx: cerIdx,
-      cerRowIdx: ri
+      cerRowIdx: ri,
+      eventId: cerEvent.id
     });
   });
   S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
@@ -7463,37 +7568,93 @@ function renderPreEvents() {
     document.getElementById('reh-attendee-count').textContent = `(${r.attendeeIds.length} invited)`;
   }
 
-  // Other pre-events
-  if (!S.preEvents) S.preEvents = [];
+  // ══ B2 · Events hub — every event, with its own guest list ══
+  migrateToEvents();
   const list = document.getElementById('pre-events-list');
   const empty = document.getElementById('pre-events-empty');
   if (list && empty) {
-    if (S.preEvents.length === 0) {
-      list.innerHTML = '';
-      empty.style.display = 'block';
-    } else {
-      empty.style.display = 'none';
-      list.innerHTML = S.preEvents.map((e, i) => `
-        <div style="padding:12px;border:1px solid var(--border-light);border-radius:10px;margin-bottom:8px;background:white">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px">
-            <div style="display:flex;align-items:center;gap:8px;flex:1">
-              <span style="font-size:18px">${e.type === 'shower' ? '🎀' : e.type === 'bach' ? '🎉' : e.type === 'engagement' ? '💍' : '📅'}</span>
-              <input value="${esc(e.name)}" style="font-size:14px;font-weight:600;border:none;background:none;outline:none;flex:1" onblur="S.preEvents[${i}].name=this.value;saveState()" placeholder="Event name"/>
+    const events = [...(S.events || [])].sort((a, b) => (b.primary ? 1 : 0) - (a.primary ? 1 : 0) || (a.date || '9999') > (b.date || '9999') ? 1 : -1);
+    const others = events.filter(e => !e.primary);
+    empty.style.display = 'none';
+    const EVENT_TYPES = [['wedding','Wedding Day'],['ceremony','Ceremony'],['mehndi','Mehndi'],['sangeet','Sangeet'],['engagement','Engagement'],['shower','Shower'],['bach','Bachelor/Bachelorette'],['rehearsal','Rehearsal'],['reception','Reception'],['other','Other']];
+    const EVENT_ICONS = {wedding:'💍', ceremony:'🕊️', mehndi:'🌿', sangeet:'🎶', engagement:'💍', shower:'🎀', bach:'🎉', rehearsal:'🍽️', reception:'🥂', other:'📅'};
+
+    list.innerHTML = events.map(e => {
+      const ei = S.events.indexOf(e);
+      if (e.primary) {
+        const named = (typeof namedGuests === 'function') ? namedGuests() : (S.guests || []);
+        const att = named.filter(g => g.rsvp === 'Attending').length;
+        return `
+        <div style="padding:14px;border:1px solid rgba(184,150,100,0.4);border-radius:10px;margin-bottom:10px;background:rgba(184,150,100,0.05)">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:20px">${EVENT_ICONS[e.type] || '💍'}</span>
+              <div>
+                <div style="font-size:14px;font-weight:600">${esc(e.name)} <span style="font-size:10px;color:var(--taupe);font-weight:400;text-transform:uppercase;letter-spacing:0.06em;margin-left:6px">Primary</span></div>
+                <div style="font-size:11px;color:var(--stone)">${e.date ? esc(e.date) : 'Date set on the dashboard'}${e.venue ? ' · ' + esc(e.venue) : ''}</div>
+              </div>
             </div>
-            ${delBtn(`if(confirm('Delete this event?')){S.preEvents.splice(${i},1);saveState();renderPreEvents()}`)}
+            <div style="font-size:12px;color:var(--stone)">${named.length} guests · <span style="color:var(--green);font-weight:600">${att} attending</span></div>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;font-size:12px">
-            <div><label class="ob-label">Type</label><select onchange="S.preEvents[${i}].type=this.value;saveState();renderPreEvents()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px">
-              ${['engagement','shower','bach','rehearsal','other'].map(t => `<option value="${t}" ${e.type===t?'selected':''}>${t === 'bach' ? 'Bachelor/Bachelorette' : t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}
-            </select></div>
-            <div><label class="ob-label">Date</label><input type="date" value="${esc(e.date||'')}" onchange="S.preEvents[${i}].date=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
-            <div><label class="ob-label">Time</label><input type="time" value="${esc(e.time||'')}" onchange="S.preEvents[${i}].time=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
-            <div><label class="ob-label">Venue</label><input value="${esc(e.venue||'')}" onblur="S.preEvents[${i}].venue=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
-            <div><label class="ob-label">Host</label><input value="${esc(e.host||'')}" onblur="S.preEvents[${i}].host=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
+          <p style="font-size:11px;color:var(--stone);margin:8px 0 0">Guest list, meals &amp; seating for the wedding day live on the <a style="color:var(--taupe);text-decoration:underline;cursor:pointer" onclick="showTab('guests')">Guests tab</a>.</p>
+        </div>`;
+      }
+
+      const st = eventStats(e.id);
+      const mealsLine = Object.entries(st.meals).map(([m, n]) => n + ' ' + esc(m)).join(' · ');
+      const guests = (S.guests || []).filter(g => g.name);
+      const guestRows = guests.map(g => {
+        const iv = getInvite(e.id, g.id);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px">
+          <input type="checkbox" ${iv ? 'checked' : ''} onchange="toggleEventInvite('${e.id}','${g.id}')" style="width:14px;height:14px;flex-shrink:0"/>
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.name)}</span>
+          ${iv ? `
+            <select onchange="setInviteField('${e.id}','${g.id}','rsvp',this.value)" style="font-size:11px;padding:2px 6px;border:1px solid var(--border-light);border-radius:6px;color:${iv.rsvp === 'Attending' ? 'var(--green)' : iv.rsvp === 'Declined' ? 'var(--red)' : 'var(--stone)'}">
+              ${['Pending','Attending','Declined'].map(o => `<option${o === iv.rsvp ? ' selected' : ''}>${o}</option>`).join('')}
+            </select>
+            <select onchange="setInviteField('${e.id}','${g.id}','meal',this.value)" style="font-size:11px;padding:2px 6px;border:1px solid var(--border-light);border-radius:6px;max-width:110px">
+              <option value=""${!iv.meal ? ' selected' : ''}>— meal —</option>
+              ${(S.mealOptions || []).map(m => `<option${m === iv.meal ? ' selected' : ''}>${esc(m)}</option>`).join('')}
+              ${iv.meal && !(S.mealOptions || []).includes(iv.meal) ? `<option selected>${esc(iv.meal)}</option>` : ''}
+            </select>` : '<span style="font-size:10px;color:var(--border)">not invited</span>'}
+        </div>`;
+      }).join('');
+
+      return `
+      <div style="padding:12px;border:1px solid var(--border-light);border-radius:10px;margin-bottom:8px;background:white">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex:1">
+            <span style="font-size:18px">${EVENT_ICONS[e.type] || '📅'}</span>
+            <input value="${esc(e.name)}" style="font-size:14px;font-weight:600;border:none;background:none;outline:none;flex:1" onblur="S.events[${ei}].name=this.value;saveState()" placeholder="Event name"/>
           </div>
-          <div style="margin-top:10px"><label class="ob-label">Notes</label><textarea onblur="S.preEvents[${i}].notes=this.value;saveState()" style="width:100%;padding:8px 10px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:40px">${esc(e.notes||'')}</textarea></div>
+          ${delBtn(`deleteEvent('${e.id}')`)}
         </div>
-      `).join('');
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">
+          <div><label class="ob-label">Type</label><select onchange="S.events[${ei}].type=this.value;saveState();renderPreEvents()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px">
+            ${EVENT_TYPES.filter(([v]) => v !== 'wedding').map(([v, l]) => `<option value="${v}" ${e.type === v ? 'selected' : ''}>${l}</option>`).join('')}
+          </select></div>
+          <div><label class="ob-label">Date</label><input type="date" value="${esc(e.date || '')}" onchange="S.events[${ei}].date=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
+          <div><label class="ob-label">Time</label><input type="time" value="${esc(e.time || '')}" onchange="S.events[${ei}].time=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
+          <div><label class="ob-label">Venue</label><input value="${esc(e.venue || '')}" onblur="S.events[${ei}].venue=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
+          <div><label class="ob-label">Host</label><input value="${esc(e.host || '')}" onblur="S.events[${ei}].host=this.value;saveState()" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px"/></div>
+        </div>
+        <div style="margin-top:10px"><label class="ob-label">Notes</label><textarea onblur="S.events[${ei}].notes=this.value;saveState()" style="width:100%;padding:8px 10px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;font-family:var(--font-sans);resize:vertical;min-height:40px">${esc(e.notes || '')}</textarea></div>
+
+        <details style="margin-top:10px" ${st.invited > 0 ? 'open' : ''}>
+          <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--charcoal)">
+            Guests &amp; RSVPs
+            <span style="color:var(--stone);font-weight:400">— ${st.invited} invited${st.invited ? ` · <span style="color:var(--green)">${st.attending} attending</span>${st.declined ? ` · <span style="color:var(--red)">${st.declined} declined</span>` : ''}` : ''}</span>
+          </summary>
+          ${guests.length === 0
+            ? '<p style="font-size:12px;color:var(--stone);padding:8px 0">Add guests on the Guest List tab first.</p>'
+            : `<div style="max-height:260px;overflow-y:auto;margin-top:8px;padding-right:4px">${guestRows}</div>
+               ${mealsLine ? `<div style="margin-top:8px;font-size:11px;color:var(--stone)"><strong style="color:var(--charcoal)">Meals:</strong> ${mealsLine}</div>` : ''}`}
+        </details>
+      </div>`;
+    }).join('');
+
+    if (others.length === 0 && events.length <= 1) {
+      empty.style.display = 'block';
     }
   }
 }
@@ -7506,12 +7667,11 @@ function toggleRehAttendee(idx) {
   document.getElementById('reh-attendee-count').textContent = `(${S.rehearsal.attendeeIds.length} invited)`;
 }
 function addPreEvent() {
-  if (!S.preEvents) S.preEvents = [];
-  S.preEvents.push({type:'shower', name:'New Event', date:'', time:'', venue:'', host:'', notes:''});
+  ensureEvents();
+  S.events.push({ id: newId('event'), name: 'New Event', type: 'shower', date: '', time: '', venue: '', host: '', notes: '', primary: false });
+  logActivity('Events', 'added', 'new event');
   saveState();
   renderPreEvents();
-  logActivity('Pre-Wedding Events','added','new event');
-  saveState();
 }
 
 // Phase 10 — pull guest photos uploaded to Supabase Storage and show
@@ -8808,6 +8968,7 @@ async function hydrateFromCloud(user) {
 // the online-RSVP inbox or draw the camera QR, and nothing retried.
 function onCloudHydrated() {
   migratePositionalRefs();   // B1: cloud state may carry legacy positional refs
+  migrateToEvents();         // B2: absorb legacy preEvents, ensure the primary event
   const activeTab = document.querySelector('.tab-content.active');
   if (activeTab && typeof renderTab === 'function') {
     const tabId = activeTab.id.replace('tab-', '');
