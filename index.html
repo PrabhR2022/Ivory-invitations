@@ -1278,7 +1278,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 
       <!-- Ceremony Music -->
       <div class="card">
-        <div class="card-title">Ceremony Music</div>
+        <div class="card-title">Ceremony Music <button class="btn btn-sm btn-outline" onclick="importCeremonyMusicCues()" title="Pull the cues you typed on the Ceremony &amp; Reception run sheets — no retyping">Copy cues from Ceremony &amp; Reception</button></div>
         <div class="tbl-wrap">
           <table><thead><tr><th style="min-width:160px">Moment</th><th>Song</th><th>Artist</th><th>Link</th><th>Notes</th></tr></thead>
           <tbody id="music-ceremony-body"></tbody></table>
@@ -4156,6 +4156,23 @@ function addVendor() {
 // MUSIC PLANNER
 // ══════════════════════════════════════════════════
 const MUSIC_GENRES = ["Pop","Rock","R&B/Soul","Hip-Hop","Country","Jazz","Classical","Latin","EDM/Dance","Motown","Indie","Reggae","Funk","80s","90s","2000s","Bollywood","K-Pop","Folk","Blues"];
+
+// Bridge (IVY-25): the same music cue was typed on Ceremony & Reception AND
+// here, with no connection. One click imports the run-sheet cues as moments;
+// existing moments are never overwritten.
+function importCeremonyMusicCues() {
+  const rows = [...(S.ceremony || []), ...(S.reception || [])].filter(r => (r.music || '').trim());
+  if (!rows.length) { showAlertModal('No cues found', 'No music cues are entered on the Ceremony & Reception run sheets yet.'); return; }
+  if (!S.music) S.music = defaultState().music;
+  let added = 0;
+  rows.forEach(r => {
+    const key = (r.event || '').trim().toLowerCase();
+    const exists = key && S.music.ceremony.some(m => (m.moment || '').trim().toLowerCase() === key);
+    if (!exists) { S.music.ceremony.push({moment: r.event || 'Cue', song: r.music, artist: '', url: '', notes: r.notes || ''}); added++; }
+  });
+  saveState(); renderMusic();
+  showAlertModal('Cues imported', added + ' cue' + (added !== 1 ? 's' : '') + ' copied from Ceremony & Reception.' + (added < rows.length ? ' Moments already present were kept as-is.' : ''));
+}
 
 function renderMusic() {
   if (!S.music) S.music = defaultState().music;
