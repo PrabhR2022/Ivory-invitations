@@ -1755,6 +1755,74 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 // ══════════════════════════════════════════════════
 const STATE_KEY = "ivory_planner_v1";
 let S = loadState();
+
+// ══ B1 (IVY-19) · Stable IDs ═══════════════════════════════════════
+// Guests, plus-guests and vendors carry permanent ids; every cross-
+// reference (rehearsal attendees, timeline vendor links, vehicles, seat
+// assignments) points at an id, never an array position or a name.
+// Deleting or renaming someone can no longer silently re-point a
+// reference at a different person. Registry already worked this way.
+let _idCounter = 0;
+function newId(prefix) { return prefix + '-' + Date.now() + '-' + (++_idCounter); }
+function ensureStableIds() {
+  (S.guests || []).forEach(g => {
+    if (!g.id) g.id = newId('guest');
+    (g.plusGuests || []).forEach(pg => { if (!pg.id) pg.id = newId('plus'); });
+  });
+  (S.vendors || []).forEach(v => { if (!v.id) v.id = newId('vendor'); });
+}
+function guestById(id) { return (S.guests || []).find(g => g.id === id) || null; }
+function vendorById(id) { return (S.vendors || []).find(v => v.id === id) || null; }
+function seatEntryName(entry) {
+  // A seat entry is a guest id, a plus-guest id, or (legacy) a raw name.
+  const g = guestById(entry);
+  if (g) return g.name;
+  for (const gg of (S.guests || [])) {
+    const pg = (gg.plusGuests || []).find(p => p.id === entry);
+    if (pg) return pg.name;
+  }
+  return entry;
+}
+function migratePositionalRefs() {
+  ensureStableIds();
+  // Rehearsal attendees: array indices → guest ids
+  const r = S.rehearsal;
+  if (r && Array.isArray(r.attendeeIds) && r.attendeeIds.some(x => typeof x === 'number')) {
+    r.attendeeIds = r.attendeeIds
+      .map(x => typeof x === 'number' ? (S.guests[x] && S.guests[x].id) : x)
+      .filter(Boolean);
+  }
+  // Timeline blocks + vehicles: vendorIdx → vendorId
+  (S.timeline || []).forEach(b => {
+    if (b.vendorIdx !== undefined) {
+      if (b.vendorId === undefined && S.vendors[b.vendorIdx]) b.vendorId = S.vendors[b.vendorIdx].id;
+      delete b.vendorIdx;
+    }
+  });
+  (S.transport || []).forEach(t => {
+    if (t.vendorIdx !== undefined) {
+      if (t.vendorId === undefined && S.vendors[t.vendorIdx]) t.vendorId = S.vendors[t.vendorIdx].id;
+      delete t.vendorIdx;
+    }
+  });
+  // Seat assignments: names → ids (guest first, then plus-guest; unmatched
+  // legacy names kept — they still render via seatEntryName)
+  if (S.seatAssignments) {
+    Object.keys(S.seatAssignments).forEach(tid => {
+      S.seatAssignments[tid] = (S.seatAssignments[tid] || []).map(entry => {
+        if (typeof entry !== 'string' || /^(guest|plus)-/.test(entry)) return entry;
+        const g = (S.guests || []).find(x => x.name === entry);
+        if (g) return g.id;
+        for (const gg of (S.guests || [])) {
+          const pg = (gg.plusGuests || []).find(pp => pp.name === entry);
+          if (pg) return pg.id;
+        }
+        return entry;
+      });
+    });
+  }
+}
+migratePositionalRefs();
 // U4: prune abandoned nameless guest rows left over from previous sessions
 if (Array.isArray(S.guests)) {
   const pruned = S.guests.filter(g => g && g.name && g.name.trim());
@@ -1831,7 +1899,7 @@ function defaultState() {
 }
 
 function loadState() { try { const d = localStorage.getItem(STATE_KEY); return d ? JSON.parse(d) : defaultState(); } catch(e) { return defaultState(); } }
-function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(S)); }
+function saveState() { ensureStableIds(); localStorage.setItem(STATE_KEY, JSON.stringify(S)); }
 
 // ── Data builders ──
 function buildChecklist() {
@@ -2846,7 +2914,7 @@ function renderGuests() {
     <td style="min-width:120px">${eCell(g.meal||'',`S.guests[${i}].meal=this.value;saveState();renderGuests()`,"select",['',...mealOptsForTable,...(g.meal && !mealOptsForTable.includes(g.meal) ? [g.meal] : [])])}${g.dietary?`<div style="font-size:10px;color:var(--taupe);margin-top:2px">${esc(g.dietary)}</div>`:''}</td>
     <td>${eCell(g.gift,`S.guests[${i}].gift=this.value;saveState();renderGuests()`,"select",["No","Yes"])}</td>
     <td>${eCell(g.thanks,`S.guests[${i}].thanks=this.value;saveState();renderGuests()`,"select",["No","Yes"])}</td>
-    <td>${delBtn(`if(confirm('Are you sure you want to remove this guest?')){S.guests.splice(${i},1);saveState();renderGuests()}`)}</td>
+    <td>${delBtn(`deleteGuest(${i})`)}</td>
   </tr>`;
     // Add an editable sub-row for each plus guest (A3: name & meal enterable
     // by hand, with remove — phone/text plus-ones no longer depend on the
@@ -3029,6 +3097,27 @@ function renderGuestRsvp() {
 
 function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",giftDesc:"",thanks:"No",thanksDate:"",table:"",role:"Guest",household:"",ageGroup:"Adult"}); saveState(); renderGuests(); }
 
+// B1 (IVY-19): deleting a guest cleans every reference to them — and thanks
+// to stable ids, references to EVERYONE ELSE stay exactly where they were.
+function deleteGuest(i) {
+  const g = S.guests[i];
+  if (!g) return;
+  if (!confirm('Are you sure you want to remove this guest?')) return;
+  const ids = [g.id, ...(g.plusGuests || []).map(p => p.id)].filter(Boolean);
+  const names = [g.name, ...(g.plusGuests || []).map(p => p.name)].filter(Boolean);
+  S.guests.splice(i, 1);
+  if (S.rehearsal && Array.isArray(S.rehearsal.attendeeIds)) {
+    S.rehearsal.attendeeIds = S.rehearsal.attendeeIds.filter(x => !ids.includes(x));
+  }
+  if (S.seatAssignments) {
+    Object.keys(S.seatAssignments).forEach(tid => {
+      S.seatAssignments[tid] = S.seatAssignments[tid].filter(e => !ids.includes(e) && !names.includes(e));
+    });
+  }
+  saveState();
+  renderGuests();
+}
+
 // A3 (IVY-02): manual plus-guest entry. First edit migrates a legacy single
 // plusOne to the plusGuests array so indices line up with the rendered rows.
 function ensurePlusArray(i) {
@@ -3074,7 +3163,7 @@ function assignGuestTable(guestIdx, tableName) {
   if (oldTable) {
     const oldFpItem = (S.floorPlan||[]).find(f => f.label === oldTable);
     if (oldFpItem && S.seatAssignments[oldFpItem.id]) {
-      S.seatAssignments[oldFpItem.id] = S.seatAssignments[oldFpItem.id].filter(n => n !== guest.name);
+      S.seatAssignments[oldFpItem.id] = S.seatAssignments[oldFpItem.id].filter(n => n !== guest.id && n !== guest.name);
     }
   }
 
@@ -3083,8 +3172,8 @@ function assignGuestTable(guestIdx, tableName) {
     const newFpItem = (S.floorPlan||[]).find(f => f.label === tableName);
     if (newFpItem) {
       if (!S.seatAssignments[newFpItem.id]) S.seatAssignments[newFpItem.id] = [];
-      if (!S.seatAssignments[newFpItem.id].includes(guest.name)) {
-        S.seatAssignments[newFpItem.id].push(guest.name);
+      if (!S.seatAssignments[newFpItem.id].includes(guest.id)) {
+        S.seatAssignments[newFpItem.id].push(guest.id);
       }
     }
   }
@@ -3153,7 +3242,7 @@ function unassignGuestTable(guestIdx) {
   if (oldTable && S.seatAssignments) {
     const fpItem = (S.floorPlan||[]).find(f => f.label === oldTable);
     if (fpItem && S.seatAssignments[fpItem.id]) {
-      S.seatAssignments[fpItem.id] = S.seatAssignments[fpItem.id].filter(n => n !== g.name);
+      S.seatAssignments[fpItem.id] = S.seatAssignments[fpItem.id].filter(n => n !== g.id && n !== g.name);
     }
   }
   saveState();
@@ -3565,7 +3654,7 @@ function vendorCatSelect(i, val) {
 function syncVendorArrival(i) {
   const v = S.vendors[i];
   if (!v) return;
-  const existing = S.timeline.findIndex(b => b.vendorIdx === i && b.autoVendor);
+  const existing = S.timeline.findIndex(b => b.vendorId === S.vendors[i].id && b.autoVendor);
   if (v.arrival && v.company) {
     const t12 = time24to12(v.arrival);
     if (existing >= 0) {
@@ -3573,7 +3662,7 @@ function syncVendorArrival(i) {
       S.timeline[existing].activity = v.company + ' arrives';
       S.timeline[existing].who = v.contact || '';
     } else {
-      S.timeline.push({time: t12, end:'', activity: v.company+' arrives', who: v.contact||'', notes:'', cat:'prep', vendorIdx:i, autoVendor:true});
+      S.timeline.push({time: t12, end:'', activity: v.company+' arrives', who: v.contact||'', notes:'', cat:'prep', vendorId: v.id, autoVendor:true});
     }
     S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
   } else if (existing >= 0) {
@@ -3583,12 +3672,11 @@ function syncVendorArrival(i) {
 }
 
 function deleteVendor(i) {
-  // Clean up timeline blocks linked to this vendor
-  S.timeline = S.timeline.filter(b => !(b.vendorIdx === i && b.autoVendor));
-  S.timeline.forEach(b => {
-    if (b.vendorIdx === i) delete b.vendorIdx;
-    else if (b.vendorIdx !== undefined && b.vendorIdx > i) b.vendorIdx--;
-  });
+  // B1: references are by id — no index arithmetic, nothing re-points.
+  const vid = S.vendors[i] && S.vendors[i].id;
+  S.timeline = S.timeline.filter(b => !(b.vendorId === vid && b.autoVendor));
+  S.timeline.forEach(b => { if (b.vendorId === vid) delete b.vendorId; });
+  (S.transport || []).forEach(t => { if (t.vendorId === vid) delete t.vendorId; });
   S.vendors.splice(i, 1);
   expandedVendor = -1;
   saveState();
@@ -4142,7 +4230,8 @@ function addVendor() {
     const v = {cat, company, contact:document.getElementById('av-contact').value.trim(), email:document.getElementById('av-email').value.trim(), phone:document.getElementById('av-phone').value.trim(), status:'',due:'',arrival:'',price:0,estimatedPrice:0,actualPrice:0,deposit:0,pros:'',cons:'',packageNotes:'',contractNotes:'',hiddenFeeChecks:{},contractChecks:{}};
     S.vendors.push(v);
     if (cat === 'Transportation') {
-      S.transport.push({label:company, vehicleType:'', company:company, contactName:v.contact, contactPhone:v.phone, pickupLocation:'',pickupTime:'',dropoffLocation:'',dropoffTime:'',includedHours:'',overtimeRate:'',confirmation:'',cost:0,notes:'',vendorIdx:S.vendors.length-1,assignedTo:''});
+      ensureStableIds();
+      S.transport.push({label:company, vehicleType:'', company:company, contactName:v.contact, contactPhone:v.phone, pickupLocation:'',pickupTime:'',dropoffLocation:'',dropoffTime:'',includedHours:'',overtimeRate:'',confirmation:'',cost:0,notes:'',vendorId:v.id,assignedTo:''});
     }
     saveState();
     syncVendorsToBudget();
@@ -4324,9 +4413,9 @@ function renderTransport() {
         </div>
         <div>
           <label class="ob-label">Linked Vendor</label>
-          <select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px;background:rgba(250,250,247,0.6)" onchange="S.transport[${i}].vendorIdx=this.value?parseInt(this.value):undefined;saveState()">
+          <select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px;background:rgba(250,250,247,0.6)" onchange="S.transport[${i}].vendorId=this.value||undefined;saveState()">
             <option value="">— None —</option>
-            ${S.vendors.map((v,vi)=>`<option value="${vi}"${t.vendorIdx===vi?' selected':''}>${esc(v.company||v.cat||'Vendor '+(vi+1))}</option>`).join('')}
+            ${S.vendors.map((v,vi)=>`<option value="${esc(v.id)}"${t.vendorId===v.id?' selected':''}>${esc(v.company||v.cat||'Vendor '+(vi+1))}</option>`).join('')}
           </select>
         </div>
         <div>
@@ -4371,7 +4460,7 @@ function renderTransport() {
 }
 
 function addTransport() {
-  S.transport.push({label:"",vehicleType:"",company:"",contactName:"",contactPhone:"",pickupLocation:"",pickupTime:"",dropoffLocation:"",dropoffTime:"",includedHours:"",overtimeRate:"",confirmation:"",cost:0,notes:"",assignedTo:"",vendorIdx:undefined});
+  S.transport.push({label:"",vehicleType:"",company:"",contactName:"",contactPhone:"",pickupLocation:"",pickupTime:"",dropoffLocation:"",dropoffTime:"",includedHours:"",overtimeRate:"",confirmation:"",cost:0,notes:"",assignedTo:""});
   saveState();
   renderTransport();
 }
@@ -4923,8 +5012,8 @@ function renderTlSchedule() {
     if (b.cerIdx !== undefined && (!S.ceremonies[b.cerIdx] || !S.ceremonies[b.cerIdx].timeline)) {
       delete b.cerIdx; delete b.cerRowIdx;
     }
-    if (b.vendorIdx !== undefined && !S.vendors[b.vendorIdx]) {
-      delete b.vendorIdx;
+    if (b.vendorId !== undefined && !vendorById(b.vendorId)) {
+      delete b.vendorId;
     }
   });
   S.timeline.forEach(b => { if (!b.end) b.end = ''; if (!b.cat) b.cat = 'other'; });
@@ -5005,7 +5094,7 @@ function renderSchCalendar() {
       <div class="ce-name"${isShort ? ' style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"' : ''}><span class="ce-cat-dot dot-${cat}"></span>${esc(b.activity)}</div>
       ${!isShort ? `<div class="ce-time">${esc(b.time)}${b.end ? ' – '+esc(b.end) : ''}</div>` : ''}
       ${!isShort && b.who ? `<div class="ce-vendor">${esc(b.who)}</div>` : ''}
-      ${!isShort && b.vendorIdx !== undefined && S.vendors[b.vendorIdx] ? `<div style="font-size:9px;opacity:0.7;margin-top:1px">&#128188; ${esc(S.vendors[b.vendorIdx].company)}</div>` : ''}
+      ${!isShort && b.vendorId !== undefined && vendorById(b.vendorId) ? `<div style="font-size:9px;opacity:0.7;margin-top:1px">&#128188; ${esc(vendorById(b.vendorId).company)}</div>` : ''}
     </div>`;
   });
 
@@ -5225,7 +5314,7 @@ function editTlBlock(idx) {
     <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Linked Vendor</label>
       <select id="tl-ed-vendor" style="width:100%;padding:8px;border:1px solid var(--border-light);border-radius:6px;font-size:13px;background:white">
         <option value="">— None —</option>
-        ${S.vendors.filter(v=>v.company).map((v,i)=>{const vi=S.vendors.indexOf(v);return`<option value="${vi}"${b.vendorIdx===vi?' selected':''}>${esc(v.company)} (${esc(v.cat)})</option>`}).join('')}
+        ${S.vendors.filter(v=>v.company).map(v=>`<option value="${esc(v.id)}"${b.vendorId===v.id?' selected':''}>${esc(v.company)} (${esc(v.cat)})</option>`).join('')}
       </select></div>
     <div id="tl-ed-error" style="display:none;color:var(--red);font-size:12px;margin-bottom:8px"></div>
     <div style="margin-bottom:16px"><label style="font-size:11px;font-weight:600;color:var(--stone);display:block;margin-bottom:4px">Category</label>
@@ -5261,7 +5350,8 @@ function saveTlBlock(idx) {
   b.who = document.getElementById('tl-ed-who').value.trim();
   b.notes = document.getElementById('tl-ed-notes').value.trim();
   const vendorVal = document.getElementById('tl-ed-vendor').value;
-  b.vendorIdx = vendorVal !== '' ? parseInt(vendorVal) : undefined;
+  b.vendorId = vendorVal !== '' ? vendorVal : undefined;
+  if (b.vendorId === undefined) delete b.vendorId;
   const selCat = document.querySelector('.tl-cat-btn[style*="opacity: 1"], .tl-cat-btn[style*="opacity:1"]');
   if (selCat) b.cat = selCat.dataset.cat;
   // Sync back to ceremony if linked
@@ -6434,14 +6524,15 @@ function renderSeatAssignments() {
   (S.guests||[]).forEach(g => {
     if (!g.name) return;
     if (g.rsvp === 'Declined') return;
-    seatable.push({ name: g.name, label: g.name + (g.rsvp === 'Pending' ? ' (pending)' : '') });
+    seatable.push({ id: g.id, name: g.name, label: g.name + (g.rsvp === 'Pending' ? ' (pending)' : '') });
     const plusGuests = (g.plusGuests && g.plusGuests.length > 0) ? g.plusGuests.filter(p=>p.name) :
-                       (g.plusOne === 'Yes' && g.plusOneName) ? [{name:g.plusOneName}] : [];
+                       (g.plusOne === 'Yes' && g.plusOneName) ? [{name:g.plusOneName, id:null}] : [];
     plusGuests.forEach(pg => {
-      seatable.push({ name: pg.name, label: pg.name + ' (+1 of ' + g.name + ')' });
+      seatable.push({ id: pg.id || null, name: pg.name, label: pg.name + ' (+1 of ' + g.name + ')' });
     });
   });
-  const availableGuests = seatable.filter(s => !allSeated.includes(s.name));
+  // B1: seats hold ids (legacy names tolerated)
+  const availableGuests = seatable.filter(s => !allSeated.includes(s.id) && !allSeated.includes(s.name));
 
   container.innerHTML = tables.map(t => {
     const seated = S.seatAssignments[t.id] || [];
@@ -6454,12 +6545,12 @@ function renderSeatAssignments() {
         <div style="font-size:10px;font-weight:400;color:${capacityColor}">${seated.length}/${maxSeats} seats</div>
       </div>
       <div class="fp-seat-guests">
-        ${seated.map((name, si) => `<span class="fp-seat-tag">${esc(name)} <span style="cursor:pointer;margin-left:2px;color:var(--red)" onclick="removeSeat('${esc(t.id)}',${si})">&times;</span></span>`).join('')}
+        ${seated.map((entry, si) => `<span class="fp-seat-tag">${esc(seatEntryName(entry))} <span style="cursor:pointer;margin-left:2px;color:var(--red)" onclick="removeSeat('${esc(t.id)}',${si})">&times;</span></span>`).join('')}
         ${isFull ? '<span style="font-size:10px;color:var(--red);font-weight:600">FULL</span>' : ''}
       </div>
       ${!isFull ? `<select style="width:200px;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:white" onchange="assignSeat('${esc(t.id)}',this.value);this.selectedIndex=0">
         <option value="">+ Add guest (${availableGuests.length} available)</option>
-        ${availableGuests.map(g => `<option value="${esc(g.name)}">${esc(g.label)}</option>`).join('')}
+        ${availableGuests.map(g => `<option value="${esc(g.id || g.name)}">${esc(g.label)}</option>`).join('')}
       </select>` : ''}
     </div>`;
   }).join('');
@@ -6563,7 +6654,7 @@ function printFloorPlan() {
   const tableRows = tables.map(t => {
     const seats = t.seats || 0;
     const assigned = (S.seatAssignments?.[t.id]) || [];
-    return `<tr><td>${esc(t.label||'')}</td><td>${assigned.length}/${seats}</td><td style="font-size:11px">${assigned.map(esc).join(', ')||'<em style="color:#999">unassigned</em>'}</td></tr>`;
+    return `<tr><td>${esc(t.label||'')}</td><td>${assigned.length}/${seats}</td><td style="font-size:11px">${assigned.map(e => esc(seatEntryName(e))).join(', ')||'<em style="color:#999">unassigned</em>'}</td></tr>`;
   }).join('');
 
   const w = window.open('', '_blank');
@@ -6597,16 +6688,16 @@ function printFloorPlan() {
   w.document.close();
 }
 
-function assignSeat(tableId, guestName) {
-  if (!guestName) return;
+function assignSeat(tableId, entry) {
+  // B1: entry is a guest id or plus-guest id (legacy names tolerated)
+  if (!entry) return;
   if (!S.seatAssignments) S.seatAssignments = {};
   if (!S.seatAssignments[tableId]) S.seatAssignments[tableId] = [];
-  if (!S.seatAssignments[tableId].includes(guestName)) {
-    S.seatAssignments[tableId].push(guestName);
-    // Sync guest's table field
+  if (!S.seatAssignments[tableId].includes(entry)) {
+    S.seatAssignments[tableId].push(entry);
     const fpItem = (S.floorPlan||[]).find(f => f.id === tableId);
     if (fpItem) {
-      const guest = S.guests.find(g => g.name === guestName);
+      const guest = guestById(entry) || S.guests.find(g => g.name === entry);
       if (guest) guest.table = fpItem.label;
     }
     saveState();
@@ -6615,11 +6706,10 @@ function assignSeat(tableId, guestName) {
 }
 
 function removeSeat(tableId, seatIdx) {
-  const guestName = S.seatAssignments[tableId][seatIdx];
+  const entry = S.seatAssignments[tableId][seatIdx];
   S.seatAssignments[tableId].splice(seatIdx, 1);
-  // Sync guest's table field
-  if (guestName) {
-    const guest = S.guests.find(g => g.name === guestName);
+  if (entry) {
+    const guest = guestById(entry) || S.guests.find(g => g.name === entry);
     if (guest) guest.table = '';
   }
   saveState();
@@ -7364,7 +7454,7 @@ function renderPreEvents() {
     } else {
       attEl.innerHTML = guests.map((g, idx) => `
         <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
-          <input type="checkbox" ${r.attendeeIds.includes(idx)?'checked':''} onchange="toggleRehAttendee(${idx})" style="width:14px;height:14px"/>
+          <input type="checkbox" ${r.attendeeIds.includes(g.id)?'checked':''} onchange="toggleRehAttendee('${g.id}')" style="width:14px;height:14px"/>
           <span>${esc(g.name || 'Guest ' + (idx+1))}</span>
           <span style="color:var(--stone);font-size:11px">${esc(g.role||'')}</span>
         </label>
@@ -7409,7 +7499,7 @@ function renderPreEvents() {
 }
 function toggleRehAttendee(idx) {
   if (!S.rehearsal.attendeeIds) S.rehearsal.attendeeIds = [];
-  const pos = S.rehearsal.attendeeIds.indexOf(idx);
+  const pos = S.rehearsal.attendeeIds.indexOf(idx);   // idx is a guest id (B1)
   if (pos >= 0) S.rehearsal.attendeeIds.splice(pos, 1);
   else S.rehearsal.attendeeIds.push(idx);
   saveState();
@@ -8717,6 +8807,7 @@ async function hydrateFromCloud(user) {
 // before currentWeddingId / currentShareToken existed — would never show
 // the online-RSVP inbox or draw the camera QR, and nothing retried.
 function onCloudHydrated() {
+  migratePositionalRefs();   // B1: cloud state may carry legacy positional refs
   const activeTab = document.querySelector('.tab-content.active');
   if (activeTab && typeof renderTab === 'function') {
     const tabId = activeTab.id.replace('tab-', '');
