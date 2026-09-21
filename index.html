@@ -563,9 +563,7 @@ table input[type="number"]{text-align:right;width:90px}
   .fp-seat-row{flex-wrap:wrap}
   .fp-seat-row select{width:100%!important}
   /* Rehearsal Dinner Date/Time/Venue: stack to 2 cols (Date+Time) then Venue full-width */
-  .reh-grid{grid-template-columns:1fr 1fr!important}
-  .reh-grid > div:nth-child(3){grid-column:1 / -1}
-  /* U3: two-column dashboard/detail grids collapse to one column on phones */
+    /* U3: two-column dashboard/detail grids collapse to one column on phones */
   .dash-two-col{grid-template-columns:1fr}
   /* Wide tables: make horizontal scroll discoverable with a subtle right-edge fade */
   .tbl-wrap{position:relative}
@@ -1636,21 +1634,8 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
       <h1 class="page-title">Events</h1>
       <p class="page-desc">Every event of your wedding — Mehndi, Sangeet, ceremonies, receptions and the lead-up parties — each with its own guest list, RSVPs and meals</p>
 
-      <!-- Rehearsal Dinner -->
-      <div class="card">
-        <div class="card-title">Rehearsal Dinner</div>
-        <div class="reh-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
-          <div><label class="ob-label">Date</label><input id="reh-date" class="ob-input" type="date" style="padding:8px 12px;font-size:13px" onchange="S.rehearsal.date=this.value;saveState()"/></div>
-          <div><label class="ob-label">Time</label><input id="reh-time" class="ob-input" type="time" style="padding:8px 12px;font-size:13px" onchange="S.rehearsal.time=this.value;saveState()"/></div>
-          <div><label class="ob-label">Venue</label><input id="reh-venue" class="ob-input" style="padding:8px 12px;font-size:13px" onblur="S.rehearsal.venue=this.value;saveState()" placeholder="Restaurant / home"/></div>
-        </div>
-        <div style="margin-bottom:12px"><label class="ob-label">Address</label><input id="reh-address" class="ob-input" style="padding:8px 12px;font-size:13px" onblur="S.rehearsal.address=this.value;saveState()" placeholder="Full address"/></div>
-        <div>
-          <label class="ob-label">Attendees <span id="reh-attendee-count" style="color:var(--stone);font-weight:400;margin-left:4px"></span></label>
-          <div id="reh-attendees" style="max-height:240px;overflow-y:auto;padding:8px;border:1px solid var(--border-light);border-radius:8px;background:rgba(250,250,247,0.6);font-size:13px"></div>
-        </div>
-      </div>
-
+      <!-- B2.4: the rehearsal dinner is a regular event now — its old
+           standalone card was absorbed into the All Events list below -->
       <!-- Other Events -->
       <div class="card">
         <div class="card-title">All Events
@@ -1774,9 +1759,15 @@ function ensureStableIds() {
     (g.plusGuests || []).forEach(pg => { if (!pg.id) pg.id = newId('plus'); });
   });
   (S.vendors || []).forEach(v => { if (!v.id) v.id = newId('vendor'); });
+  // B2.4: ceremonies + their rows get stable ids (cerIdx/cerRowIdx retired)
+  (S.ceremonies || []).forEach(c => {
+    if (!c.id) c.id = newId('cer');
+    (c.timeline || []).forEach(r => { if (!r.id) r.id = newId('crow'); });
+  });
 }
 function guestById(id) { return (S.guests || []).find(g => g.id === id) || null; }
 function vendorById(id) { return (S.vendors || []).find(v => v.id === id) || null; }
+function cerById(id) { return (S.ceremonies || []).find(c => c.id === id) || null; }
 function seatEntryName(entry) {
   // A seat entry is a guest id, a plus-guest id, or (legacy) a raw name.
   const g = guestById(entry);
@@ -1801,6 +1792,14 @@ function migratePositionalRefs() {
     if (b.vendorIdx !== undefined) {
       if (b.vendorId === undefined && S.vendors[b.vendorIdx]) b.vendorId = S.vendors[b.vendorIdx].id;
       delete b.vendorIdx;
+    }
+    // B2.4: ceremony links move to stable ids
+    if (b.cerIdx !== undefined) {
+      const cer = (S.ceremonies || [])[b.cerIdx];
+      const row = cer && (cer.timeline || [])[b.cerRowIdx];
+      if (cer && b.cerId === undefined) b.cerId = cer.id;
+      if (row && b.cerRowId === undefined) b.cerRowId = row.id;
+      delete b.cerIdx; delete b.cerRowIdx;
     }
   });
   (S.transport || []).forEach(t => {
@@ -1856,6 +1855,25 @@ function migrateToEvents() {
         notes: pe.notes || '', primary: false });
     });
     S.preEvents = [];
+  }
+  // B2.4: absorb the old rehearsal panel as a real event (one-time).
+  // Attendee ids become invitation rows; the address rides in notes.
+  if (!S.rehearsalMigrated) {
+    const r = S.rehearsal;
+    const hasData = r && (r.date || r.time || r.venue || r.address ||
+      (Array.isArray(r.attendeeIds) && r.attendeeIds.length));
+    if (hasData) {
+      const ev = { id: newId('event'), name: 'Rehearsal Dinner', type: 'rehearsal',
+        date: r.date || '', time: r.time || '', venue: r.venue || '', host: '',
+        notes: r.address ? 'Address: ' + r.address : '', primary: false };
+      S.events.push(ev);
+      (r.attendeeIds || []).forEach(gid => {
+        if (guestById(gid) && !getInvite(ev.id, gid)) {
+          S.invitations.push({ guestId: gid, eventId: ev.id, rsvp: 'Pending', meal: '' });
+        }
+      });
+    }
+    S.rehearsalMigrated = true;
   }
   ensureEventLayouts();
 }
@@ -2361,7 +2379,7 @@ function launcherSubFor(id) {
       return photos > 0 ? photos + (photos === 1 ? ' photo' : ' photos') : '';
     }
     if (id === 'preevents') {
-      const e = (S.preEvents || []).length + (S.rehearsal && S.rehearsal.date ? 1 : 0);
+      const e = (S.events || []).filter(ev => !ev.primary).length;
       return e > 0 ? e + (e === 1 ? ' event' : ' events') : '';
     }
   } catch (_e) { /* swallow */ }
@@ -4925,6 +4943,12 @@ function setSchTagFilter(tag) {
   renderSchTagBar();
   renderTlSchedule();
 }
+let schEventFilter = 'all';   // B2 (fix): was referenced but never declared
+function setSchEventFilter(f) {
+  schEventFilter = f;
+  renderSchTagBar();
+  renderTlSchedule();
+}
 function renderSchTagBar() {
   const bar = document.getElementById('sch-tag-bar');
   if (!bar) return;
@@ -5223,10 +5247,10 @@ function exportVendorsCSV() {
 
 function renderTlSchedule() {
   renderEmergencyContacts();
-  // Clean up orphaned cerIdx/cerRowIdx references
+  // Clean up orphaned ceremony references (B2.4: id-based)
   S.timeline.forEach(b => {
-    if (b.cerIdx !== undefined && (!S.ceremonies[b.cerIdx] || !S.ceremonies[b.cerIdx].timeline)) {
-      delete b.cerIdx; delete b.cerRowIdx;
+    if (b.cerId !== undefined && !cerById(b.cerId)) {
+      delete b.cerId; delete b.cerRowId;
     }
     if (b.vendorId !== undefined && !vendorById(b.vendorId)) {
       delete b.vendorId;
@@ -5593,14 +5617,11 @@ function saveTlBlock(idx) {
 function deleteTlBlock(idx) {
   const b = S.timeline[idx];
   // If block is linked to a ceremony row, remove that row too
-  if (b && b.cerIdx !== undefined && S.ceremonies[b.cerIdx] && b.cerRowIdx !== undefined) {
-    const cer = S.ceremonies[b.cerIdx];
-    if (cer.timeline && cer.timeline[b.cerRowIdx]) {
-      cer.timeline.splice(b.cerRowIdx, 1);
-      // Re-index cerRowIdx for other blocks in the same ceremony
-      S.timeline.forEach(x => {
-        if (x !== b && x.cerIdx === b.cerIdx && x.cerRowIdx > b.cerRowIdx) x.cerRowIdx--;
-      });
+  if (b && b.cerId !== undefined) {
+    const cer = cerById(b.cerId);
+    if (cer && cer.timeline) {
+      const ri = cer.timeline.findIndex(r => r.id === b.cerRowId);
+      if (ri >= 0) cer.timeline.splice(ri, 1);
     }
   }
   S.timeline.splice(idx, 1);
@@ -5673,6 +5694,7 @@ function renderTlCeremonies() {
   // A9 (IVY-13): an EMPTY array crashed on ceremonies[0].name — treat it
   // like the null case and seed the default.
   if (!S.ceremonies || S.ceremonies.length === 0) S.ceremonies = [{name:"Main Ceremony", date:"", timeline:[]}];
+  ensureStableIds();   // B2.4: cer/row ids must exist before we render id-based handlers
   if (selectedCeremonyIdx >= S.ceremonies.length) selectedCeremonyIdx = 0;
 
   // Populate dropdown
@@ -5702,7 +5724,7 @@ function renderTlCeremonies() {
           <td>${eCell(r.tag||'ceremony',`S.ceremonies[${ci}].timeline[${ri}].tag=this.value;syncCeremonyToSchedule(${ci},${ri});saveState()`,"select",["prep","ceremony","photos","reception","other"])}</td>
           <td>${eCell(r.music||'',`S.ceremonies[${ci}].timeline[${ri}].music=this.value;syncCeremonyToSchedule(${ci},${ri});saveState()`)}</td>
           <td>${eCell(r.notes||'',`S.ceremonies[${ci}].timeline[${ri}].notes=this.value;syncCeremonyToSchedule(${ci},${ri});saveState()`)}</td>
-          <td>${delBtn(`var b=S.timeline.find(x=>x.cerIdx===${ci}&&x.cerRowIdx===${ri});if(b){S.timeline.splice(S.timeline.indexOf(b),1)};S.ceremonies[${ci}].timeline.splice(${ri},1);saveState();renderTlCeremonies()`)}</td>
+          <td>${delBtn(`var b=S.timeline.find(x=>x.cerId==='${cer.id}'&&x.cerRowId==='${r.id}');if(b){S.timeline.splice(S.timeline.indexOf(b),1)};S.ceremonies[${ci}].timeline.splice(${ri},1);saveState();renderTlCeremonies()`)}</td>
         </tr>`).join('')}</tbody>
       </table>
     </div>
@@ -5726,12 +5748,13 @@ function addCeremonyBlock(ci) {
     if (m >= 60) { h++; m -= 60; }
     nextTime = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
   }
-  const ri = cer.timeline.length;
-  cer.timeline.push({time:nextTime, event:'New event', music:'', notes:'', tag:'ceremony'});
+  if (!cer.id) cer.id = newId('cer');
+  const row = {id: newId('crow'), time:nextTime, event:'New event', music:'', notes:'', tag:'ceremony'};
+  cer.timeline.push(row);
   // Also add to main timeline linked
   if (nextTime) {
     const startAMPM = time24to12(nextTime);
-    S.timeline.push({time:startAMPM, end:'', activity:'New event', who:'', notes:'', cat:'ceremony', cerIdx:ci, cerRowIdx:ri});
+    S.timeline.push({time:startAMPM, end:'', activity:'New event', who:'', notes:'', cat:'ceremony', cerId:cer.id, cerRowId:row.id});
     S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
   }
   saveState();
@@ -5747,10 +5770,9 @@ function deleteTlCeremony() {
   ], function() {
     const val = document.getElementById('del-cer-confirm').value.trim();
     if (val.toUpperCase() !== 'DELETE') { showAlertModal('Error', 'Type DELETE to confirm removal.'); return; }
-    // Remove linked timeline blocks
-    S.timeline = S.timeline.filter(b => b.cerIdx !== ci);
-    // Re-index cerIdx for remaining blocks pointing to shifted ceremonies
-    S.timeline.forEach(b => { if (b.cerIdx !== undefined && b.cerIdx > ci) b.cerIdx--; });
+    // Remove linked timeline blocks (B2.4: by stable id — no re-indexing)
+    const cerId = S.ceremonies[ci] && S.ceremonies[ci].id;
+    S.timeline = S.timeline.filter(b => b.cerId !== cerId);
     S.ceremonies.splice(ci, 1);
     selectedCeremonyIdx = Math.min(ci, S.ceremonies.length - 1);
     closeInputModal();
@@ -5910,9 +5932,10 @@ function time24to12(t) {
 function createCeremonyFromTemplate(type) {
   const tmpl = CEREMONY_TEMPLATES[type];
   if (!tmpl) return;
-  const rows = tmpl.rows.map(r => ({...r}));
+  const rows = tmpl.rows.map(r => ({...r, id: newId('crow')}));
   const name = tmpl.label === 'Custom' ? 'Ceremony ' + (S.ceremonies.length + 1) : tmpl.label + ' Ceremony';
   const cerIdx = S.ceremonies.length;
+  const cerId = newId('cer');
   // B2: each templated ceremony becomes its own EVENT, so its fifteen
   // blocks no longer collide with the wedding-day prep schedule — switch
   // events on the Itinerary to see each on its own.
@@ -5922,7 +5945,7 @@ function createCeremonyFromTemplate(type) {
     cerEvent = { id: newId('event'), name, type: 'ceremony', date: S.weddingDate || '', time: '', venue: '', host: '', notes: 'Created from the ' + (tmpl.label || 'ceremony') + ' template', primary: false };
     S.events.push(cerEvent);
   }
-  S.ceremonies.push({name, date:'', timeline: rows, eventId: cerEvent.id});
+  S.ceremonies.push({id: cerId, name, date:'', timeline: rows, eventId: cerEvent.id});
   selectedCeremonyIdx = cerIdx;
   // Also add ceremony events to the main schedule (linked)
   rows.forEach((r, ri) => {
@@ -5937,8 +5960,8 @@ function createCeremonyFromTemplate(type) {
       who: r.notes || '',
       notes: r.music ? 'Music: ' + r.music : '',
       cat: 'ceremony',
-      cerIdx: cerIdx,
-      cerRowIdx: ri,
+      cerId: cerId,
+      cerRowId: r.id,
       eventId: cerEvent.id
     });
   });
@@ -5952,9 +5975,11 @@ function createCeremonyFromTemplate(type) {
 function syncCeremonyToSchedule(ci, ri) {
   const cer = S.ceremonies[ci];
   if (!cer || !cer.timeline[ri]) return;
+  if (!cer.id) cer.id = newId('cer');
   const r = cer.timeline[ri];
-  // Find the linked schedule block
-  const tlBlock = S.timeline.find(b => b.cerIdx === ci && b.cerRowIdx === ri);
+  if (!r.id) r.id = newId('crow');
+  // Find the linked schedule block (B2.4: by stable id — survives sorting)
+  const tlBlock = S.timeline.find(b => b.cerId === cer.id && b.cerRowId === r.id);
   const tag = r.tag || 'ceremony';
   // Auto end-time: next ceremony row's start time (for ceremony-tagged items)
   const nextRow = cer.timeline.find((row, idx) => idx > ri && row.time);
@@ -5971,29 +5996,24 @@ function syncCeremonyToSchedule(ci, ri) {
       time: time24to12(r.time), end: endTime,
       activity: r.event, who: r.notes || '',
       notes: r.music ? 'Music: ' + r.music : '',
-      cat: tag, cerIdx: ci, cerRowIdx: ri
+      cat: tag, cerId: cer.id, cerRowId: r.id
     });
   }
   S.timeline.sort((a,b) => (tlParseTime(a.time)||0) - (tlParseTime(b.time)||0));
-  // Sort ceremony timeline by time
-  const sorted = [...cer.timeline].sort((a,b) => {
+  // Sort ceremony timeline by time — links are id-based, so no re-indexing
+  cer.timeline = [...cer.timeline].sort((a,b) => {
     if (!a.time && !b.time) return 0;
     if (!a.time) return 1; if (!b.time) return -1;
     return a.time.localeCompare(b.time);
   });
-  cer.timeline = sorted;
-  // Re-index cerRowIdx in S.timeline to match new sort order
-  sorted.forEach((row, newIdx) => {
-    const tlB = S.timeline.find(b => b.cerIdx === ci && b.activity === row.event && b.cerRowIdx !== undefined);
-    if (tlB) tlB.cerRowIdx = newIdx;
-  });
 }
 
 function syncScheduleToCeremony(b) {
-  if (b.cerIdx === undefined || b.cerRowIdx === undefined) return;
-  const cer = S.ceremonies[b.cerIdx];
-  if (!cer || !cer.timeline[b.cerRowIdx]) return;
-  const r = cer.timeline[b.cerRowIdx];
+  if (b.cerId === undefined || b.cerRowId === undefined) return;
+  const cer = cerById(b.cerId);
+  if (!cer || !cer.timeline) return;
+  const r = cer.timeline.find(x => x.id === b.cerRowId);
+  if (!r) return;
   // Convert 12h time back to 24h for ceremony
   const mins = tlParseTime(b.time);
   if (mins !== null) {
@@ -7693,32 +7713,8 @@ function loadCameraData() {
 
 // ─── Phase 6: Pre-Wedding Events ──────────────────────
 function renderPreEvents() {
-  // Rehearsal
-  if (!S.rehearsal) S.rehearsal = {date:'', venue:'', address:'', time:'', attendeeIds:[], timeline:[]};
-  const r = S.rehearsal;
-  if (document.getElementById('reh-date')) document.getElementById('reh-date').value = r.date || '';
-  if (document.getElementById('reh-time')) document.getElementById('reh-time').value = r.time || '';
-  if (document.getElementById('reh-venue')) document.getElementById('reh-venue').value = r.venue || '';
-  if (document.getElementById('reh-address')) document.getElementById('reh-address').value = r.address || '';
-  const attEl = document.getElementById('reh-attendees');
-  if (attEl) {
-    if (!r.attendeeIds) r.attendeeIds = [];
-    const guests = S.guests || [];
-    if (guests.length === 0) {
-      attEl.innerHTML = '<p style="color:var(--stone);padding:12px;text-align:center">Add guests to the Guest List first</p>';
-    } else {
-      attEl.innerHTML = guests.map((g, idx) => `
-        <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
-          <input type="checkbox" ${r.attendeeIds.includes(g.id)?'checked':''} onchange="toggleRehAttendee('${g.id}')" style="width:14px;height:14px"/>
-          <span>${esc(g.name || 'Guest ' + (idx+1))}</span>
-          <span style="color:var(--stone);font-size:11px">${esc(g.role||'')}</span>
-        </label>
-      `).join('');
-    }
-    document.getElementById('reh-attendee-count').textContent = `(${r.attendeeIds.length} invited)`;
-  }
-
   // ══ B2 · Events hub — every event, with its own guest list ══
+  // (B2.4: the rehearsal panel is gone — migrateToEvents absorbed it)
   migrateToEvents();
   const list = document.getElementById('pre-events-list');
   const empty = document.getElementById('pre-events-empty');
@@ -7817,14 +7813,6 @@ function renderPreEvents() {
       empty.style.display = 'block';
     }
   }
-}
-function toggleRehAttendee(idx) {
-  if (!S.rehearsal.attendeeIds) S.rehearsal.attendeeIds = [];
-  const pos = S.rehearsal.attendeeIds.indexOf(idx);   // idx is a guest id (B1)
-  if (pos >= 0) S.rehearsal.attendeeIds.splice(pos, 1);
-  else S.rehearsal.attendeeIds.push(idx);
-  saveState();
-  document.getElementById('reh-attendee-count').textContent = `(${S.rehearsal.attendeeIds.length} invited)`;
 }
 function addPreEvent() {
   ensureEvents();
@@ -8745,7 +8733,7 @@ function buildItinFromWizard() {
     if (!tmpl) return;
 
     // Remap ceremony template times relative to current clock position
-    const rows = tmpl.rows.map(r => ({...r}));
+    const rows = tmpl.rows.map(r => ({...r, id: newId('crow')}));
     // Calculate offset: difference between first template time and current time
     if (rows.length > 0 && rows[0].time) {
       const firstParts = rows[0].time.split(':').map(Number);
@@ -8762,8 +8750,8 @@ function buildItinFromWizard() {
     }
 
     const name = tmpl.label === 'Custom' ? 'Ceremony ' + (S.ceremonies.length + 1) : tmpl.label + ' Ceremony';
-    const cerIdx = S.ceremonies.length;
-    S.ceremonies.push({name, date:'', timeline: rows});
+    const cerId = newId('cer');
+    S.ceremonies.push({id: cerId, name, date:'', timeline: rows});
 
     // Add ceremony events to main schedule
     rows.forEach((r, ri) => {
@@ -8778,8 +8766,8 @@ function buildItinFromWizard() {
         who: r.notes || '',
         notes: r.music ? 'Music: ' + r.music : '',
         cat: 'ceremony',
-        cerIdx: cerIdx,
-        cerRowIdx: ri
+        cerId: cerId,
+        cerRowId: r.id
       });
     });
 
