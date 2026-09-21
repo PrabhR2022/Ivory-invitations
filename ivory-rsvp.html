@@ -210,6 +210,7 @@ input,select,textarea{font-family:inherit}
     <h2 class="confirm-title">We can't wait to see you!</h2>
     <p class="confirm-sub">Your RSVP has been recorded. Here's a summary of your response.</p>
     <div class="confirm-details" id="confirm-details"></div>
+    <div id="household-nudge"></div>
     <p style="font-size:13px;color:var(--stone);">Need to make changes? <button type="button" onclick="goToStep('rsvp')" style="background:none;padding:0;color:var(--taupe);font-weight:500;font-size:inherit;text-decoration:underline;">Edit your RSVP</button></p>
   </div>
 
@@ -218,6 +219,7 @@ input,select,textarea{font-family:inherit}
     <div class="decline-icon">&#9825;</div>
     <h2 class="confirm-title">We'll miss you!</h2>
     <p class="confirm-sub">We understand and appreciate you letting us know. You'll be in our hearts on the big day.</p>
+    <div id="household-nudge-declined"></div>
     <p style="font-size:13px;color:var(--stone);">Changed your mind? <button type="button" onclick="goToStep('rsvp')" style="background:none;padding:0;color:var(--taupe);font-weight:500;font-size:inherit;text-decoration:underline;">Update your RSVP</button></p>
   </div>
 </div>
@@ -272,6 +274,7 @@ async function loadWedding() {
     guests: (data.guests || []).map(g => ({
       id: g.id || '',
       name: g.name,
+      household: g.household || '',
       allowPlusOne: (typeof g.allow_plus_one === 'number') ? g.allow_plus_one : 0,
       plusGuests: []
     })),
@@ -570,6 +573,23 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ─── B3: household nudge — respond for the rest of the family ───
+const respondedIdx = new Set();   // guests answered in this session
+function householdNudgeHTML(guest) {
+  const hh = (guest.household || '').trim();
+  if (!hh) return '';
+  const others = plannerState.guests
+    .map((g, i) => ({ g, i }))
+    .filter(x => x.i !== selectedGuestIdx && (x.g.household || '').trim() === hh && !respondedIdx.has(x.i));
+  if (!others.length) return '';
+  return `<div style="margin:0 0 20px;padding:14px 16px;background:var(--ivory);border-radius:12px;text-align:left">
+    <p style="font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--stone);margin-bottom:8px">Responding for your household?</p>
+    ${others.map(x => `<button type="button" onclick="respondForMember(${x.i})" style="display:inline-block;margin:0 6px 6px 0;padding:8px 14px;border:1px solid var(--sand,#e7e0d5);border-radius:100px;background:white;font-size:13px;cursor:pointer;font-family:inherit">RSVP for ${escHtml(x.g.name)}</button>`).join('')}
+  </div>`;
+}
+function respondForMember(idx) {
+  selectGuest(idx);
+}
 // ─── Submit ───
 async function submitRsvp() {
   if (selectedGuestIdx < 0) return;
@@ -662,8 +682,14 @@ async function submitRsvp() {
     if (guest.song) rows += `<div class="confirm-row"><span class="label">Song Request</span><span class="value">${guest.song}</span></div>`;
     if (!isDemo) rows += `<div class="confirm-row"><span class="label"></span><span class="value" style="color:var(--green);font-size:12px">&#10003; Saved to the couple's planner</span></div>`;
     document.getElementById('confirm-details').innerHTML = rows;
+    respondedIdx.add(selectedGuestIdx);
+    const nudge = document.getElementById('household-nudge');
+    if (nudge) nudge.innerHTML = householdNudgeHTML(guest);
     goToStep('confirmed');
   } else {
+    respondedIdx.add(selectedGuestIdx);
+    const nudgeD = document.getElementById('household-nudge-declined');
+    if (nudgeD) nudgeD.innerHTML = householdNudgeHTML(guest);
     goToStep('declined');
   }
 }

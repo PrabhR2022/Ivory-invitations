@@ -1029,6 +1029,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
             <button class="btn btn-sm btn-outline" onclick="showExportModal()">&#8595; Export PDF</button>
             <button class="btn btn-sm btn-outline" onclick="document.getElementById('guest-file-input').click()">&#8593; Import CSV / Excel</button>
             <button class="btn btn-sm btn-dark" onclick="addGuest()">+ Add Guest</button>
+            <button class="btn btn-sm" onclick="addHousehold()" title="Add a whole family at once — one address, every member as a guest">+ Add Household</button>
           </div>
         </div>
         <input type="file" id="guest-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="importGuestFile(this)" />
@@ -1042,6 +1043,13 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
         <div class="card-title">Confirmed Plus Ones <span class="count" id="plus-ones-count">0</span></div>
         <div id="plus-ones-list"></div>
       </div>
+      <!-- B3 · Households — one address per family, addressing & seating -->
+      <div class="card" id="households-card" style="display:none">
+        <div class="card-title">Households <span class="count" id="households-count"></span></div>
+        <p style="font-size:12px;color:var(--stone);margin-bottom:12px">One envelope per household — the address book for your invitations. Assign a table to seat the whole family together.</p>
+        <div id="households-list"></div>
+      </div>
+
       </div><!-- end guest-sub-list -->
 
       <!-- RSVP sub-section -->
@@ -2482,6 +2490,9 @@ function showInputModal(title, fields, onSave) {
     if (f.type === 'select') {
       return `<div class="ob-field"><label class="ob-label">${f.label}</label><select class="ob-input" id="${f.id}">${(f.opts||[]).map(o => `<option${o===(f.value||'')?' selected':''}>${o}</option>`).join('')}</select></div>`;
     }
+    if (f.type === 'textarea') {
+      return `<div class="ob-field"><label class="ob-label">${f.label}${f.required ? ' *' : ''}</label><textarea class="ob-input" id="${f.id}" rows="${f.rows || 4}" placeholder="${f.placeholder || ''}" style="resize:vertical;font-family:var(--font-sans)">${esc(f.value || '')}</textarea></div>`;
+    }
     const t = f.type === 'url' ? 'type="url"' : f.type === 'number' ? 'type="number"' : f.type === 'tel' ? 'type="tel" oninput="formatPhone(this)"' : f.type === 'email' ? 'type="email"' : '';
     const ph = f.placeholder || '';
     const val = f.value || '';
@@ -3143,6 +3154,8 @@ function renderGuests() {
     return row;
   }).join("");
 
+  renderHouseholds();   // B3
+
   // Render confirmed plus-ones sub-list card
   const allPlusGuests = [];
   S.guests.forEach(g => {
@@ -3300,6 +3313,115 @@ function renderGuestRsvp() {
 }
 
 function addGuest() { S.guests.push({name:"",address:"",rsvp:"Pending",allowPlusOne:1,plusOne:"No",meal:"",gift:"No",giftDesc:"",thanks:"No",thanksDate:"",table:"",role:"Guest",household:"",ageGroup:"Adult"}); saveState(); renderGuests(); }
+
+// ══ B3 · Households — add a family once ═════════════════════════════
+function addHousehold() {
+  showInputModal('Add Household', [
+    {id:'hh-name', label:'Household Name', required:true, placeholder:'e.g. The Sharma Family'},
+    {id:'hh-address', label:'Address (one envelope)', placeholder:'123 Main St, Toronto ON M1M 1M1'},
+    {id:'hh-members', label:'Members — one per line', type:'textarea', rows:5, required:true, placeholder:'Raj Sharma\nPriya Sharma\nAarav Sharma (kid)'},
+    {id:'hh-note', type:'note', text:'Add "(kid)" or "(infant)" after a name to set their age group. Every member becomes a guest sharing this household and address.'}
+  ], function() {
+    const name = document.getElementById('hh-name').value.trim();
+    const address = document.getElementById('hh-address').value.trim();
+    const lines = document.getElementById('hh-members').value.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!name || lines.length === 0) return;
+    lines.forEach(line => {
+      let ageGroup = 'Adult';
+      let gname = line;
+      if (/\((kid|child)\)/i.test(line)) { ageGroup = 'Kid'; gname = line.replace(/\s*\((kid|child)\)\s*/i, ' ').trim(); }
+      else if (/\((infant|baby)\)/i.test(line)) { ageGroup = 'Infant'; gname = line.replace(/\s*\((infant|baby)\)\s*/i, ' ').trim(); }
+      // Don't duplicate an existing guest with the same name — link them instead
+      const existing = (S.guests || []).find(g => (g.name || '').trim().toLowerCase() === gname.toLowerCase());
+      if (existing) {
+        existing.household = name;
+        if (address && !existing.address) existing.address = address;
+        if (ageGroup !== 'Adult') existing.ageGroup = ageGroup;
+        return;
+      }
+      S.guests.push({name: gname, address, rsvp:'Pending', allowPlusOne:0, plusOne:'No', meal:'', gift:'No', giftDesc:'', thanks:'No', thanksDate:'', table:'', role:'Guest', household: name, ageGroup});
+    });
+    logActivity('Guests', 'added household', name + ' (' + lines.length + ' members)');
+    saveState(); renderGuests(); closeInputModal();
+  });
+}
+
+function householdGroups() {
+  const groups = {};
+  (S.guests || []).forEach((g, i) => {
+    const hh = (g.household || '').trim();
+    if (!hh || !g.name) return;
+    if (!groups[hh]) groups[hh] = [];
+    groups[hh].push({ g, i });
+  });
+  return groups;
+}
+
+function renderHouseholds() {
+  const card = document.getElementById('households-card');
+  const list = document.getElementById('households-list');
+  if (!card || !list) return;
+  const groups = householdGroups();
+  const names = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+  if (names.length === 0) { card.style.display = 'none'; list.innerHTML = ''; return; }
+  card.style.display = '';
+  const countEl = document.getElementById('households-count');
+  if (countEl) countEl.textContent = names.length + (names.length === 1 ? ' household' : ' households');
+  const fpTables = (S.floorPlan || []).filter(f => { const d = FP_TYPES[f.type]; return d && d.isTable; });
+
+  list.innerHTML = names.map(hh => {
+    const members = groups[hh];
+    const att = members.filter(m => m.g.rsvp === 'Attending').length;
+    const dec = members.filter(m => m.g.rsvp === 'Declined').length;
+    const pen = members.length - att - dec;
+    const address = (members.find(m => (m.g.address || '').trim()) || {}).g?.address || '';
+    const tables = [...new Set(members.map(m => m.g.table).filter(Boolean))];
+    const tableLabel = tables.length === 0 ? '' : tables.length === 1 ? tables[0] : 'mixed';
+    const hhEsc = hh.replace(/'/g, "\\'");
+    return `<div style="padding:12px;border:1px solid var(--border-light);border-radius:10px;margin-bottom:8px;background:white">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="min-width:0">
+          <div style="font-size:13.5px;font-weight:600">${esc(hh)} <span style="font-weight:400;color:var(--stone);font-size:12px">· ${members.length} ${members.length === 1 ? 'person' : 'people'}</span></div>
+          <div style="font-size:12px;margin-top:2px">
+            ${att ? `<span style="color:var(--green)">${att} attending</span>` : ''}${att && (dec || pen) ? ' · ' : ''}${dec ? `<span style="color:var(--red)">${dec} declined</span>` : ''}${dec && pen ? ' · ' : ''}${pen ? `<span style="color:var(--stone)">${pen} pending</span>` : ''}
+          </div>
+          <div style="font-size:11.5px;color:var(--stone);margin-top:2px">${members.map(m => esc(m.g.name)).join(', ')}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${fpTables.length ? `<select style="font-size:11px;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px" onchange="assignHouseholdTable('${hhEsc}', this.value)" title="Seat the whole household at one table">
+            <option value="">${tableLabel ? 'Table: ' + esc(tableLabel) : 'Seat together…'}</option>
+            ${fpTables.map(t => `<option value="${esc(t.label)}">${esc(t.label)}</option>`).join('')}
+          </select>` : ''}
+          ${delBtn(`removeHousehold('${hhEsc}')`)}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--stone);flex-shrink:0">Address</span>
+        <input value="${esc(address)}" placeholder="Add the household address" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6)" onblur="setHouseholdAddress('${hhEsc}', this.value)"/>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setHouseholdAddress(hh, address) {
+  const groups = householdGroups();
+  (groups[hh] || []).forEach(m => { m.g.address = address.trim(); });
+  saveState(); renderGuests();
+}
+
+function assignHouseholdTable(hh, tableName) {
+  if (!tableName) return;
+  const groups = householdGroups();
+  (groups[hh] || []).forEach(m => assignGuestTable(m.i, tableName));
+  renderGuests();
+}
+
+function removeHousehold(hh) {
+  if (!confirm('Ungroup "' + hh + '"? The guests stay on your list — they just lose the household grouping.')) return;
+  const groups = householdGroups();
+  (groups[hh] || []).forEach(m => { m.g.household = ''; });
+  saveState(); renderGuests();
+}
 
 // B1 (IVY-19): deleting a guest cleans every reference to them — and thanks
 // to stable ids, references to EVERYONE ELSE stay exactly where they were.
@@ -9117,6 +9239,7 @@ async function hydrateFromCloud(user) {
 function onCloudHydrated() {
   migratePositionalRefs();   // B1: cloud state may carry legacy positional refs
   migrateToEvents();         // B2: absorb legacy preEvents, ensure the primary event
+  lastSyncedSections = captureSyncedSections(S);   // B3: section-sync baseline
   const activeTab = document.querySelector('.tab-content.active');
   if (activeTab && typeof renderTab === 'function') {
     const tabId = activeTab.id.replace('tab-', '');
@@ -9214,12 +9337,52 @@ async function flushCloudSync() {
   cloudDirty = false;
   setSyncStatus('syncing');
   const stateSnapshot = S;
+  const weddingDate = stateSnapshot.weddingDate || '';
+  const coupleName = ((stateSnapshot.coupleName1 || '') + (stateSnapshot.coupleName2 ? ' & ' + stateSnapshot.coupleName2 : '')).trim();
+
+  // B3: diff top-level sections against the last-synced snapshots and
+  // send only what changed. Two people editing different sections no
+  // longer overwrite each other's work.
+  const patch = {};
+  const patchStrs = {};
+  Object.keys(stateSnapshot).forEach(k => {
+    const str = JSON.stringify(stateSnapshot[k]);
+    if (str === undefined) return;
+    if (lastSyncedSections[k] !== str) { patch[k] = stateSnapshot[k]; patchStrs[k] = str; }
+  });
+  if (Object.keys(patch).length === 0) { setSyncStatus('synced'); return; }
+
+  if (!mergeRpcMissing) {
+    const { data, error } = await supa.rpc('merge_wedding_state', {
+      p_wedding_id: currentWeddingId,
+      p_patch: patch,
+      p_wedding_date: weddingDate,
+      p_name: coupleName || null
+    });
+    if (error && (error.code === 'PGRST202' || /merge_wedding_state/.test(error.message || ''))) {
+      console.warn('[Ivory] merge_wedding_state RPC missing — falling back to whole-blob sync');
+      mergeRpcMissing = true;   // fall through to the legacy path below
+    } else if (error || !data || data.error || data.ok !== true) {
+      cloudDirty = true;
+      console.error('[Ivory] Cloud sync error:', error || (data && data.error));
+      setSyncStatus('error');
+      return;
+    } else {
+      Object.assign(lastSyncedSections, patchStrs);
+      // The RPC returns the merged row — hash it so the realtime echo is ignored
+      lastSyncedStateHash = JSON.stringify(data.state).length + '_' + (data.updated_at || '');
+      setSyncStatus('synced');
+      return;
+    }
+  }
+
+  // Legacy whole-blob path (RPC not deployed yet)
   const { data, error } = await supa
     .from('weddings')
     .update({
       state: stateSnapshot,
-      wedding_date: stateSnapshot.weddingDate || null,
-      name: ((stateSnapshot.coupleName1 || '') + (stateSnapshot.coupleName2 ? ' & ' + stateSnapshot.coupleName2 : '')).trim() || null
+      wedding_date: weddingDate || null,
+      name: coupleName || null
     })
     .eq('id', currentWeddingId)
     .select('updated_at')
@@ -9229,7 +9392,7 @@ async function flushCloudSync() {
     console.error('[Ivory] Cloud sync error:', error);
     setSyncStatus('error');
   } else {
-    // Track this update so the realtime echo is ignored
+    lastSyncedSections = captureSyncedSections(stateSnapshot);
     lastSyncedStateHash = JSON.stringify(stateSnapshot).length + '_' + (data?.updated_at || '');
     setSyncStatus('synced');
   }
@@ -9360,6 +9523,19 @@ function authMsg(text, type) {
 // ══════════════════════════════════════════════════
 let realtimeChannel = null;
 let lastSyncedStateHash = null;
+// B3: per-section sync — top-level key → JSON string at last sync.
+// flushCloudSync sends only sections whose serialization changed, via
+// the merge_wedding_state RPC (server-side state || patch).
+let lastSyncedSections = {};
+let mergeRpcMissing = false;   // fallback to whole-blob update if the RPC isn't deployed
+function captureSyncedSections(state) {
+  const snap = {};
+  Object.keys(state).forEach(k => {
+    const str = JSON.stringify(state[k]);
+    if (str !== undefined) snap[k] = str;
+  });
+  return snap;
+}
 
 function showInvitePartnerModal() {
   const m = document.getElementById('invite-partner-overlay');
@@ -9562,6 +9738,7 @@ async function checkUrlForInvite() {
     S = Object.assign({}, defaultState(), wedding.state || {});
     localStorage.setItem(STATE_KEY, JSON.stringify(S));
     migratePositionalRefs(); migrateToEvents();
+    lastSyncedSections = captureSyncedSections(S);
     cloudHydrated = true;
     setSyncStatus('synced');
     if (typeof renderTab === 'function') renderTab('notifications');
@@ -9635,6 +9812,7 @@ async function acceptPendingEmailInvite(user) {
   S = Object.assign({}, defaultState(), wedding.state || {});
   localStorage.setItem(STATE_KEY, JSON.stringify(S));
   migratePositionalRefs(); migrateToEvents();
+  lastSyncedSections = captureSyncedSections(S);
   cloudHydrated = true;
   setSyncStatus('synced');
   lastSyncedStateHash = JSON.stringify(S).length + '_synced';
@@ -9681,10 +9859,22 @@ function handleRealtimeWeddingUpdate(newRow) {
   // Skip if this is our own update echoing back
   const incomingHash = JSON.stringify(newRow.state).length + '_' + (newRow.updated_at || '');
   if (incomingHash === lastSyncedStateHash) return;
-  // Replace local state with cloud version
-  S = Object.assign({}, defaultState(), newRow.state);
-  localStorage.setItem(STATE_KEY, JSON.stringify(S));
+  // B3: merge section-wise. Take only the sections the remote actually
+  // changed (vs our last-synced snapshot); local unsynced edits in
+  // OTHER sections survive. Same-section conflicts stay LWW, but the
+  // blast radius is one section instead of the whole wedding.
+  const incoming = newRow.state;
+  const changed = [];
+  Object.keys(incoming).forEach(k => {
+    const str = JSON.stringify(incoming[k]);
+    if (lastSyncedSections[k] === str) return;   // remote didn't change this
+    S[k] = incoming[k];
+    lastSyncedSections[k] = str;
+    changed.push(k);
+  });
+  if (changed.length === 0) return;
   migratePositionalRefs(); migrateToEvents();
+  localStorage.setItem(STATE_KEY, JSON.stringify(S));
   // Re-render whatever tab is active
   const activeTab = document.querySelector('.tab-content.active');
   if (activeTab && typeof renderTab === 'function') {
