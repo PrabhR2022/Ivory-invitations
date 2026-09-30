@@ -1142,6 +1142,17 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
           <div class="card-title">Meal Breakdown <span class="count" id="rsvp-meal-total">0 meals</span></div>
           <div id="rsvp-meal-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
         </div>
+      <!-- B5·S4: one private link per guest — no name search, no list enumeration -->
+      <div class="card" id="personal-links-card">
+        <div class="card-title">Personal RSVP Links
+          <div style="display:inline-flex;gap:6px">
+            <button class="btn btn-sm btn-outline" id="copy-all-links-btn" style="display:none" onclick="copyAllGuestLinks(this)">Copy all</button>
+            <button class="btn btn-sm btn-dark" onclick="generateGuestLinks(this)">Generate links</button>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--stone);margin-bottom:12px">Each guest gets their own private link — it opens straight to their prefilled RSVP (plus their household), and nobody can browse your guest list. Text or email them individually, or copy all as a name + link list.</p>
+        <div id="personal-links-list"></div>
+      </div>
       </div><!-- end guest-sub-rsvp -->
 
       <!-- Thank-Yous sub-tab (Phase 5.2) -->
@@ -1340,7 +1351,9 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 
     <!-- ═══ TIMELINE ═══ -->
     <div class="tab-content" id="tab-timeline">
-      <h1 class="page-title">Itinerary</h1>
+      <h1 class="page-title">Itinerary
+        <button class="btn btn-sm btn-dark" style="float:right" onclick="openDayOfMode()" title="Phone-first live view: what's happening now, what's next, one-tap vendor calls">&#9201; Day-of Mode</button>
+      </h1>
       <p class="page-desc">Your complete day-of schedule — ceremonies, events & vendor coordination</p>
 
       <!-- Inline itinerary setup wizard -->
@@ -2243,7 +2256,7 @@ function showGuestSub(sub) {
   document.getElementById('guest-sub-rsvp').classList.toggle('active', sub==='rsvp');
   const tyEl = document.getElementById('guest-sub-thankyous'); if (tyEl) tyEl.classList.toggle('active', sub==='thankyous');
   document.getElementById('guest-sub-floorplan').classList.toggle('active', sub==='floorplan');
-  if (sub === 'rsvp') { renderGuestRsvp(); fetchAndRenderOnlineRsvps(); renderRsvpChaseList(); }
+  if (sub === 'rsvp') { renderGuestRsvp(); fetchAndRenderOnlineRsvps(); renderRsvpChaseList(); renderPersonalLinks(); if (supa && currentWeddingId && !guestLinkTokens) fetchGuestLinks().then(renderPersonalLinks); }
   if (sub === 'thankyous') renderThankYous();
   if (sub === 'floorplan') renderFloorPlan();
 }
@@ -3733,6 +3746,136 @@ function guestLink(page) {
   const tok = currentShareToken ? ('?w=' + encodeURIComponent(currentShareToken)) : '';
   return base + page + tok;
 }
+// ══ B5 · Sharing layer ══════════════════════════════════════════════
+function makeShareToken() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function personalLinkUrl(token) {
+  return location.origin + location.pathname.replace(/[^/]*$/, '') + 'ivory-rsvp.html?g=' + encodeURIComponent(token);
+}
+function vendorBriefUrl(token) {
+  return location.origin + location.pathname.replace(/[^/]*$/, '') + 'ivory-vendor.html?v=' + encodeURIComponent(token);
+}
+let guestLinkTokens = null;   // guestId → token, fetched per session
+
+async function fetchGuestLinks() {
+  if (!supa || !currentWeddingId) return null;
+  const { data, error } = await supa.from('guest_links').select('guest_id, token').eq('wedding_id', currentWeddingId);
+  if (error) { console.warn('[Ivory] guest_links fetch failed:', error); return null; }
+  guestLinkTokens = new Map((data || []).map(r => [r.guest_id, r.token]));
+  return guestLinkTokens;
+}
+
+async function generateGuestLinks(btn) {
+  if (!supa || !currentWeddingId) { alert('Sign in first — personal links need your wedding saved to the cloud.'); return; }
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  ensureStableIds();
+  const have = await fetchGuestLinks();
+  if (have === null) {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+    alert('Could not reach the cloud — the guest_links table may not be set up yet. Run the latest migration and try again.');
+    return;
+  }
+  const named = (S.guests || []).filter(g => g.name && g.id);
+  const missing = named.filter(g => !have.has(g.id))
+    .map(g => ({ wedding_id: currentWeddingId, guest_id: g.id, token: makeShareToken() }));
+  if (missing.length) {
+    const { error } = await supa.from('guest_links').insert(missing);
+    if (error) {
+      console.warn('[Ivory] guest_links insert failed:', error);
+      if (btn) { btn.disabled = false; btn.textContent = orig; }
+      alert('Could not create the links: ' + (error.message || 'unknown error'));
+      return;
+    }
+    missing.forEach(r => guestLinkTokens.set(r.guest_id, r.token));
+    if (typeof logActivity === 'function') logActivity('Guests', 'generated personal RSVP links', missing.length + ' new');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = orig; }
+  renderPersonalLinks();
+}
+
+function renderPersonalLinks() {
+  const list = document.getElementById('personal-links-list');
+  const copyAll = document.getElementById('copy-all-links-btn');
+  if (!list) return;
+  if (!supa || !currentWeddingId) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--stone)">Sign in to create personal guest links.</p>';
+    if (copyAll) copyAll.style.display = 'none';
+    return;
+  }
+  const named = (S.guests || []).filter(g => g.name && g.id);
+  if (!named.length) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--stone)">Add guests first — each named guest gets their own link.</p>';
+    if (copyAll) copyAll.style.display = 'none';
+    return;
+  }
+  if (!guestLinkTokens) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--stone)">Click "Generate links" to create a private link for each of your ' + named.length + ' guests.</p>';
+    if (copyAll) copyAll.style.display = 'none';
+    return;
+  }
+  const withLinks = named.filter(g => guestLinkTokens.has(g.id));
+  if (copyAll) copyAll.style.display = withLinks.length ? '' : 'none';
+  const missing = named.length - withLinks.length;
+  list.innerHTML =
+    (missing > 0 ? `<p style="font-size:12px;color:#9A7D20;margin-bottom:8px">${missing} guest${missing > 1 ? 's' : ''} added since last time — click "Generate links" again to cover them.</p>` : '') +
+    withLinks.map(g => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-light);font-size:12.5px">
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.name)}${g.rsvp === 'Attending' ? ' <span style="color:var(--green);font-size:10px">✓</span>' : g.rsvp === 'Declined' ? ' <span style="color:var(--red);font-size:10px">✕</span>' : ''}</span>
+      <button class="btn btn-sm btn-outline" style="font-size:11px" onclick="copyPersonalLink('${g.id}', this)">Copy link</button>
+    </div>`).join('');
+}
+
+function copyPersonalLink(guestId, btn) {
+  const token = guestLinkTokens && guestLinkTokens.get(guestId);
+  if (!token) return;
+  navigator.clipboard.writeText(personalLinkUrl(token)).then(() => {
+    const orig = btn.textContent; btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+function copyAllGuestLinks(btn) {
+  if (!guestLinkTokens) return;
+  const lines = (S.guests || [])
+    .filter(g => g.name && g.id && guestLinkTokens.has(g.id))
+    .map(g => g.name + ' — ' + personalLinkUrl(guestLinkTokens.get(g.id)));
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const orig = btn.textContent; btn.textContent = 'Copied ' + lines.length + '!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+async function copyVendorLink(i, btn) {
+  const v = S.vendors[i];
+  if (!v) return;
+  if (!supa || !currentWeddingId) { alert('Sign in first — vendor links need your wedding saved to the cloud.'); return; }
+  ensureStableIds();
+  const orig = btn.textContent;
+  btn.textContent = 'Creating…';
+  let token = null;
+  const { data } = await supa.from('vendor_links').select('token').eq('wedding_id', currentWeddingId).eq('vendor_id', v.id).limit(1);
+  if (data && data[0]) token = data[0].token;
+  if (!token) {
+    token = makeShareToken();
+    const { error } = await supa.from('vendor_links').insert({ wedding_id: currentWeddingId, vendor_id: v.id, token });
+    if (error) {
+      console.warn('[Ivory] vendor_links insert failed:', error);
+      btn.textContent = orig;
+      alert('Could not create the link: ' + (error.message || 'run the latest migration first'));
+      return;
+    }
+    if (typeof logActivity === 'function') logActivity('Vendors', 'created share brief', v.company || v.cat || 'vendor');
+  }
+  navigator.clipboard.writeText(vendorBriefUrl(token)).then(() => {
+    btn.textContent = 'Link copied!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+
 function _copyGuestLink(btn, page) {
   if (!currentShareToken) {
     alert('Sign in first — guest links need your wedding to be saved to the cloud.');
@@ -4282,6 +4425,7 @@ function renderVendors() {
       row += `<tr><td colspan="8" style="padding:0;border:none"><div style="padding:20px 24px;background:var(--cream);border-top:2px solid var(--charcoal)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
           <div style="flex:1"><label class="ob-label">Company Name</label><input class="ob-input" value="${esc(v.company)}" onblur="S.vendors[${i}].company=this.value;saveState()" style="padding:8px 12px;font-size:15px;font-family:var(--font-serif)"/></div>
+          <button onclick="copyVendorLink(${i}, this)" title="A read-only day-of brief for this vendor: their schedule, arrival time, key contacts — plus music lists for DJs and meal counts for caterers" style="background:none;border:1px solid var(--taupe);color:var(--taupe);border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;margin-left:12px;align-self:flex-end;white-space:nowrap">&#128279; Share brief</button>
           <button onclick="expandedVendor=-1;renderVendors()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--stone);margin-left:12px;align-self:flex-end">&#10005; Close</button>
         </div>
         <div id="quote-opinion-row">${quoteOpinionHTML(v)}</div>
@@ -5587,6 +5731,105 @@ function exportVendorsCSV() {
   });
   downloadCSV('ivory-vendors.csv', rows);
   logActivity('Vendors','exported','CSV'); saveState();
+}
+
+// ══ B5·F2 · Day-of Mode — phone-first now/next screen ══════════════
+let dayOfTimer = null;
+function openDayOfMode() {
+  let el = document.getElementById('dayof-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'dayof-overlay';
+    el.style.cssText = 'position:fixed;inset:0;z-index:9999;background:var(--charcoal,#1c1917);color:#FAFAF7;overflow-y:auto;display:none;padding:20px 16px 40px;-webkit-overflow-scrolling:touch';
+    document.body.appendChild(el);
+  }
+  el.style.display = 'block';
+  renderDayOf();
+  clearInterval(dayOfTimer);
+  dayOfTimer = setInterval(renderDayOf, 30000);
+}
+function closeDayOfMode() {
+  const el = document.getElementById('dayof-overlay');
+  if (el) el.style.display = 'none';
+  clearInterval(dayOfTimer);
+  dayOfTimer = null;
+}
+function renderDayOf() {
+  const el = document.getElementById('dayof-overlay');
+  if (!el || el.style.display === 'none') return;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const blocks = (S.timeline || [])
+    .map(b => ({ ...b, mins: tlParseTime(b.time) }))
+    .filter(b => b.mins !== null)
+    .sort((a, b) => a.mins - b.mins);
+  let current = null, next = null;
+  for (const b of blocks) {
+    if (b.mins <= nowMin) current = b;
+    else { next = b; break; }
+  }
+  const upcoming = blocks.filter(b => b.mins > nowMin).slice(next ? 1 : 0, next ? 4 : 3);
+  const untilNext = next ? next.mins - nowMin : null;
+  const fmtUntil = m => m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + ' min';
+  const evName = b => { const e = b.eventId && typeof eventById === 'function' ? eventById(b.eventId) : null; return e && !e.primary ? `<span style="font-size:10px;padding:1px 8px;border-radius:100px;background:rgba(250,250,247,0.12);margin-left:6px">${esc(e.name)}</span>` : ''; };
+  const telBtn = ph => { const digits = (ph || '').replace(/[^0-9+]/g, ''); return digits ? `<a href="tel:${digits}" style="display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:100px;background:#4A7A5B;color:#fff;text-decoration:none;font-size:13px;font-weight:600">&#9742; Call</a>` : ''; };
+  const vendorsToday = (S.vendors || []).filter(v => v.company && (v.arrival || v.phone));
+  const contacts = S.customEmergencyContacts || [];
+  const clock = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  el.innerHTML = `
+    <div style="max-width:480px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div>
+          <div style="font-family:var(--font-serif);font-size:30px;line-height:1">${clock}</div>
+          <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(250,250,247,0.5);margin-top:4px">Day-of Mode · updates live</div>
+        </div>
+        <button onclick="closeDayOfMode()" style="background:rgba(250,250,247,0.1);border:1px solid rgba(250,250,247,0.2);color:#FAFAF7;border-radius:100px;padding:8px 18px;font-size:13px;cursor:pointer">Exit</button>
+      </div>
+      ${blocks.length === 0 ? '<p style="color:rgba(250,250,247,0.6);font-size:14px;padding:20px 0">No schedule yet — build your itinerary first.</p>' : `
+      <div style="background:rgba(250,250,247,0.08);border:1px solid rgba(250,250,247,0.15);border-radius:16px;padding:18px;margin-bottom:12px">
+        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#B89664;margin-bottom:6px">Happening now</div>
+        ${current ? `
+          <div style="font-family:var(--font-serif);font-size:22px;line-height:1.25">${esc(current.activity || '')}${evName(current)}</div>
+          <div style="font-size:13px;color:rgba(250,250,247,0.65);margin-top:6px">${esc(current.time || '')}${current.end ? ' – ' + esc(current.end) : ''}${current.who ? ' · ' + esc(current.who) : ''}</div>
+          ${current.notes ? `<div style="font-size:12px;color:rgba(250,250,247,0.5);margin-top:4px">${esc(current.notes)}</div>` : ''}
+        ` : '<div style="font-size:15px;color:rgba(250,250,247,0.6)">The day hasn\'t started yet.</div>'}
+      </div>
+      ${next ? `
+      <div style="background:rgba(184,150,100,0.14);border:1px solid rgba(184,150,100,0.35);border-radius:16px;padding:18px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#B89664">Up next</div>
+          <div style="font-size:15px;font-weight:700;color:#B89664">in ${fmtUntil(untilNext)}</div>
+        </div>
+        <div style="font-family:var(--font-serif);font-size:19px;margin-top:6px">${esc(next.activity || '')}${evName(next)}</div>
+        <div style="font-size:12.5px;color:rgba(250,250,247,0.65);margin-top:4px">${esc(next.time || '')}${next.who ? ' · ' + esc(next.who) : ''}</div>
+      </div>` : ''}
+      ${upcoming.length ? `
+      <div style="margin-bottom:18px">
+        ${upcoming.map(b => `<div style="display:flex;gap:12px;padding:9px 4px;border-bottom:1px solid rgba(250,250,247,0.08);font-size:13.5px">
+          <span style="color:rgba(250,250,247,0.5);min-width:68px">${esc(b.time || '')}</span>
+          <span style="flex:1">${esc(b.activity || '')}${evName(b)}</span>
+        </div>`).join('')}
+      </div>` : ''}`}
+      ${vendorsToday.length ? `
+      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(250,250,247,0.45);margin:16px 0 8px">Vendors</div>
+      ${vendorsToday.map(v => `<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid rgba(250,250,247,0.08)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600">${esc(v.company)}</div>
+          <div style="font-size:11.5px;color:rgba(250,250,247,0.55)">${esc(v.cat || '')}${v.arrival ? ' · arrives ' + esc(v.arrival) : ''}</div>
+        </div>
+        ${telBtn(v.phone)}
+      </div>`).join('')}` : ''}
+      ${contacts.length ? `
+      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(250,250,247,0.45);margin:16px 0 8px">Key contacts</div>
+      ${contacts.map(c => `<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid rgba(250,250,247,0.08)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600">${esc(c.name || '')}</div>
+          <div style="font-size:11.5px;color:rgba(250,250,247,0.55)">${esc(c.role || '')}</div>
+        </div>
+        ${telBtn(c.phone)}
+      </div>`).join('')}` : ''}
+    </div>`;
 }
 
 function renderTlSchedule() {

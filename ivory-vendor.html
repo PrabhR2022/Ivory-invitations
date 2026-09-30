@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Ivory — Vendor Brief</title>
+<meta name="description" content="Your day-of brief for this wedding — schedule, arrival time, key contacts."/>
+<meta name="robots" content="noindex"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ivory:#FAFAF7;--cream:#EDE8E0;--charcoal:#1C1917;--taupe:#9C8B7A;
+  --stone:#6B6560;--border:#D6D0C8;--border-light:#E8E4DE;--green:#4A7A5B;--red:#B85450;--gold:#B89664;
+  --font-serif:"Playfair Display",Georgia,serif;
+  --font-sans:"Inter",system-ui,sans-serif;
+}
+html{-webkit-font-smoothing:antialiased}
+body{font-family:var(--font-sans);color:var(--charcoal);background:var(--ivory);min-height:100vh}
+.wrap{max-width:640px;margin:0 auto;padding:40px 20px 64px}
+.logo{font-family:var(--font-serif);font-size:20px;text-align:center;margin-bottom:2px}
+.flourish{width:180px;height:1px;margin:14px auto 28px;background:linear-gradient(to right,transparent,rgba(156,139,122,0.35),transparent)}
+.couple{font-family:var(--font-serif);font-size:clamp(28px,6vw,40px);text-align:center;line-height:1.15}
+.meta{font-size:13px;color:var(--stone);text-align:center;letter-spacing:0.05em;margin-top:6px}
+.badge{display:block;width:fit-content;margin:18px auto 0;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:6px 16px;border-radius:100px;background:rgba(184,150,100,0.14);color:#8A6D3B}
+.card{background:white;border:1px solid var(--border-light);border-radius:14px;padding:20px;margin-top:16px}
+.card h2{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--stone);margin-bottom:12px}
+.row{display:flex;gap:12px;padding:8px 2px;border-bottom:1px solid var(--border-light);font-size:13.5px;align-items:baseline}
+.row:last-child{border-bottom:none}
+.row .t{color:var(--stone);min-width:88px;font-variant-numeric:tabular-nums;flex-shrink:0}
+.row.mine{background:rgba(184,150,100,0.09);border-radius:8px;padding-left:8px;padding-right:8px;border-bottom:none;margin:2px -6px}
+.row.mine .a::after{content:" — you";color:#8A6D3B;font-size:11px;font-weight:600}
+.sub{font-size:11.5px;color:var(--stone);margin-top:2px}
+.pill{display:inline-block;font-size:11px;padding:3px 10px;border-radius:100px;background:var(--cream);margin:0 6px 6px 0}
+.tel{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:100px;background:var(--green);color:#fff;text-decoration:none;font-size:12.5px;font-weight:600;flex-shrink:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13.5px}
+.kv .k{color:var(--stone)}
+.err{max-width:440px;margin:18vh auto;text-align:center;padding:0 20px}
+.foot{text-align:center;font-size:11px;color:var(--stone);margin-top:28px}
+@media print{.tel{display:none}body{background:white}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap" id="brief" style="display:none"></div>
+<div class="err" id="vendor-error" style="display:none">
+  <div class="logo">Ivory</div>
+  <div class="flourish"></div>
+  <p style="font-family:var(--font-serif);font-size:22px;margin-bottom:10px">This link isn't active</p>
+  <p style="font-size:13.5px;color:var(--stone);line-height:1.6">The brief you're looking for isn't available — the link may have been replaced. Please ask the couple to send you a fresh one.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+// B5·F1 — read-only vendor brief. One private token per vendor (?v=TOKEN):
+// the schedule (their blocks highlighted), arrival time, key contacts,
+// music lists for DJs/MCs, meal counts + dietary notes for caterers.
+function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fail(){document.getElementById('vendor-error').style.display='block'}
+function fmtDate(ds){const d=new Date(ds+'T00:00:00');return isNaN(d)?ds:d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+function telBtn(ph){const digits=(ph||'').replace(/[^0-9+]/g,'');return digits?`<a class="tel" href="tel:${digits}">&#9742; Call</a>`:''}
+
+function renderBrief(data){
+  const v=data.vendor||{};
+  const couple=((data.couple_name_1||'')+(data.couple_name_2?' & '+data.couple_name_2:'')).trim()||'The Couple';
+  const schedule=(data.schedule||[]).slice().sort((a,b)=>{
+    const pt=t=>{if(!t)return 1e9;const m=t.match(/(\d+):(\d+)\s*(AM|PM)?/i);if(!m)return 1e9;let h=+m[1];const min=+m[2];const ap=(m[3]||'').toUpperCase();if(ap==='PM'&&h!==12)h+=12;if(ap==='AM'&&h===12)h=0;return h*60+min};
+    return pt(a.time)-pt(b.time);
+  });
+  const evById={};(data.events||[]).forEach(e=>{evById[e.id]=e});
+  const evChip=b=>{const e=b.eventId&&evById[b.eventId];return e&&!e.primary?` <span class="pill" style="font-size:10px;margin:0 0 0 4px">${esc(e.name)}</span>`:''};
+
+  let html=`
+    <div class="logo">Ivory</div>
+    <div class="couple">${esc(couple)}</div>
+    <div class="meta">${data.wedding_date?esc(fmtDate(data.wedding_date)):''}${data.venue?' · '+esc(data.venue):''}</div>
+    <span class="badge">Vendor brief — ${esc(v.company||'')}${v.cat?' · '+esc(v.cat):''}</span>
+    <div class="flourish"></div>`;
+
+  const kv=[];
+  if(v.arrival)kv.push(['Your arrival',esc(v.arrival)]);
+  if(v.setupLocation)kv.push(['Setup location',esc(v.setupLocation)]);
+  if(v.dayNotes)kv.push(['Notes for you',esc(v.dayNotes)]);
+  if(kv.length){html+=`<div class="card"><h2>Your day</h2><div class="kv">${kv.map(([k,val])=>`<span class="k">${k}</span><span>${val}</span>`).join('')}</div></div>`}
+
+  const others=(data.events||[]).filter(e=>!e.primary);
+  if(others.length){html+=`<div class="card"><h2>Events</h2>${(data.events||[]).map(e=>`<div class="row"><span class="t">${esc(e.date||'')}</span><span><strong>${esc(e.name)}</strong>${e.time?' · '+esc(e.time):''}${e.venue?`<div class="sub">${esc(e.venue)}</div>`:''}</span></div>`).join('')}</div>`}
+
+  if(schedule.length){html+=`<div class="card"><h2>Day-of schedule${schedule.some(b=>b.mine)?' — your items highlighted':''}</h2>${schedule.map(b=>`
+    <div class="row${b.mine?' mine':''}"><span class="t">${esc(b.time||'')}${b.end?'–'+esc(b.end):''}</span>
+    <span style="flex:1"><span class="a">${esc(b.activity||'')}</span>${evChip(b)}${b.who?`<div class="sub">${esc(b.who)}</div>`:''}${b.notes?`<div class="sub">${esc(b.notes)}</div>`:''}</span></div>`).join('')}</div>`}
+
+  if(data.music){
+    const list=(arr,empty)=>Array.isArray(arr)&&arr.length?arr.map(x=>{const t=typeof x==='string'?x:((x.title||x.song||x.name||'')+(x.artist?' — '+x.artist:''));return `<span class="pill">${esc(t)}</span>`}).join(''):`<span class="sub">${empty}</span>`;
+    html+=`<div class="card"><h2>Music</h2>
+      <p style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:6px">Must play</p><div>${list(data.music.mustPlay,'No must-plays listed')}</div>
+      <p style="font-size:12px;font-weight:600;color:var(--red);margin:12px 0 6px">Do NOT play</p><div>${list(data.music.doNotPlay,'No do-not-plays listed')}</div>
+      ${Array.isArray(data.music.ceremony)&&data.music.ceremony.length?`<p style="font-size:12px;font-weight:600;margin:12px 0 6px">Ceremony moments</p>${data.music.ceremony.map(c=>`<div class="row"><span style="flex:1">${esc(c.moment||c.name||'')}</span><span class="sub">${esc(c.song||c.music||'')}</span></div>`).join('')}`:''}
+    </div>`;
+  }
+
+  if(data.meals){
+    const by=data.meals.byMeal||{};
+    html+=`<div class="card"><h2>Meal counts</h2>
+      <p style="font-size:14px;margin-bottom:10px"><strong>${data.meals.attending||0}</strong> attending so far <span class="sub" style="display:inline">(counts update as RSVPs land — confirm final numbers with the couple)</span></p>
+      ${Object.keys(by).length?`<div class="kv">${Object.entries(by).map(([m,n])=>`<span class="k">${esc(m)}</span><span><strong>${n}</strong></span>`).join('')}</div>`:'<p class="sub">No meal choices recorded yet.</p>'}
+      ${Array.isArray(data.meals.dietary)&&data.meals.dietary.length?`<p style="font-size:12px;font-weight:600;color:var(--red);margin:14px 0 6px">Dietary notes</p>${data.meals.dietary.map(d=>`<div class="sub" style="padding:2px 0">${esc(d)}</div>`).join('')}`:''}
+    </div>`;
+  }
+
+  if(Array.isArray(data.contacts)&&data.contacts.length){
+    html+=`<div class="card"><h2>Key contacts</h2>${data.contacts.map(c=>`
+      <div class="row" style="align-items:center"><span style="flex:1"><strong>${esc(c.name)}</strong>${c.role?`<div class="sub">${esc(c.role)}</div>`:''}</span>${telBtn(c.phone)}</div>`).join('')}</div>`;
+  }
+
+  html+=`<div class="foot">Prepared for ${esc(v.company||'you')} with the Ivory Invitations planner · <a href="javascript:window.print()" style="color:var(--taupe)">Print</a></div>`;
+  const el=document.getElementById('brief');
+  el.innerHTML=html;
+  el.style.display='block';
+  document.getElementById('vendor-error').style.display='none';
+  document.title='Ivory — Brief for '+(v.company||'Vendor');
+}
+window.renderBrief=renderBrief;
+
+(async function init(){
+  let token=null;
+  try{token=new URLSearchParams(location.search).get('v')}catch(e){}
+  if(!token||!window.IVORY_CONFIG||!window.supabase){fail();return}
+  const supa=window.supabase.createClient(window.IVORY_CONFIG.supabaseUrl,window.IVORY_CONFIG.supabaseAnonKey);
+  const {data,error}=await supa.rpc('vendor_get_brief',{p_token:token});
+  if(error||!data||data.error||!data.ok){console.warn('[Ivory vendor] load failed:',error||(data&&data.error));fail();return}
+  renderBrief(data);
+})();
+</script>
+</body>
+</html>

@@ -238,10 +238,15 @@ let plusGuestsList = [];       // [{name, meal}]
 let currentPlusLimit = 0;
 let supa = null;
 let shareToken = null;
+let guestLinkToken = null;   // B5·S4: personal per-guest link (?g=TOKEN)
+let myGuestId = null;        // the guest this personal link belongs to
 let isDemo = false;
 
 function getTokenFromUrl() {
   try { return new URLSearchParams(window.location.search).get('w'); } catch(e) { return null; }
+}
+function getGuestTokenFromUrl() {
+  try { return new URLSearchParams(window.location.search).get('g'); } catch(e) { return null; }
 }
 
 function showRsvpError() {
@@ -262,9 +267,14 @@ async function loadWedding() {
     supa = window.supabase.createClient(window.IVORY_CONFIG.supabaseUrl, window.IVORY_CONFIG.supabaseAnonKey);
   }
   if (isDemoRequest) { seedDemo(); return; }
-  if (!supa || !shareToken) { showRsvpError(); return; }
+  guestLinkToken = getGuestTokenFromUrl();
+  if (!supa || (!shareToken && !guestLinkToken)) { showRsvpError(); return; }
 
-  const { data, error } = await supa.rpc('guest_get_wedding', { p_token: shareToken });
+  // B5·S4: a personal link returns only this guest + their household —
+  // no name search, no guest-list enumeration.
+  const { data, error } = guestLinkToken
+    ? await supa.rpc('guest_link_get_wedding', { p_token: guestLinkToken })
+    : await supa.rpc('guest_get_wedding', { p_token: shareToken });
   if (error || !data || data.error || !data.ok) {
     console.warn('[Ivory RSVP] load failed:', error || (data && data.error));
     showRsvpError();
@@ -285,6 +295,7 @@ async function loadWedding() {
   };
   weddingEvents = Array.isArray(data.events) ? data.events : [];
   weddingInvitations = Array.isArray(data.invitations) ? data.invitations : [];
+  if (guestLinkToken && data.me) myGuestId = data.me.id || null;
 }
 
 function seedDemo() {
@@ -530,12 +541,12 @@ function updateRsvpForm() {
 async function loadExistingRsvp(guest) {
   const old = document.getElementById('rsvp-prev-banner');
   if (old) old.remove();
-  if (isDemo || !supa || !shareToken || !guest || !guest.name) return;
+  if (isDemo || !supa || (!shareToken && !guestLinkToken) || !guest || !guest.name) return;
   try {
     const forEventId = currentEventId;
-    const { data, error } = await supa.rpc('guest_get_my_rsvp', {
-      p_token: shareToken, p_guest_name: guest.name, p_event_id: forEventId
-    });
+    const { data, error } = guestLinkToken
+      ? await supa.rpc('guest_link_get_my_rsvp', { p_token: guestLinkToken, p_guest_name: guest.name, p_event_id: forEventId })
+      : await supa.rpc('guest_get_my_rsvp', { p_token: shareToken, p_guest_name: guest.name, p_event_id: forEventId });
     // Ignore a reply that arrives after the guest switched events
     if (forEventId !== currentEventId) return;
     if (error || !data || data.found !== true) return;
@@ -619,7 +630,7 @@ async function submitRsvp() {
   // landed on the server. Demo mode is the only simulated path.
   if (!isDemo) {
     const failBtn = () => { if (btn) { btn.disabled = false; btn.textContent = attending ? 'Confirm RSVP' : 'Send Response'; } };
-    if (!supa || !shareToken) {
+    if (!supa || (!shareToken && !guestLinkToken)) {
       // The page loaded but the cloud client is unavailable (blocked CDN,
       // in-app browser, dropped connection). Do NOT pretend it worked.
       failBtn();
@@ -628,8 +639,7 @@ async function submitRsvp() {
     }
     if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
     const partySize = 1 + (attending ? validGuests.length : 0);
-    const { data, error } = await supa.rpc('guest_submit_rsvp', {
-      p_token: shareToken,
+    const submitArgs = {
       p_guest_name: guest.name,
       p_status: attending ? 'Attending' : 'Declined',
       p_party_size: partySize,
@@ -637,7 +647,10 @@ async function submitRsvp() {
       p_dietary: attending ? (guest.dietary || '') : '',
       p_message: guest.message || '',
       p_event_id: currentEventId
-    });
+    };
+    const { data, error } = guestLinkToken
+      ? await supa.rpc('guest_link_submit_rsvp', { p_token: guestLinkToken, ...submitArgs })
+      : await supa.rpc('guest_submit_rsvp', { p_token: shareToken, ...submitArgs });
     if (error || (data && data.error) || !(data && data.ok === true)) {
       console.warn('[Ivory RSVP] submit failed:', error || (data && data.error) || data);
       failBtn();
@@ -646,10 +659,10 @@ async function submitRsvp() {
     }
     // Read the submission back from the server so the confirmation screen
     // is only ever shown for a response that verifiably exists.
-    const verify = await supa.rpc('guest_get_my_rsvp', {
-      p_token: shareToken, p_guest_name: guest.name, p_event_id: currentEventId
-    });
-    const fnMissing = verify.error && /guest_get_my_rsvp/.test(verify.error.message || '');
+    const verify = guestLinkToken
+      ? await supa.rpc('guest_link_get_my_rsvp', { p_token: guestLinkToken, p_guest_name: guest.name, p_event_id: currentEventId })
+      : await supa.rpc('guest_get_my_rsvp', { p_token: shareToken, p_guest_name: guest.name, p_event_id: currentEventId });
+    const fnMissing = verify.error && /guest_(link_)?get_my_rsvp/.test(verify.error.message || '');
     if (fnMissing) {
       // Verification RPC not deployed yet — the submit itself returned ok,
       // which the server only does after the insert succeeds.
@@ -708,6 +721,11 @@ async function submitRsvp() {
     if (!isNaN(d)) {
       document.querySelector('.wedding-date').textContent = d.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
     }
+  }
+  // B5·S4: a personal link goes straight to that guest's prefilled form
+  if (guestLinkToken && myGuestId && plannerState.guests) {
+    const idx = plannerState.guests.findIndex(g => g.id === myGuestId);
+    if (idx >= 0) selectGuest(idx);
   }
 })();
 </script>
