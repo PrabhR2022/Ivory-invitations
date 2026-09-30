@@ -948,15 +948,15 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
             <button class="btn btn-sm btn-dark" onclick="addBudgetRow()">+ Add Category</button>
           </div>
         </div>
-        <!-- A8 dead-control: hidden until D2 (who-pays-for-what) makes payer a
-             real dimension — today parents can't be tagged, so the filter reads
-             as broken on every normal budget. Code kept for D2. -->
-        <div class="budget-filter" style="display:none">
+        <!-- B4·D2: who-pays is a real dimension now — categories and line
+             items carry a payer tag, this filter narrows to one side -->
+        <div class="budget-filter">
           <button class="budget-filter-btn active" onclick="setBudgetFilter('all')">All</button>
           <button class="budget-filter-btn" onclick="setBudgetFilter('bride')">Bride</button>
           <button class="budget-filter-btn" onclick="setBudgetFilter('groom')">Groom</button>
           <button class="budget-filter-btn" onclick="setBudgetFilter('shared')">Shared</button>
         </div>
+        <div id="payer-totals" style="display:none;flex-wrap:wrap;gap:8px;align-items:center;margin:-6px 0 14px"></div>
         <!-- B2.3: per-event budget filter (appears once other events exist) -->
         <div id="budget-event-pills" class="budget-filter" style="display:none;flex-wrap:wrap"></div>
         <div id="budget-event-summary" style="display:none;font-size:12px;color:var(--stone);margin:-8px 0 14px"></div>
@@ -967,6 +967,12 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
           </table>
         </div>
       </div>
+      <!-- B4·F4: every deposit and balance with its due date, in one view -->
+      <div class="card" id="payment-schedule-card" style="display:none">
+        <div class="card-title">Payment Schedule <span class="count" id="pay-sched-summary"></span></div>
+        <div id="payment-schedule"></div>
+      </div>
+
       <div class="card">
         <div class="card-title">Gratuity Guide</div>
         <div class="gratuity-grid" id="gratuity-grid"></div>
@@ -2764,6 +2770,8 @@ function renderBudget() {
   renderHiddenCosts();
 
   renderBudgetEventPills();
+  renderPayerTotals();      // B4·D2
+  renderPaymentSchedule();  // B4·F4
 
   const tb = document.getElementById("budget-body");
   let html = '';
@@ -2790,6 +2798,8 @@ function renderBudget() {
       const matching = subs.filter(s => s.tag === budgetFilter);
       if (matching.length === 0) return;
     }
+    // B4·D2: categories without subs filter by their own payer tag
+    if (budgetFilter !== 'all' && !hasSubs && (r.tag || '') !== budgetFilter) return;
 
     const pPct = S.totalBudget ? (catPlanned/S.totalBudget*100).toFixed(1)+"%" : "0%";
     const aPct = S.totalBudget ? (catActual/S.totalBudget*100).toFixed(1)+"%" : "0%";
@@ -2804,7 +2814,7 @@ function renderBudget() {
         ${hasSubs
           ? `<strong style="font-size:13px">${r.cat}</strong> <span style="font-size:11px;color:var(--stone)">(${subs.length})</span>`
           : `<select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:rgba(250,250,247,0.6)" onchange="S.budget[${i}].cat=this.value;saveState();renderBudget()">${getVendorCats().concat(S.customVendorCats||[]).filter((v,j,a)=>a.indexOf(v)===j).map(c => '<option'+(c===r.cat?' selected':'')+'>'+c+'</option>').join('')}${r.cat && !getVendorCats().includes(r.cat) ? '<option selected>'+esc(r.cat)+'</option>' : ''}</select>`}
-        ${budgetEventSelectHTML(i, r.eventId)}
+        ${hasSubs ? budgetEventSelectHTML(i, r.eventId) : `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">${payerSelect(i, r.tag)}</div>` + budgetEventSelectHTML(i, r.eventId)}
       </td>
       <td class="currency">${hasSubs ? '<strong>'+money(catPlanned)+'</strong>' : eCell(r.planned,`S.budget[${i}].planned=+this.value;saveState();scheduleBudgetRefresh()`,"number")}</td>
       <td class="currency" style="color:var(--stone);font-size:12px">${pPct}</td>
@@ -2848,6 +2858,145 @@ function renderBudget() {
   // Gratuity
   const tips = [["Catering Staff","15-20% of bill","Often included in contract"],["Bartenders","$50-100 each","Or 10-15% of bar bill"],["DJ / Band","$50-150","Per musician"],["Photographer","$50-200","Optional but appreciated"],["Hair & Makeup","15-20%","Per stylist"],["Officiant","$50-100","Or a meaningful gift"],["Transportation","15-20%","Per driver"],["Florist","$10-20","Per delivery person"],["Wedding Planner","$200-500+","Or a heartfelt gift"]];
   document.getElementById("gratuity-grid").innerHTML = tips.map(([s,t,n])=>`<div class="gratuity-item"><div class="svc">${s}</div><div class="tip">${t}</div><div class="note">${n}</div></div>`).join("");
+}
+
+// ══ B4·D2 · Who pays what ═══════════════════════════════════════════
+function payerSelect(i, current) {
+  const tags = ['', 'bride', 'groom', 'shared'];
+  return `<select style="font-size:10px;padding:2px 6px;border:1px solid var(--border-light);border-radius:100px;background:white;color:var(--stone);cursor:pointer" onchange="if(this.value)S.budget[${i}].tag=this.value;else delete S.budget[${i}].tag;saveState();renderBudget()">
+    ${tags.map(t => `<option value="${t}"${t === (current || '') ? ' selected' : ''}>${t ? 'Pays: ' + t.charAt(0).toUpperCase() + t.slice(1) : 'Who pays?'}</option>`).join('')}
+  </select>`;
+}
+
+function payerTotals() {
+  const t = { bride: {planned:0, actual:0}, groom: {planned:0, actual:0}, shared: {planned:0, actual:0}, untagged: {planned:0, actual:0} };
+  (S.budget || []).forEach(r => {
+    const subs = Array.isArray(r.subs) ? r.subs : [];
+    if (subs.length) {
+      subs.forEach(x => {
+        const b = t[x.tag] || t.untagged;
+        b.planned += +x.planned || 0; b.actual += +x.actual || 0;
+      });
+    } else {
+      const b = t[r.tag] || t.untagged;
+      b.planned += +r.planned || 0; b.actual += +r.actual || 0;
+    }
+  });
+  return t;
+}
+
+function renderPayerTotals() {
+  const el = document.getElementById('payer-totals');
+  if (!el) return;
+  const t = payerTotals();
+  const anyTagged = ['bride', 'groom', 'shared'].some(k => t[k].planned > 0 || t[k].actual > 0);
+  if (!anyTagged) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'flex';
+  const chip = (label, b, color) => (b.planned > 0 || b.actual > 0)
+    ? `<span style="font-size:11.5px;padding:5px 12px;border:1px solid var(--border-light);border-radius:100px;background:white"><strong style="color:${color}">${label}</strong> <span style="color:var(--stone)">${money(b.planned)} planned · ${money(b.actual)} spent</span></span>`
+    : '';
+  el.innerHTML =
+    chip("Bride's side", t.bride, '#9A7D20') +
+    chip("Groom's side", t.groom, 'var(--green)') +
+    chip('Shared', t.shared, 'var(--taupe)') +
+    chip('Untagged', t.untagged, 'var(--stone)') +
+    `<button class="btn btn-sm btn-outline" onclick="printWhoPays()" title="A read-only summary to share with each set of parents">Print / Share</button>`;
+}
+
+function printWhoPays() {
+  const t = payerTotals();
+  const sides = [['bride', "Bride's Side"], ['groom', "Groom's Side"], ['shared', 'Shared'], ['untagged', 'Not yet assigned']];
+  const lines = { bride: [], groom: [], shared: [], untagged: [] };
+  (S.budget || []).forEach(r => {
+    const subs = Array.isArray(r.subs) ? r.subs : [];
+    if (subs.length) {
+      subs.forEach(x => (lines[x.tag] || lines.untagged).push({ name: (r.cat || '') + ' — ' + (x.name || 'item'), planned: +x.planned || 0, actual: +x.actual || 0 }));
+    } else if ((+r.planned || 0) > 0 || (+r.actual || 0) > 0) {
+      (lines[r.tag] || lines.untagged).push({ name: r.cat || 'Category', planned: +r.planned || 0, actual: +r.actual || 0 });
+    }
+  });
+  const couple = ((S.coupleName1 || '') + (S.coupleName2 ? ' & ' + S.coupleName2 : '')).trim();
+  const w = window.open('', '_blank');
+  if (!w) return alert('Please allow pop-ups to print the summary.');
+  const section = ([key, label]) => {
+    if (!lines[key].length) return '';
+    return `<h2>${label} — ${'$' + Math.round(t[key].planned).toLocaleString()} planned · ${'$' + Math.round(t[key].actual).toLocaleString()} spent</h2>
+      <table><thead><tr><th>Item</th><th style="text-align:right">Planned</th><th style="text-align:right">Spent</th></tr></thead>
+      <tbody>${lines[key].map(l => `<tr><td>${esc(l.name)}</td><td style="text-align:right">$${l.planned.toLocaleString()}</td><td style="text-align:right">$${l.actual.toLocaleString()}</td></tr>`).join('')}</tbody></table>`;
+  };
+  w.document.write(`<!DOCTYPE html><html><head><title>Who Pays What</title><style>
+  body{font-family:Georgia,serif;padding:32px;color:#1c1917;max-width:700px;margin:0 auto}
+  h1{font-size:24px;margin-bottom:4px} h2{font-size:15px;margin:24px 0 8px}
+  .meta{color:#6b6560;font-size:13px;margin-bottom:8px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td,th{padding:6px 10px;border-bottom:1px solid #E8E4DE;text-align:left}
+  th{background:#faf8f4;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;font-size:10px}
+  .note{margin-top:20px;font-size:11px;color:#6b6560}
+  @media print{body{padding:16px}}
+  </style></head><body>
+  <h1>Who Pays What</h1>
+  <div class="meta">${esc(couple)}${S.weddingDate ? ' · ' + esc(S.weddingDate) : ''}</div>
+  ${sides.map(section).join('')}
+  <div class="note">Amounts before HST and tips. Prepared with the Ivory Invitations planner.</div>
+  <scr` + `ipt>setTimeout(()=>window.print(),300)<\/scr` + `ipt>
+  </body></html>`);
+  w.document.close();
+}
+
+// ══ B4·F4 · Payment schedule ════════════════════════════════════════
+function paymentScheduleData() {
+  const rows = [];
+  let totalCost = 0, totalPaid = 0;
+  (S.vendors || []).forEach(v => {
+    const cost = vendorCost(v);
+    if (!cost || !v.company) return;
+    const signed = v.status === 'Signed' || v.status === 'Paid in Full';
+    const paid = v.status === 'Paid in Full' ? cost : (signed ? Math.min(v.deposit || 0, cost) : 0);
+    totalCost += cost; totalPaid += paid;
+    const balance = cost - paid;
+    if (balance > 0) rows.push({ vendor: v.company, cat: v.cat || '', due: v.due || '', amount: balance, signed });
+  });
+  rows.sort((a, b) => (a.due || '9999-99-99') < (b.due || '9999-99-99') ? -1 : 1);
+  return { rows, totalCost, totalPaid, outstanding: totalCost - totalPaid };
+}
+
+function renderPaymentSchedule() {
+  const card = document.getElementById('payment-schedule-card');
+  const el = document.getElementById('payment-schedule');
+  if (!card || !el) return;
+  const d = paymentScheduleData();
+  if (d.totalCost === 0) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const today = new Date().toISOString().slice(0, 10);
+  const soonCutoff = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+  const due30 = d.rows.filter(r => r.due && r.due <= soonCutoff).reduce((a, r) => a + r.amount, 0);
+  const summaryEl = document.getElementById('pay-sched-summary');
+  if (summaryEl) summaryEl.textContent = money(d.outstanding) + ' outstanding';
+  const fmtDate = ds => { const dt = new Date(ds + 'T00:00:00'); return isNaN(dt) ? ds : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
+  const chipFor = r => !r.due
+    ? '<span style="font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(107,101,96,0.1);color:var(--stone)">no date set</span>'
+    : r.due < today
+    ? '<span style="font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(184,84,80,0.12);color:var(--red)">overdue</span>'
+    : r.due <= soonCutoff
+    ? '<span style="font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(196,160,53,0.14);color:#9A7D20">due soon</span>'
+    : '<span style="font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(74,122,91,0.1);color:var(--green)">scheduled</span>';
+  el.innerHTML = `
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;margin-bottom:12px;color:var(--stone)">
+      <span><strong style="color:var(--charcoal)">${money(d.totalPaid)}</strong> paid so far</span>
+      <span><strong style="color:${due30 > 0 ? '#9A7D20' : 'var(--charcoal)'}">${money(due30)}</strong> due in the next 30 days</span>
+      <span><strong style="color:var(--charcoal)">${money(d.outstanding)}</strong> outstanding in total</span>
+    </div>
+    ${d.rows.length === 0 ? '<p style="font-size:12px;color:var(--stone)">Everything is paid — nothing outstanding.</p>' : `
+    <div class="tbl-wrap"><table style="font-size:12.5px">
+      <thead><tr><th>Due</th><th>Vendor</th><th style="text-align:right">Balance</th><th></th></tr></thead>
+      <tbody>${d.rows.map(r => `<tr>
+        <td style="white-space:nowrap">${r.due ? fmtDate(r.due) : '<span style="color:var(--stone)">—</span>'}</td>
+        <td><strong>${esc(r.vendor)}</strong> <span style="font-size:11px;color:var(--stone)">${esc(r.cat)}</span>${r.signed ? '' : ' <span style="font-size:10px;color:var(--stone)">(not signed yet)</span>'}</td>
+        <td style="text-align:right;font-weight:600">${money(r.amount)}</td>
+        <td>${chipFor(r)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <p style="font-size:11px;color:var(--stone);margin-top:8px">Balances = vendor cost minus deposits once signed; set each vendor's Payment Due date on the Vendors tab. Tips are budgeted separately in the Gratuity Guide.</p>`}`;
 }
 
 function tagSelect(catIdx, subIdx, current) {
@@ -4037,6 +4186,15 @@ function setVendorPriceField(i, field, val) {
   v[field] = +val || 0;
   v.price = vendorCost(v);                    // keep the mirror true
   saveState(); syncVendorsToBudget(); renderBudget();
+  // B4·D1: refresh the second-opinion line without rebuilding the panel
+  if (typeof expandedVendor !== 'undefined' && expandedVendor === i) {
+    const op = document.getElementById('quote-opinion');
+    if (op) op.innerHTML = quoteOpinionHTML(v);
+    const opT = document.getElementById('quote-opinion-table');
+    if (opT) opT.innerHTML = quoteOpinionHTML(v);
+    const opR = document.getElementById('quote-opinion-row');
+    if (opR) opR.innerHTML = quoteOpinionHTML(v);
+  }
 }
 function setVendorTableCost(i, val) {
   // The table's single Cost column: writes the final price once a contract
@@ -4126,6 +4284,7 @@ function renderVendors() {
           <div style="flex:1"><label class="ob-label">Company Name</label><input class="ob-input" value="${esc(v.company)}" onblur="S.vendors[${i}].company=this.value;saveState()" style="padding:8px 12px;font-size:15px;font-family:var(--font-serif)"/></div>
           <button onclick="expandedVendor=-1;renderVendors()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--stone);margin-left:12px;align-self:flex-end">&#10005; Close</button>
         </div>
+        <div id="quote-opinion-row">${quoteOpinionHTML(v)}</div>
         <div class="dash-two-col" style="gap:12px;margin-bottom:16px">
           <div><label class="ob-label">Contact</label><input class="ob-input" value="${esc(v.contact)}" onblur="S.vendors[${i}].contact=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Email</label><input class="ob-input" type="email" value="${esc(v.email)}" onblur="S.vendors[${i}].email=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
@@ -4274,6 +4433,61 @@ function uploadVendorContract(i, input) {
 }
 
 // Phase 8.4 — Ontario Regional Pricing Card
+// B4·D1 — numeric bands behind the display guide, for quote second
+// opinions. CAD; perHead bands compare cost ÷ guest count.
+const PRICING_BANDS = {
+  'Venue':               {gta:[10000,25000], niagara:[8000,18000], muskoka:[12000,30000], ottawa:[7000,15000]},
+  'Catering':            {gta:[120,250], niagara:[100,200], muskoka:[140,260], ottawa:[90,180], perHead:true},
+  'Photography':         {gta:[4000,10000], niagara:[3000,8000], muskoka:[4000,9000], ottawa:[2500,7000]},
+  'Video':               {gta:[2500,6500], niagara:[2000,5500], muskoka:[2500,6000], ottawa:[1800,4500]},
+  'Photography & Video': {gta:[5500,14000], niagara:[4500,11000], muskoka:[5500,13000], ottawa:[3800,10000]},
+  'Florals':             {gta:[3000,10000], niagara:[2000,7000], muskoka:[3000,8000], ottawa:[2000,6000]},
+  'DJ':                  {gta:[1500,3500], niagara:[1200,3000], muskoka:[1500,3000], ottawa:[1000,2500]},
+  'Entertainment':       {gta:[1500,12000], niagara:[1200,9000], muskoka:[1500,10000], ottawa:[1000,8000]}
+};
+const PRICE_REGIONS = {gta:'GTA', niagara:'Niagara', muskoka:'Muskoka', ottawa:'Ottawa'};
+
+function guestCountForPricing() {
+  const named = (S.guests || []).filter(g => g.name);
+  const plus = named.reduce((a, g) => a + ((g.plusGuests || []).filter(pp => pp.name).length), 0);
+  return named.length + plus;
+}
+
+function quoteOpinionHTML(v) {
+  const cost = vendorCost(v);
+  if (!cost) return '';
+  const band = PRICING_BANDS[v.cat];
+  if (!band) return '';
+  const region = S.priceRegion || 'gta';
+  const range = band[region];
+  if (!range) return '';
+  let compare = cost, unit = '';
+  if (band.perHead) {
+    const n = guestCountForPricing();
+    if (!n) return '';
+    compare = cost / n;
+    unit = ' per head (' + n + ' guests)';
+  }
+  const fmt = x => '$' + Math.round(x).toLocaleString();
+  const rangeTxt = fmt(range[0]) + '–' + fmt(range[1]) + (band.perHead ? ' per head' : '');
+  let verdict, color, advice;
+  if (compare < range[0]) {
+    verdict = 'Below'; color = '#9A7D20';
+    advice = "worth checking what's excluded — low quotes often grow with add-ons.";
+  } else if (compare > range[1]) {
+    verdict = 'Above'; color = 'var(--red)';
+    advice = "make sure the extra value is clear, or use the range to negotiate.";
+  } else {
+    verdict = 'Within'; color = 'var(--green)';
+    advice = 'in line with what couples typically pay here.';
+  }
+  const yourTxt = band.perHead ? fmt(compare) + unit : fmt(compare);
+  return `<div style="margin:2px 0 14px;padding:10px 14px;background:rgba(250,250,247,0.8);border:1px solid var(--border-light);border-left:3px solid ${color};border-radius:8px;font-size:12px;line-height:1.5">
+    <strong style="color:${color}">${verdict} the typical ${PRICE_REGIONS[region]} range</strong> of ${rangeTxt} — your ${yourTxt} quote: ${advice}
+    <span style="color:var(--stone)">(Change region in the pricing guide above.)</span>
+  </div>`;
+}
+
 const ONTARIO_PRICING = [
   {cat:'Venue', gta:'$10–25k', niagara:'$8–18k', muskoka:'$12–30k', ottawa:'$7–15k'},
   {cat:'Catering (per head)', gta:'$120–250', niagara:'$100–200', muskoka:'$140–260', ottawa:'$90–180'},
@@ -4301,7 +4515,13 @@ function renderRegionalPricing() {
   card.innerHTML = `
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
       <span>&#128205; Ontario Regional Pricing Guide</span>
-      <button class="btn btn-sm btn-outline" onclick="S.hideOntPricing=true;saveState();document.getElementById('ont-pricing-card').style.display='none'">Dismiss</button>
+      <span style="display:inline-flex;gap:8px;align-items:center">
+        <label style="font-size:11px;color:var(--stone);font-weight:400">Your region:</label>
+        <select style="font-size:12px;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px" onchange="S.priceRegion=this.value;saveState();renderVendors()">
+          ${Object.entries(PRICE_REGIONS).map(([k, l]) => `<option value="${k}"${(S.priceRegion || 'gta') === k ? ' selected' : ''}>${l}</option>`).join('')}
+        </select>
+        <button class="btn btn-sm btn-outline" onclick="S.hideOntPricing=true;saveState();document.getElementById('ont-pricing-card').style.display='none'">Dismiss</button>
+      </span>
     </div>
     <p style="font-size:12px;color:var(--stone);margin-bottom:10px">Typical 2025 price ranges for Ontario — use these as sanity checks when reviewing quotes.</p>
     <div class="tbl-wrap">
@@ -4346,6 +4566,7 @@ function renderVendorDetail() {
 
   panel.innerHTML = `
     <div class="card-title">${esc(v.company || v.cat || 'Vendor')} — Details <span style="font-size:12px;color:var(--stone);font-weight:400;cursor:pointer" onclick="expandedVendor=-1;renderVendorDetail()">&#10005; Close</span></div>
+    <div id="quote-opinion-table">${quoteOpinionHTML(v)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div>
         <div style="margin-bottom:16px">
@@ -4537,6 +4758,7 @@ function renderVendorDetailView() {
       <div><label class="ob-label">Actual</label><input class="ob-input" type="number" step="0.01" value="${v.actualPrice}" onblur="setVendorPriceField(${i},'actualPrice',this.value)" style="padding:8px 12px;font-size:13px"/></div>
       <div><label class="ob-label">Deposit</label><input class="ob-input" type="number" step="0.01" value="${v.deposit}" onblur="S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()" style="padding:8px 12px;font-size:13px"/></div>
     </div>
+    <div id="quote-opinion">${quoteOpinionHTML(v)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
       <div><label class="ob-label">Status</label><select class="ob-input" style="padding:8px 12px;font-size:13px" onchange="S.vendors[${i}].status=this.value;saveState();renderVendors()">${["","Researching","Contacted","Contract Sent","Signed","Paid in Full"].map(o=>`<option${o===v.status?' selected':''}>${o}</option>`).join('')}</select></div>
       <div><label class="ob-label">Payment Due</label><input class="ob-input" type="date" value="${esc(v.due||'')}" onchange="S.vendors[${i}].due=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
