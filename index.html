@@ -1098,6 +1098,13 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
               </div>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid rgba(250,250,247,0.1);padding-top:8px">
+              <span style="font-size:13px;color:var(--ivory)">&#128214; Ceremony program — what each ritual means, for every guest</span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="openGuestPreview('ivory-program.html')">Preview</button>
+                <button class="btn btn-sm" style="background:var(--ivory);color:var(--charcoal)" onclick="copyProgramLink(this)">Copy Link</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid rgba(250,250,247,0.1);padding-top:8px">
               <span style="font-size:13px;color:var(--ivory)">&#128247; Disposable camera — guests snap photos at the wedding</span>
               <div style="display:flex;gap:6px">
                 <button class="btn btn-sm" style="background:rgba(250,250,247,0.1);color:var(--ivory);border:1px solid rgba(250,250,247,0.15)" onclick="openGuestPreview('ivory-disposable-camera.html')">Preview</button>
@@ -1459,6 +1466,7 @@ body:has(#readonly-banner[style*="flex"]){padding-top:42px}
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
           <select id="tl-ceremony-select" onchange="selectTlCeremony(this.value)" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:500;min-width:200px"></select>
           <button class="btn btn-dark" onclick="addTlCeremony()">+ Add Ceremony</button>
+          <button class="btn btn-outline" onclick="copyProgramLink(this)" title="A guest page explaining each ritual — share it or print it as your program">&#128214; Share Program</button>
           <button class="btn btn-outline" id="tl-del-ceremony-btn" onclick="deleteTlCeremony()" style="display:none;color:var(--red);border-color:rgba(184,84,80,0.3)">Delete Ceremony</button>
         </div>
         <div id="tl-ceremonies-container"></div>
@@ -3890,6 +3898,7 @@ function copyHubLink(btn)      { _copyGuestLink(btn, 'ivory-guest-hub.html'); }
 function copyRsvpLink(btn)     { _copyGuestLink(btn, 'ivory-rsvp.html'); }
 function copyRegistryLink(btn) { _copyGuestLink(btn, 'ivory-wedding-registry.html'); }
 function copyCamLink(btn)      { _copyGuestLink(btn, 'ivory-disposable-camera.html'); }
+function copyProgramLink(btn)  { _copyGuestLink(btn, 'ivory-program.html'); }
 function openGuestPreview(page){ window.open(guestLink(page), '_blank'); }
 
 // ── RSVP chase list — guests still marked Pending ──
@@ -4324,6 +4333,84 @@ function vendorCost(v) {
        : (v.estimatedPrice || 0) > 0 ? v.estimatedPrice
        : (v.price || 0);
 }
+// ══ B6·D3 · Before you sign ═════════════════════════════════════════
+// Moving a contract to Signed (or straight to Paid in Full) interrupts
+// with everything still unchecked: the category's hidden-fee questions,
+// the contract checklist, and money-data gaps. The clearest expression
+// of "on the couple's side" — proceed is always one tap away.
+function beforeSignIssues(v) {
+  v.hiddenFeeChecks = v.hiddenFeeChecks || {};
+  v.contractChecks = v.contractChecks || {};
+  const fees = (VENDOR_HIDDEN_FEES[v.cat] || []).filter(f => !v.hiddenFeeChecks[f]);
+  const checks = (VENDOR_CONTRACT_CHECKS[v.cat] || []).filter(c => !v.contractChecks[c]);
+  const warnings = [];
+  if (!vendorCost(v)) warnings.push("No price recorded — enter the contract total so your budget stays honest.");
+  if (!(+v.deposit > 0)) warnings.push("No deposit recorded — most contracts take one at signing.");
+  if (!v.due) warnings.push("No payment due date — the Payment Schedule can't track this contract without one.");
+  return { fees, checks, warnings, total: fees.length + checks.length + warnings.length };
+}
+
+function setVendorStatus(i, val) {
+  const v = S.vendors[i];
+  if (!v) return;
+  const old = v.status || '';
+  const signing = (val === 'Signed' || val === 'Paid in Full') && old !== 'Signed' && old !== 'Paid in Full';
+  if (signing) {
+    const issues = beforeSignIssues(v);
+    if (issues.total > 0) {
+      openBeforeSignModal(i, val, issues);
+      renderVendors();   // snap the select back until they decide
+      return;
+    }
+  }
+  applyVendorStatus(i, val);
+}
+
+function applyVendorStatus(i, val) {
+  const v = S.vendors[i];
+  if (!v) return;
+  v.status = val;
+  saveState(); syncVendorsToBudget(); renderBudget(); renderVendors();
+}
+
+function openBeforeSignModal(i, val, issues) {
+  const v = S.vendors[i];
+  let el = document.getElementById('before-sign-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'before-sign-overlay';
+    el.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(28,25,23,0.55);display:none;align-items:center;justify-content:center;padding:20px';
+    document.body.appendChild(el);
+  }
+  const check = (kind, item) => `<label style="display:flex;align-items:flex-start;gap:9px;font-size:13px;padding:5px 0;cursor:pointer;line-height:1.4">
+    <input type="checkbox" style="width:15px;height:15px;margin-top:1px;flex-shrink:0;accent-color:var(--charcoal)" onchange="S.vendors[${i}].${kind}['${item.replace(/'/g, "\\'")}']=this.checked;saveState()"/>
+    <span>${esc(item)}</span></label>`;
+  el.innerHTML = `
+    <div style="background:white;border-radius:16px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;padding:26px 28px" onclick="event.stopPropagation()">
+      <div style="font-family:var(--font-serif);font-size:21px;margin-bottom:4px">Before you sign${v.company ? ' — ' + esc(v.company) : ''}</div>
+      <p style="font-size:12.5px;color:var(--stone);margin-bottom:16px">A two-minute check now beats a surprise invoice later. Ask about anything unchecked — then sign with confidence.</p>
+      ${issues.warnings.length ? `<div style="margin-bottom:14px">${issues.warnings.map(w => `<div style="display:flex;gap:8px;font-size:12.5px;color:#9A7D20;padding:4px 0"><span>&#9888;</span><span>${esc(w)}</span></div>`).join('')}</div>` : ''}
+      ${issues.fees.length ? `<div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--red);margin-bottom:4px">Hidden fees you haven't asked about (${issues.fees.length})</div>
+        ${issues.fees.map(f => check('hiddenFeeChecks', f)).join('')}
+      </div>` : ''}
+      ${issues.checks.length ? `<div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--stone);margin-bottom:4px">Contract checklist still open (${issues.checks.length})</div>
+        ${issues.checks.map(c => check('contractChecks', c)).join('')}
+      </div>` : ''}
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+        <button class="btn btn-outline" onclick="closeBeforeSignModal()">Not yet</button>
+        <button class="btn btn-dark" onclick="closeBeforeSignModal();applyVendorStatus(${i}, '${val}')">Mark as ${val} anyway</button>
+      </div>
+    </div>`;
+  el.style.display = 'flex';
+  el.onclick = closeBeforeSignModal;
+}
+function closeBeforeSignModal() {
+  const el = document.getElementById('before-sign-overlay');
+  if (el) el.style.display = 'none';
+}
+
 function setVendorPriceField(i, field, val) {
   const v = S.vendors[i]; if (!v) return;
   v[field] = +val || 0;
@@ -4407,7 +4494,7 @@ function renderVendors() {
 
     let row = `<tr style="cursor:pointer;${isExpanded?'background:var(--cream)':''}" onclick="toggleVendorDetail(${i})">
       <td onclick="event.stopPropagation()"><select style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;background:rgba(250,250,247,0.6)" onchange="vendorCatSelect(${i},this.value)">${[''].concat(allCats).concat(['__custom__']).map(c => `<option value="${c==='__custom__'?'__custom__':esc(c)}"${c===v.cat?' selected':''}>${c==='__custom__'?'Custom...':c||'—'}</option>`).join('')}</select></td>
-      <td onclick="event.stopPropagation()">${eCell(v.status,`S.vendors[${i}].status=this.value;saveState();syncVendorsToBudget();renderBudget()`,"select",["","Researching","Contacted","Contract Sent","Signed","Paid in Full"])}</td>
+      <td onclick="event.stopPropagation()">${eCell(v.status,`setVendorStatus(${i},this.value)`,"select",["","Researching","Contacted","Contract Sent","Signed","Paid in Full"])}</td>
       <td><strong style="color:var(--charcoal)">${esc(v.company) || 'Unnamed'}</strong></td>
       <td class="currency" onclick="event.stopPropagation()">${eCell(vendorCost(v),`setVendorTableCost(${i},this.value)`,"number")}</td>
       <td class="currency" onclick="event.stopPropagation()">${eCell(v.deposit,`S.vendors[${i}].deposit=+this.value;saveState();syncVendorsToBudget();renderBudget()`,"number")}</td>
@@ -4904,7 +4991,7 @@ function renderVendorDetailView() {
     </div>
     <div id="quote-opinion">${quoteOpinionHTML(v)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
-      <div><label class="ob-label">Status</label><select class="ob-input" style="padding:8px 12px;font-size:13px" onchange="S.vendors[${i}].status=this.value;saveState();renderVendors()">${["","Researching","Contacted","Contract Sent","Signed","Paid in Full"].map(o=>`<option${o===v.status?' selected':''}>${o}</option>`).join('')}</select></div>
+      <div><label class="ob-label">Status</label><select class="ob-input" style="padding:8px 12px;font-size:13px" onchange="setVendorStatus(${i},this.value)">${["","Researching","Contacted","Contract Sent","Signed","Paid in Full"].map(o=>`<option${o===v.status?' selected':''}>${o}</option>`).join('')}</select></div>
       <div><label class="ob-label">Payment Due</label><input class="ob-input" type="date" value="${esc(v.due||'')}" onchange="S.vendors[${i}].due=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
       <div><label class="ob-label">Arrival Time</label><input class="ob-input" type="time" value="${esc(v.arrival||'')}" onchange="S.vendors[${i}].arrival=this.value;syncVendorArrival(${i})" style="padding:8px 12px;font-size:13px"/></div>
     </div>
@@ -6258,7 +6345,7 @@ function renderTlVendors() {
   body.innerHTML = S.vendors.map((v,i) => `<tr>
     <td style="font-weight:500;white-space:nowrap">${esc(v.cat)}</td>
     <td>${esc(v.company) || '<span style="color:var(--taupe);font-style:italic">Not set</span>'}</td>
-    <td>${eCell(v.status,`S.vendors[${i}].status=this.value;saveState()`,"select",statuses)}</td>
+    <td>${eCell(v.status,`setVendorStatus(${i},this.value)`,"select",statuses)}</td>
     <td><input type="time" value="${esc(v.arrival||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--border-light);border-radius:6px;background:rgba(250,250,247,0.6);font-size:13px" onchange="S.vendors[${i}].arrival=this.value;syncVendorArrival(${i})"/></td>
     <td>${eCell(v.setupLocation||'',`S.vendors[${i}].setupLocation=this.value;saveState()`)}</td>
     <td>${eCell(v.dayNotes||'',`S.vendors[${i}].dayNotes=this.value;saveState()`)}</td>

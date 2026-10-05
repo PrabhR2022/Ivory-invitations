@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Ivory — Wedding Program</title>
+<meta name="description" content="The order of ceremony — and what each ritual means."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ivory:#FAFAF7;--cream:#EDE8E0;--charcoal:#1C1917;--taupe:#9C8B7A;
+  --stone:#6B6560;--border:#D6D0C8;--border-light:#E8E4DE;--gold:#B89664;
+  --font-serif:"Playfair Display",Georgia,serif;
+  --font-sans:"Inter",system-ui,sans-serif;
+}
+html{-webkit-font-smoothing:antialiased}
+body{font-family:var(--font-sans);color:var(--charcoal);background:var(--ivory);min-height:100vh}
+.wrap{max-width:620px;margin:0 auto;padding:48px 22px 72px}
+.logo{font-family:var(--font-serif);font-size:19px;text-align:center;letter-spacing:0.02em}
+.flourish{width:190px;height:1px;margin:18px auto;background:linear-gradient(to right,transparent,rgba(156,139,122,0.4),transparent)}
+.eyebrow{font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--taupe);text-align:center;margin-top:26px}
+.couple{font-family:var(--font-serif);font-size:clamp(34px,7vw,50px);text-align:center;line-height:1.12;margin-top:8px}
+.meta{font-size:13px;color:var(--stone);text-align:center;letter-spacing:0.06em;margin-top:10px}
+.cer{margin-top:44px}
+.cer-name{font-family:var(--font-serif);font-size:24px;text-align:center}
+.cer-date{font-size:12px;color:var(--stone);text-align:center;letter-spacing:0.08em;margin-top:4px;text-transform:uppercase}
+.cer-rule{width:52px;height:1px;background:var(--gold);margin:16px auto 24px;opacity:0.6}
+.item{padding:13px 0;border-bottom:1px solid var(--border-light)}
+.item:last-child{border-bottom:none}
+.item-head{display:flex;gap:14px;align-items:baseline}
+.item-time{font-size:11.5px;color:var(--taupe);font-variant-numeric:tabular-nums;letter-spacing:0.04em;min-width:58px;flex-shrink:0}
+.item-title{font-family:var(--font-serif);font-size:16.5px}
+.item-explain{font-size:13px;color:var(--stone);line-height:1.6;margin:4px 0 0 72px;font-style:italic}
+.item-music{font-size:11.5px;color:var(--gold);margin:4px 0 0 72px}
+.events{margin-top:48px;background:white;border:1px solid var(--border-light);border-radius:14px;padding:22px}
+.events h2{font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--stone);text-align:center;margin-bottom:14px}
+.ev-row{display:flex;gap:12px;padding:7px 0;font-size:13.5px;border-bottom:1px solid var(--border-light);align-items:baseline}
+.ev-row:last-child{border-bottom:none}
+.ev-date{color:var(--taupe);min-width:78px;font-size:12px;flex-shrink:0}
+.foot{margin-top:56px;text-align:center}
+.foot .line{font-size:12px;color:var(--stone)}
+.foot a{color:var(--taupe)}
+.upsell{display:inline-block;margin-top:14px;font-size:12px;color:var(--charcoal);background:white;border:1px solid var(--border);border-radius:100px;padding:9px 20px;text-decoration:none}
+.print-btn{display:block;margin:30px auto 0;font-family:inherit;font-size:12.5px;padding:10px 24px;border-radius:100px;border:1px solid var(--border);background:white;cursor:pointer;color:var(--charcoal)}
+.err{max-width:440px;margin:18vh auto;text-align:center;padding:0 20px}
+@media (max-width:480px){.item-explain,.item-music{margin-left:0}}
+@media print{
+  body{background:white}
+  .print-btn,.upsell{display:none}
+  .wrap{padding:16px}
+  .cer{break-inside:avoid-page}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="program" style="display:none"></div>
+<div class="err" id="program-error" style="display:none">
+  <div class="logo">Ivory</div>
+  <div class="flourish"></div>
+  <p style="font-family:var(--font-serif);font-size:22px;margin-bottom:10px">Program not available</p>
+  <p style="font-size:13.5px;color:var(--stone);line-height:1.6">This link doesn't lead to a wedding program. Please check the link from your invitation, or ask the couple for a fresh one.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+// B6·F5 — the ceremony explainer. Every ritual the couple's ceremony
+// builder knows about, with its explanation, as a guest page that
+// prints beautifully as the program.
+function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fail(){document.getElementById('program-error').style.display='block'}
+function fmtDate(ds){const d=new Date(ds+'T00:00:00');return isNaN(d)?ds:d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+function fmtTime(t){if(!t)return'';const m=t.match(/^(\d{1,2}):(\d{2})$/);if(!m)return t;let h=+m[1];const ap=h>=12?'PM':'AM';return((h%12)||12)+':'+m[2]+' '+ap}
+
+function renderProgram(data){
+  const couple=((data.couple_name_1||'')+(data.couple_name_2?' & '+data.couple_name_2:'')).trim()||'The Couple';
+  const cers=Array.isArray(data.ceremonies)?data.ceremonies:[];
+  const events=(Array.isArray(data.events)?data.events:[]);
+  const others=events.filter(e=>!e.primary&&(e.name||e.date));
+
+  let html=`
+    <div class="logo">Ivory</div>
+    <div class="flourish"></div>
+    <div class="eyebrow">Wedding Program</div>
+    <div class="couple">${esc(couple)}</div>
+    <div class="meta">${data.wedding_date?esc(fmtDate(data.wedding_date)):''}${data.venue?' · '+esc(data.venue):''}</div>`;
+
+  if(!cers.length){
+    html+=`<p style="text-align:center;margin-top:48px;font-size:14px;color:var(--stone);line-height:1.7">The couple is still composing their ceremony program.<br/>Check back closer to the big day.</p>`;
+  }
+
+  cers.forEach(c=>{
+    html+=`<div class="cer">
+      <div class="cer-name">${esc(c.name||'Ceremony')}</div>
+      ${c.date?`<div class="cer-date">${esc(fmtDate(c.date))}</div>`:''}
+      <div class="cer-rule"></div>
+      ${(c.rows||[]).map(r=>`
+        <div class="item">
+          <div class="item-head">
+            <span class="item-time">${esc(fmtTime(r.time))}</span>
+            <span class="item-title">${esc(r.event||'')}</span>
+          </div>
+          ${r.notes?`<div class="item-explain">${esc(r.notes)}</div>`:''}
+          ${r.music?`<div class="item-music">&#9835; ${esc(r.music)}</div>`:''}
+        </div>`).join('')}
+    </div>`;
+  });
+
+  if(others.length){
+    html+=`<div class="events"><h2>The Celebrations</h2>
+      ${events.map(e=>`<div class="ev-row"><span class="ev-date">${esc(e.date||'')}</span><span style="flex:1"><strong>${esc(e.name)}</strong>${e.time?' · '+esc(fmtTime(e.time)):''}${e.venue?`<span style="color:var(--stone)"> · ${esc(e.venue)}</span>`:''}</span></div>`).join('')}
+    </div>`;
+  }
+
+  html+=`
+    <button class="print-btn" onclick="window.print()">Print this program</button>
+    <div class="foot">
+      <div class="flourish"></div>
+      <div class="line">With love, ${esc(couple)}</div>
+      <a class="upsell" href="https://ivoryinvitations.ca" target="_blank" rel="noopener">&#10024; Printed programs &amp; stationery by Ivory Invitations</a>
+    </div>`;
+
+  const el=document.getElementById('program');
+  el.innerHTML=html;
+  el.style.display='block';
+  document.getElementById('program-error').style.display='none';
+  document.title='Wedding Program — '+couple;
+}
+window.renderProgram=renderProgram;
+
+(async function init(){
+  let token=null;
+  try{token=new URLSearchParams(location.search).get('w')}catch(e){}
+  if(!token||!window.IVORY_CONFIG||!window.supabase){fail();return}
+  const supa=window.supabase.createClient(window.IVORY_CONFIG.supabaseUrl,window.IVORY_CONFIG.supabaseAnonKey);
+  const {data,error}=await supa.rpc('guest_get_program',{p_token:token});
+  if(error||!data||data.error||!data.ok){console.warn('[Ivory program] load failed:',error||(data&&data.error));fail();return}
+  renderProgram(data);
+})();
+</script>
+</body>
+</html>
