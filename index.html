@@ -9794,10 +9794,33 @@ async function hydrateFromCloud(user) {
 // data arrives. Before this, a tab rendered during the async hydration —
 // before currentWeddingId / currentShareToken existed — would never show
 // the online-RSVP inbox or draw the camera QR, and nothing retried.
-function onCloudHydrated() {
+// B3.1 (8 Nov 2026): run the B1/B2 migrations on freshly-hydrated cloud
+// state WITHOUT baking their output into the sync baseline. Before this,
+// every hydrate site captured lastSyncedSections *after* migrateToEvents(),
+// so sections the migration creates (events, invitations, rehearsalMigrated,
+// eventLayouts.primary) were never "changed" and never reached the cloud —
+// pre-B2 weddings stayed without state->'events' forever, and the server-
+// side readers (guest_get_program, guest_get_wedding) saw no events.
+// Now: baseline first, migrate second, and if anything differs schedule the
+// normal debounced flush so the migrated sections ride out on the first
+// sync (write roles only — the 9C.2 gate still applies).
+function hydrateMigrationsAndBaseline() {
+  lastSyncedSections = captureSyncedSections(S);
   migratePositionalRefs();   // B1: cloud state may carry legacy positional refs
   migrateToEvents();         // B2: absorb legacy preEvents, ensure the primary event
-  lastSyncedSections = captureSyncedSections(S);   // B3: section-sync baseline
+  const changed = Object.keys(S).some(k => {
+    const str = JSON.stringify(S[k]);
+    return str !== undefined && lastSyncedSections[k] !== str;
+  });
+  if (changed && supa && currentWeddingId && !isReadOnlyMember()) {
+    cloudDirty = true;
+    clearTimeout(cloudSyncTimer);
+    cloudSyncTimer = setTimeout(flushCloudSync, 1000);
+  }
+}
+
+function onCloudHydrated() {
+  hydrateMigrationsAndBaseline();   // B3.1: baseline, then migrate, then flush deltas
   const activeTab = document.querySelector('.tab-content.active');
   if (activeTab && typeof renderTab === 'function') {
     const tabId = activeTab.id.replace('tab-', '');
@@ -10328,8 +10351,7 @@ async function checkUrlForInvite() {
   if (wedding) {
     S = Object.assign({}, defaultState(), wedding.state || {});
     localStorage.setItem(STATE_KEY, JSON.stringify(S));
-    migratePositionalRefs(); migrateToEvents();
-    lastSyncedSections = captureSyncedSections(S);
+    hydrateMigrationsAndBaseline();
     cloudHydrated = true;
     setSyncStatus('synced');
     if (typeof renderTab === 'function') renderTab('notifications');
@@ -10402,8 +10424,7 @@ async function acceptPendingEmailInvite(user) {
 
   S = Object.assign({}, defaultState(), wedding.state || {});
   localStorage.setItem(STATE_KEY, JSON.stringify(S));
-  migratePositionalRefs(); migrateToEvents();
-  lastSyncedSections = captureSyncedSections(S);
+  hydrateMigrationsAndBaseline();
   cloudHydrated = true;
   setSyncStatus('synced');
   lastSyncedStateHash = JSON.stringify(S).length + '_synced';
