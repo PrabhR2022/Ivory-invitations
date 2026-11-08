@@ -3843,13 +3843,22 @@ function renderPersonalLinks() {
     </div>`).join('');
 }
 
+// B5.1 (8 Nov 2026): one clipboard path for every share button. If the
+// write is refused (no user gesture, denied permission, non-secure
+// context) the button no longer sticks on an interim label — it falls back
+// to a prompt holding the text so it can still be copied by hand.
+function copyTextToClipboard(text, btn, okLabel, origLabel) {
+  const orig = origLabel !== undefined ? origLabel : (btn ? btn.textContent : '');
+  const done = label => { if (!btn) return; btn.textContent = label; setTimeout(() => { btn.textContent = orig; }, 2000); };
+  const fallback = () => { if (btn) btn.textContent = orig; try { window.prompt('Copy this link:', text); } catch (e) {} };
+  if (!navigator.clipboard || !navigator.clipboard.writeText) { fallback(); return; }
+  navigator.clipboard.writeText(text).then(() => done(okLabel || 'Copied!'), fallback);
+}
+
 function copyPersonalLink(guestId, btn) {
   const token = guestLinkTokens && guestLinkTokens.get(guestId);
   if (!token) return;
-  navigator.clipboard.writeText(personalLinkUrl(token)).then(() => {
-    const orig = btn.textContent; btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = orig, 2000);
-  });
+  copyTextToClipboard(personalLinkUrl(token), btn, 'Copied!');
 }
 
 function copyAllGuestLinks(btn) {
@@ -3857,10 +3866,7 @@ function copyAllGuestLinks(btn) {
   const lines = (S.guests || [])
     .filter(g => g.name && g.id && guestLinkTokens.has(g.id))
     .map(g => g.name + ' — ' + personalLinkUrl(guestLinkTokens.get(g.id)));
-  navigator.clipboard.writeText(lines.join('\n')).then(() => {
-    const orig = btn.textContent; btn.textContent = 'Copied ' + lines.length + '!';
-    setTimeout(() => btn.textContent = orig, 2000);
-  });
+  copyTextToClipboard(lines.join('\n'), btn, 'Copied ' + lines.length + '!');
 }
 
 async function copyVendorLink(i, btn) {
@@ -3884,10 +3890,7 @@ async function copyVendorLink(i, btn) {
     }
     if (typeof logActivity === 'function') logActivity('Vendors', 'created share brief', v.company || v.cat || 'vendor');
   }
-  navigator.clipboard.writeText(vendorBriefUrl(token)).then(() => {
-    btn.textContent = 'Link copied!';
-    setTimeout(() => { btn.textContent = orig; }, 2000);
-  });
+  copyTextToClipboard(vendorBriefUrl(token), btn, 'Link copied!', orig);
 }
 
 function _copyGuestLink(btn, page) {
@@ -3895,10 +3898,7 @@ function _copyGuestLink(btn, page) {
     alert('Sign in first — guest links need your wedding to be saved to the cloud.');
     return;
   }
-  navigator.clipboard.writeText(guestLink(page)).then(() => {
-    const orig = btn.textContent; btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = orig, 2000);
-  });
+  copyTextToClipboard(guestLink(page), btn, 'Copied!');
 }
 function copyHubLink(btn)      { _copyGuestLink(btn, 'ivory-guest-hub.html'); }
 function copyRsvpLink(btn)     { _copyGuestLink(btn, 'ivory-rsvp.html'); }
@@ -3928,10 +3928,7 @@ function copyChaseList(btn) {
   const lines = pending.map(g => '• ' + g.name + (g.phone ? ' — ' + formatPhoneDisplay(g.phone) : ''));
   const text = 'Still waiting on RSVPs from:\n' + lines.join('\n') +
     (rsvpUrl ? '\n\nRSVP link to resend: ' + rsvpUrl : '');
-  navigator.clipboard.writeText(text).then(() => {
-    const orig = btn.textContent; btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = orig, 2000);
-  });
+  copyTextToClipboard(text, btn, 'Copied!');
 }
 
 // ── Online RSVP inbox — submissions guests made on the RSVP page ──
