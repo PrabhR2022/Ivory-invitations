@@ -3925,7 +3925,13 @@ function copyTextToClipboard(text, btn, okLabel, origLabel) {
   const done = label => { if (!btn) return; btn.textContent = label; setTimeout(() => { btn.textContent = orig; }, 2000); };
   const fallback = () => { if (btn) btn.textContent = orig; try { window.prompt('Copy this link:', text); } catch (e) {} };
   if (!navigator.clipboard || !navigator.clipboard.writeText) { fallback(); return; }
-  navigator.clipboard.writeText(text).then(() => done(okLabel || 'Copied!'), fallback);
+  // Some contexts (a pending permission bubble, automation) leave the
+  // clipboard promise unsettled forever — never let that freeze the button.
+  let settled = false;
+  const timer = setTimeout(() => { if (!settled) { settled = true; fallback(); } }, 2500);
+  navigator.clipboard.writeText(text).then(
+    () => { if (settled) return; settled = true; clearTimeout(timer); done(okLabel || 'Copied!'); },
+    () => { if (settled) return; settled = true; clearTimeout(timer); fallback(); });
 }
 
 function copyPersonalLink(guestId, btn) {
