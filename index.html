@@ -826,6 +826,12 @@ body.read-only [contenteditable]{pointer-events:none}
         </div>
       </div>
 
+      <!-- 9F.6 — Email preferences (read by the daily process-scheduled-emails job) -->
+      <div id="email-prefs-card" class="card" style="display:none;margin-bottom:16px">
+        <div class="card-title">Email Updates</div>
+        <p style="font-size:12px;color:var(--stone);margin-bottom:10px">Sent once each to the partners and planners on this wedding. Guest-facing RSVP reminders are switched on separately under Guests &rarr; RSVP.</p>
+        <div id="email-prefs-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px"></div>
+      </div>
       <!-- Phase 9B — Members card -->
       <div id="notif-members-card" class="card" style="display:none;margin-bottom:16px">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
@@ -1046,7 +1052,7 @@ body.read-only [contenteditable]{pointer-events:none}
         </div>
         <input type="file" id="guest-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="importGuestFile(this)" />
         <div class="tbl-wrap">
-          <table><thead><tr><th>#</th><th>Name</th><th>Role</th><th>Household</th><th>Age</th><th>Address</th><th>Table</th><th>+1 Allowed</th><th>RSVP</th><th>+1 Accepted</th><th>Meal</th><th>Gift Recv'd</th><th>Thank You</th><th></th></tr></thead>
+          <table><thead><tr><th>#</th><th>Name</th><th>Role</th><th>Household</th><th>Age</th><th>Address</th><th>Email</th><th>Table</th><th>+1 Allowed</th><th>RSVP</th><th>+1 Accepted</th><th>Meal</th><th>Gift Recv'd</th><th>Thank You</th><th></th></tr></thead>
           <tbody id="guest-body"></tbody></table>
         </div>
       </div>
@@ -1155,6 +1161,16 @@ body.read-only [contenteditable]{pointer-events:none}
           <div class="card-title">Meal Breakdown <span class="count" id="rsvp-meal-total">0 meals</span></div>
           <div id="rsvp-meal-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
         </div>
+      <!-- 9F.6: RSVP-by date + opt-in automated guest reminders -->
+      <div class="card" id="rsvp-reminders-card">
+        <div class="card-title">RSVP Reminders <span class="count" id="rsvp-email-count">0 with email</span></div>
+        <p style="font-size:12px;color:var(--stone);margin-bottom:12px">Set an RSVP-by date and Ivory can email guests who still haven't replied: once 7 days before the date, and once the day after it passes. Each email carries that guest's own private RSVP link. Only guests with an email in the Guest List and a Pending RSVP are contacted, and each reminder is sent once.</p>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end">
+          <div><label class="ob-label">RSVP-by date</label><input type="date" id="rsvp-deadline-input" class="ob-input" style="padding:8px 12px;font-size:13px" onchange="S.rsvpDeadline=this.value;saveState();renderRsvpReminders()"/></div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding-bottom:9px"><input type="checkbox" id="rsvp-guest-reminders-toggle" style="width:16px;height:16px;accent-color:var(--charcoal)" onchange="ensureEmailPrefs().guestRsvpReminders=this.checked;saveState();renderRsvpReminders()"/> Email reminders to guests</label>
+        </div>
+        <p id="rsvp-reminders-status" style="font-size:12px;color:var(--taupe);margin-top:10px"></p>
+      </div>
       <!-- B5·S4: one private link per guest — no name search, no list enumeration -->
       <div class="card" id="personal-links-card">
         <div class="card-title">Personal RSVP Links
@@ -2028,6 +2044,8 @@ function defaultState() {
     weatherCache: {}, sunsetCache: {},
     activityLog: [],
     customEmergencyContacts: [],
+    rsvpDeadline: '',   // 9F.6: drives automated guest reminders
+    emailPrefs: { countdown: true, rsvpDigest: true, paymentReminders: true, dayOfPacket: true, guestRsvpReminders: false },
     hotelBlocks: [],
     rehearsal: {date:'', venue:'', address:'', time:'', attendeeIds:[], timeline:[]},
     preEvents: [],
@@ -2261,6 +2279,7 @@ function buildKit() {
 let guestActiveSub = 'list';
 function showGuestSub(sub) {
   guestActiveSub = sub;
+  if (sub === 'rsvp' && typeof renderRsvpReminders === 'function') renderRsvpReminders();   // 9F.6
   // B2.3: the guest-list table popover must always bind the wedding-day layout
   if (sub !== 'floorplan') seatingEventId = null;
   document.querySelectorAll('#guest-subtabs .tl-tab').forEach(b => b.classList.remove('active'));
@@ -3298,6 +3317,7 @@ function renderGuests() {
     <td style="min-width:110px">${eCell(g.household||'',`S.guests[${i}].household=this.value;saveState();renderGuests()`)}</td>
     <td>${eCell(g.ageGroup||'Adult',`S.guests[${i}].ageGroup=this.value;saveState();renderGuests()`,"select",["Adult","Kid","Infant"])}</td>
     <td>${eCell(g.address,`S.guests[${i}].address=this.value;saveState()`)}</td>
+    <td style="min-width:150px">${eCell(g.email||'',`S.guests[${i}].email=this.value.trim();saveState()`,"email")}</td>
     <td style="min-width:100px;position:relative">${tableCell}</td>
     <td><input type="number" min="0" max="10" value="${g.allowPlusOne}" style="width:60px;text-align:center" onchange="S.guests[${i}].allowPlusOne=+this.value;saveState()" /></td>
     <td><div>${eCell(g.rsvp,`S.guests[${i}].rsvp=this.value;saveState();renderGuests()`,"select",["Pending","Attending","Declined"])}</div>${rsvpInfo}</td>
@@ -3811,6 +3831,59 @@ async function generateGuestLinks(btn) {
   renderPersonalLinks();
 }
 
+// ── 9F.6: automated-email preferences ─────────────────────────────────
+// Stored in S.emailPrefs and read server-side by process-scheduled-emails.
+// Missing keys mean "default" so weddings saved before 9F.6 behave the
+// same as new ones (everything on except guest-facing reminders).
+const EMAIL_PREF_DEFAULTS = { countdown: true, rsvpDigest: true, paymentReminders: true, dayOfPacket: true, guestRsvpReminders: false };
+const EMAIL_PREF_LABELS = [
+  ['countdown',        'Countdown milestones',      '30, 14, 7, 3 and 1 day before the wedding'],
+  ['rsvpDigest',       'RSVP chase list',           'Who still hasn\u2019t replied, 35 and 21 days before'],
+  ['paymentReminders', 'Vendor payment reminders',  '7 days before each payment due date, and once if it passes unpaid'],
+  ['dayOfPacket',      'Day-of packet',             'Your timeline, vendor arrivals and emergency contacts, 2 days before'],
+];
+function ensureEmailPrefs() {
+  if (!S.emailPrefs || typeof S.emailPrefs !== 'object') S.emailPrefs = {};
+  Object.keys(EMAIL_PREF_DEFAULTS).forEach(k => { if (typeof S.emailPrefs[k] !== 'boolean') S.emailPrefs[k] = EMAIL_PREF_DEFAULTS[k]; });
+  return S.emailPrefs;
+}
+function setEmailPref(key, on) { ensureEmailPrefs()[key] = !!on; saveState(); renderEmailPrefs(); }
+function renderEmailPrefs() {
+  const card = document.getElementById('email-prefs-card');
+  const list = document.getElementById('email-prefs-list');
+  if (!card || !list) return;
+  if (!currentWeddingId) { card.style.display = 'none'; return; }   // emails only exist for cloud weddings
+  const prefs = ensureEmailPrefs();
+  card.style.display = '';
+  list.innerHTML = EMAIL_PREF_LABELS.map(([k, title, desc]) => `
+    <label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;background:${prefs[k] ? 'white' : 'var(--ivory)'}">
+      <input type="checkbox" ${prefs[k] ? 'checked' : ''} onchange="setEmailPref('${k}', this.checked)" style="width:16px;height:16px;margin-top:2px;accent-color:var(--charcoal);flex-shrink:0"/>
+      <span><span style="font-size:13px;font-weight:600;display:block">${title}</span><span style="font-size:11.5px;color:var(--stone)">${desc}</span></span>
+    </label>`).join('');
+}
+function renderRsvpReminders() {
+  const dateEl = document.getElementById('rsvp-deadline-input');
+  const toggle = document.getElementById('rsvp-guest-reminders-toggle');
+  const status = document.getElementById('rsvp-reminders-status');
+  const count = document.getElementById('rsvp-email-count');
+  if (!dateEl || !toggle || !status) return;
+  const prefs = ensureEmailPrefs();
+  dateEl.value = S.rsvpDeadline || '';
+  toggle.checked = !!prefs.guestRsvpReminders;
+  const named = (S.guests || []).filter(g => g.name);
+  const pending = named.filter(g => !g.rsvp || g.rsvp === 'Pending');
+  const withEmail = pending.filter(g => g.email);
+  if (count) count.textContent = withEmail.length + ' of ' + pending.length + ' pending have email';
+  if (!currentWeddingId) { status.textContent = 'Sign in so this wedding is saved to the cloud \u2014 reminders are sent by the daily email job.'; return; }
+  if (!S.rsvpDeadline) { status.textContent = 'No RSVP-by date yet \u2014 nothing will be sent.'; return; }
+  const d = new Date(S.rsvpDeadline + 'T00:00:00');
+  const fmt = x => x.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+  const first = new Date(d); first.setDate(first.getDate() - 7);
+  const second = new Date(d); second.setDate(second.getDate() + 1);
+  if (!prefs.guestRsvpReminders) { status.textContent = 'Reminders are off. Turn them on to email pending guests on ' + fmt(first) + ' and ' + fmt(second) + '.'; return; }
+  status.textContent = 'Pending guests with an email will be reminded on ' + fmt(first) + ' and again on ' + fmt(second) + ' if they still haven\u2019t replied' + (pending.length - withEmail.length > 0 ? ' \u00b7 ' + (pending.length - withEmail.length) + ' pending guest' + (pending.length - withEmail.length === 1 ? ' has' : 's have') + ' no email yet.' : '.');
+}
+
 function renderPersonalLinks() {
   const list = document.getElementById('personal-links-list');
   const copyAll = document.getElementById('copy-all-links-btn');
@@ -3925,7 +3998,7 @@ function copyChaseList(btn) {
   const pending = (S.guests || []).filter(g => g.name && (!g.rsvp || g.rsvp === 'Pending'));
   if (pending.length === 0) return;
   const rsvpUrl = currentShareToken ? guestLink('ivory-rsvp.html') : '';
-  const lines = pending.map(g => '• ' + g.name + (g.phone ? ' — ' + formatPhoneDisplay(g.phone) : ''));
+  const lines = pending.map(g => '• ' + g.name + (g.phone ? ' — ' + formatPhoneDisplay(g.phone) : '') + (g.email ? ' — ' + g.email : ''));
   const text = 'Still waiting on RSVPs from:\n' + lines.join('\n') +
     (rsvpUrl ? '\n\nRSVP link to resend: ' + rsvpUrl : '');
   copyTextToClipboard(text, btn, 'Copied!');
@@ -8022,6 +8095,7 @@ function renderNotifications() {
   renderPostWeddingSummary();
   renderWeatherCard();
   renderActivityLog();
+  renderEmailPrefs();   // 9F.6
   if (S.weddingDate && (!S.weatherCache || S.weatherCache.key !== `${S.weddingDate}:${(S.venueLat||43.6532).toFixed(3)},${(S.venueLng||-79.3832).toFixed(3)}`)) {
     refreshWeather(false);
   }
