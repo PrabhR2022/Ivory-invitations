@@ -3950,11 +3950,23 @@ async function copyVendorLink(i, btn) {
   const orig = btn.textContent;
   btn.textContent = 'Creating…';
   let token = null;
-  const { data } = await supa.from('vendor_links').select('token').eq('wedding_id', currentWeddingId).eq('vendor_id', v.id).limit(1);
-  if (data && data[0]) token = data[0].token;
+  // 9D: the brief is tagged with the vendor's email so they can sign in to
+  // the partners portal with it. Tolerates the pre-9D schema (no column).
+  const vendorEmail = (v.email || '').trim().toLowerCase() || null;
+  const { data } = await supa.from('vendor_links').select('token, vendor_email').eq('wedding_id', currentWeddingId).eq('vendor_id', v.id).limit(1);
+  if (data && data[0]) {
+    token = data[0].token;
+    if (vendorEmail && data[0].vendor_email !== vendorEmail) {
+      const { error: uErr } = await supa.from('vendor_links').update({ vendor_email: vendorEmail }).eq('wedding_id', currentWeddingId).eq('vendor_id', v.id);
+      if (uErr) console.warn('[Ivory] vendor_links email update failed:', uErr);
+    }
+  }
   if (!token) {
     token = makeShareToken();
-    const { error } = await supa.from('vendor_links').insert({ wedding_id: currentWeddingId, vendor_id: v.id, token });
+    let { error } = await supa.from('vendor_links').insert({ wedding_id: currentWeddingId, vendor_id: v.id, token, vendor_email: vendorEmail });
+    if (error && /vendor_email/.test(error.message || '')) {
+      ({ error } = await supa.from('vendor_links').insert({ wedding_id: currentWeddingId, vendor_id: v.id, token }));
+    }
     if (error) {
       console.warn('[Ivory] vendor_links insert failed:', error);
       btn.textContent = orig;
@@ -3964,6 +3976,78 @@ async function copyVendorLink(i, btn) {
     if (typeof logActivity === 'function') logActivity('Vendors', 'created share brief', v.company || v.cat || 'vendor');
   }
   copyTextToClipboard(vendorBriefUrl(token), btn, 'Link copied!', orig);
+  if (expandedVendor === i) loadVendorPortalPanel(i);
+}
+
+// ── 9D: partner-portal panel on the expanded vendor card ───────────────
+// Shows whether the brief has been shared + to which email, the vendor's
+// arrival confirmation, and the two-way notes thread (vendor_notes).
+// Couple notes are inserted directly under RLS (write roles only).
+function vendorPortalUrl() {
+  return location.origin + location.pathname.replace(/[^/]*$/, '') + 'ivory-partners.html';
+}
+const _vendorPortalCache = {};   // vendorId -> { link, notes }
+async function loadVendorPortalPanel(i) {
+  const v = S.vendors[i];
+  const el = document.getElementById('vendor-portal-' + i);
+  if (!v || !el) return;
+  if (!supa || !currentWeddingId) { el.innerHTML = ''; return; }
+  ensureStableIds();
+  const [{ data: links, error: lErr }, { data: notes }] = await Promise.all([
+    supa.from('vendor_links').select('token, vendor_email, confirmed_arrival, confirmed_at, last_opened_at').eq('wedding_id', currentWeddingId).eq('vendor_id', v.id).limit(1),
+    supa.from('vendor_notes').select('id, author, body, created_at').eq('wedding_id', currentWeddingId).eq('vendor_id', v.id).order('created_at', { ascending: true }),
+  ]);
+  if (lErr && /vendor_email|confirmed_arrival/.test(lErr.message || '')) { el.innerHTML = ''; return; }   // migration not run yet
+  const link = links && links[0];
+  _vendorPortalCache[v.id] = { link, notes: notes || [] };
+  renderVendorPortalPanel(i);
+}
+function renderVendorPortalPanel(i) {
+  const v = S.vendors[i];
+  const el = document.getElementById('vendor-portal-' + i);
+  if (!v || !el) return;
+  const c = _vendorPortalCache[v.id] || {};
+  const link = c.link, notes = c.notes || [];
+  const when = ts => { const d = new Date(ts); return isNaN(d) ? '' : d.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); };
+  let status;
+  if (!link) status = `<span style="color:var(--stone)">Not shared yet — click <strong>Share brief</strong> above. ${v.email ? 'The brief will be tied to ' + esc(v.email) + ' so they can also sign in to the partners portal.' : 'Add their email first if you want them to sign in to the partners portal.'}</span>`;
+  else if (!link.vendor_email) status = `<span style="color:var(--stone)">Brief shared by link only. ${v.email ? 'Click <strong>Share brief</strong> again to tie it to ' + esc(v.email) + '.' : 'Add their email above, then click <strong>Share brief</strong> again, and they can sign in to the partners portal.'}</span>`;
+  else status = `<span style="color:var(--stone)">Portal access for <strong>${esc(link.vendor_email)}</strong>${link.last_opened_at ? ' · last opened ' + when(link.last_opened_at) : ' · not opened yet'}</span>`;
+  const arrival = link && link.confirmed_arrival
+    ? `<div style="margin-top:6px;font-size:13px;color:var(--green);font-weight:600">&#10003; Vendor confirmed arrival ${esc(link.confirmed_arrival)}${v.arrival && link.confirmed_arrival !== v.arrival ? ` <span style="color:var(--red);font-weight:500">(you have ${esc(v.arrival)} — update your arrival field if theirs is right)</span>` : ''} <span style="color:var(--stone);font-weight:400">· ${when(link.confirmed_at)}</span></div>`
+    : (link && link.vendor_email ? `<div style="margin-top:6px;font-size:12px;color:var(--stone)">Arrival not confirmed by the vendor yet${v.arrival ? ' (you have ' + esc(v.arrival) + ')' : ''}.</div>` : '');
+  const thread = notes.length
+    ? notes.map(n => `<div style="padding:8px 10px;border-radius:8px;margin-top:6px;font-size:12.5px;line-height:1.45;max-width:88%;${n.author === 'couple' ? 'margin-left:auto;background:white;border:1px solid var(--border-light)' : 'background:rgba(184,150,100,0.12)'}"><div style="font-size:10px;color:var(--stone);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">${n.author === 'couple' ? 'You' : esc(v.company || 'Vendor')} · ${when(n.created_at)}</div>${esc(n.body)}</div>`).join('')
+    : `<div style="font-size:12px;color:var(--stone);margin-top:6px">No notes yet.</div>`;
+  const canWrite = !isReadOnlyMember() && link && link.vendor_email;
+  el.innerHTML = `<div style="margin:0 0 16px;padding:12px 14px;background:white;border:1px solid var(--border-light);border-radius:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--stone)">Partner portal</div>
+        <a href="${vendorPortalUrl()}" target="_blank" rel="noopener" style="font-size:11px;color:var(--taupe)">What vendors see &rarr;</a>
+      </div>
+      <div style="font-size:12.5px;margin-top:6px">${status}</div>
+      ${arrival}
+      <div style="margin-top:10px">${thread}</div>
+      ${canWrite ? `<div style="display:flex;gap:8px;margin-top:10px;align-items:flex-end">
+        <textarea id="vendor-note-input-${i}" rows="2" placeholder="Note to ${esc(v.company || 'the vendor')}…" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:12.5px;resize:vertical"></textarea>
+        <button class="btn btn-sm btn-dark" onclick="sendCoupleVendorNote(${i}, this)">Send</button>
+      </div>` : ''}
+    </div>`;
+}
+async function sendCoupleVendorNote(i, btn) {
+  const v = S.vendors[i];
+  const ta = document.getElementById('vendor-note-input-' + i);
+  if (!v || !ta || !supa || !currentWeddingId) return;
+  const body = (ta.value || '').trim();
+  if (!body) return;
+  btn.disabled = true;
+  const { data, error } = await supa.from('vendor_notes').insert({ wedding_id: currentWeddingId, vendor_id: v.id, author: 'couple', body }).select('id, author, body, created_at').single();
+  btn.disabled = false;
+  if (error) { alert('Could not send the note: ' + (error.message || 'unknown error')); return; }
+  const c = _vendorPortalCache[v.id] || (_vendorPortalCache[v.id] = { link: null, notes: [] });
+  c.notes = (c.notes || []).concat([data]);
+  if (typeof logActivity === 'function') { logActivity('Vendors', 'sent a note to', v.company || v.cat || 'vendor'); saveState(); }
+  renderVendorPortalPanel(i);
 }
 
 function _copyGuestLink(btn, page) {
@@ -4592,6 +4676,7 @@ function renderVendors() {
           <button onclick="expandedVendor=-1;renderVendors()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--stone);margin-left:12px;align-self:flex-end">&#10005; Close</button>
         </div>
         <div id="quote-opinion-row">${quoteOpinionHTML(v)}</div>
+        <div id="vendor-portal-${i}"></div>
         <div class="dash-two-col" style="gap:12px;margin-bottom:16px">
           <div><label class="ob-label">Contact</label><input class="ob-input" value="${esc(v.contact)}" onblur="S.vendors[${i}].contact=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
           <div><label class="ob-label">Email</label><input class="ob-input" type="email" value="${esc(v.email)}" onblur="S.vendors[${i}].email=this.value;saveState()" style="padding:8px 12px;font-size:13px"/></div>
@@ -4658,6 +4743,10 @@ function renderVendors() {
   // Show regional pricing card on Vendors tab
   renderRegionalPricing();
   renderTipPlanner();
+  if (expandedVendor >= 0) {   // 9D: portal status + notes for the open card
+    if (_vendorPortalCache[(S.vendors[expandedVendor] || {}).id]) renderVendorPortalPanel(expandedVendor);
+    loadVendorPortalPanel(expandedVendor);
+  }
 }
 
 // ── Final-week tip planner ──────────────────────────────────────

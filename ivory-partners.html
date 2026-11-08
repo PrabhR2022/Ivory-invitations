@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Ivory — Partners</title>
+<meta name="description" content="Ivory partners portal — every wedding brief shared with you, in one place."/>
+<meta name="robots" content="noindex"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ivory:#FAFAF7;--cream:#EDE8E0;--charcoal:#1C1917;--taupe:#9C8B7A;
+  --stone:#6B6560;--border:#D6D0C8;--border-light:#E8E4DE;--green:#4A7A5B;--red:#B85450;--gold:#B89664;
+  --font-serif:"Playfair Display",Georgia,serif;
+  --font-sans:"Inter",system-ui,sans-serif;
+}
+html{-webkit-font-smoothing:antialiased}
+body{font-family:var(--font-sans);color:var(--charcoal);background:var(--ivory);min-height:100vh}
+.wrap{max-width:640px;margin:0 auto;padding:40px 20px 64px}
+.logo{font-family:var(--font-serif);font-size:20px;text-align:center;margin-bottom:2px}
+.tag{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--stone);text-align:center}
+.flourish{width:180px;height:1px;margin:14px auto 28px;background:linear-gradient(to right,transparent,rgba(156,139,122,0.35),transparent)}
+.couple{font-family:var(--font-serif);font-size:clamp(28px,6vw,40px);text-align:center;line-height:1.15}
+.meta{font-size:13px;color:var(--stone);text-align:center;letter-spacing:0.05em;margin-top:6px}
+.badge{display:block;width:fit-content;margin:18px auto 0;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:6px 16px;border-radius:100px;background:var(--cream);color:var(--stone)}
+.card{background:white;border:1px solid var(--border-light);border-radius:14px;padding:20px;margin-top:16px}
+.card h2{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--stone);margin-bottom:12px}
+.row{display:flex;gap:12px;padding:8px 2px;border-bottom:1px solid var(--border-light);font-size:13.5px;align-items:baseline}
+.row:last-child{border-bottom:none}
+.row .t{color:var(--stone);min-width:88px;font-variant-numeric:tabular-nums;flex-shrink:0}
+.row.mine{background:rgba(184,150,100,0.09);border-radius:8px;padding-left:8px;padding-right:8px;border-bottom:none;margin:2px -6px}
+.row.mine .a::after{content:" — you";color:#8A6D3B;font-size:11px;font-weight:600}
+.sub{font-size:11.5px;color:var(--stone);margin-top:2px}
+.pill{display:inline-block;font-size:11px;padding:3px 10px;border-radius:100px;background:var(--cream);margin:0 6px 6px 0}
+.tel{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:100px;background:var(--green);color:#fff;text-decoration:none;font-size:12.5px;font-weight:500;white-space:nowrap}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13.5px}
+.kv .k{color:var(--stone)}
+.foot{text-align:center;font-size:11px;color:var(--stone);margin-top:28px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:10px;border:1px solid var(--charcoal);background:var(--charcoal);color:var(--ivory);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.btn.outline{background:transparent;color:var(--charcoal)}
+.btn.sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn:disabled{opacity:0.55;cursor:default}
+.input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;font:inherit;font-size:14px;background:white}
+.input:focus{outline:none;border-color:var(--taupe)}
+.msg{font-size:12.5px;color:var(--stone);margin-top:10px;min-height:16px}
+.msg.err{color:var(--red)}
+.brieflist .item{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--border-light);border-radius:12px;background:white;margin-top:10px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}
+.brieflist .item:hover{border-color:var(--taupe)}
+.brieflist .item .c{font-family:var(--font-serif);font-size:17px}
+.brieflist .item .d{font-size:12px;color:var(--stone);margin-top:2px}
+.dot{display:inline-block;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--gold);color:white;font-size:11px;font-weight:600;line-height:18px;text-align:center}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--stone);margin-bottom:18px}
+.topbar a,.topbar button{font:inherit;font-size:12px;color:var(--stone);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0}
+.note{padding:10px 12px;border-radius:10px;margin-top:8px;font-size:13px;line-height:1.5;max-width:88%}
+.note.vendor{background:var(--cream);margin-left:auto}
+.note.couple{background:white;border:1px solid var(--border-light)}
+.note .who{font-size:10.5px;color:var(--stone);margin-bottom:2px;letter-spacing:0.04em;text-transform:uppercase}
+.ok{color:var(--green);font-weight:600}
+@media print{.tel,.btn,.topbar,#notes-form{display:none}body{background:white}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Ivory</div>
+  <div class="tag">Partners</div>
+  <div class="flourish"></div>
+
+  <!-- Sign-in gate -->
+  <div id="gate">
+    <p style="font-family:var(--font-serif);font-size:22px;text-align:center;margin-bottom:8px">Your wedding briefs, in one place</p>
+    <p style="font-size:13.5px;color:var(--stone);text-align:center;line-height:1.6;max-width:440px;margin:0 auto 22px">Sign in with the email the couple has on file for you. We'll send a 6-digit code — no password to remember.</p>
+    <div class="card" style="max-width:420px;margin:0 auto">
+      <label style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--stone)">Email</label>
+      <input class="input" id="auth-email" type="email" autocomplete="email" placeholder="you@yourbusiness.com" style="margin:6px 0 10px"/>
+      <button class="btn" id="send-code-btn" style="width:100%" onclick="sendCode()">Email me a sign-in code</button>
+      <div id="otp-block" style="display:none;margin-top:14px">
+        <label style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--stone)">6-digit code</label>
+        <input class="input" id="auth-otp" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" style="margin:6px 0 10px;letter-spacing:0.3em;text-align:center"/>
+        <button class="btn" style="width:100%" onclick="verifyCode()">Verify</button>
+      </div>
+      <div class="msg" id="auth-msg"></div>
+    </div>
+  </div>
+
+  <!-- Signed in: list -->
+  <div id="list" style="display:none">
+    <div class="topbar"><span>Signed in as <strong id="me-email"></strong></span><button onclick="signOut()">Sign out</button></div>
+    <div id="list-body" class="brieflist"></div>
+  </div>
+
+  <!-- Signed in: one brief -->
+  <div id="detail" style="display:none">
+    <div class="topbar"><button onclick="showList()">&larr; All briefs</button><button onclick="window.print()">Print</button></div>
+    <div id="brief"></div>
+    <div class="card" id="confirm-card">
+      <h2>Your arrival</h2>
+      <p class="sub" style="margin-bottom:10px">The couple has you arriving at <strong id="planned-arrival">—</strong>. Confirm it, or type the time you'll actually arrive and they'll see it in their planner.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input class="input" id="arrival-input" placeholder="e.g. 4:30 PM" style="flex:1;min-width:140px"/>
+        <button class="btn" id="confirm-btn" onclick="confirmArrival()">Confirm arrival</button>
+      </div>
+      <div class="msg" id="confirm-msg"></div>
+    </div>
+    <div class="card">
+      <h2>Notes with the couple</h2>
+      <div id="notes-list"><p class="sub">No notes yet.</p></div>
+      <div id="notes-form" style="margin-top:14px">
+        <textarea class="input" id="note-input" rows="3" placeholder="Anything the couple should know — parking, setup needs, a question…"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn sm" id="note-btn" onclick="sendNote()">Send note</button></div>
+        <div class="msg" id="note-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">Ivory Invitations partners portal · <a href="https://ivoryinvitations.ca" style="color:var(--taupe)">ivoryinvitations.ca</a></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+// 9D (minimal) — the partners portal. A vendor signs in with the email the
+// couple put on their vendor card; partner_my_briefs() lists every
+// vendor_links row tagged with that email. Opening one calls
+// partner_open_brief() (same payload as the token link) and the vendor can
+// confirm their arrival time and trade notes with the couple. All writes
+// go through SECURITY DEFINER RPCs that check the JWT email.
+function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmtDate(ds){if(!ds)return '';const d=new Date(ds+'T00:00:00');return isNaN(d)?ds:d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+function fmtWhen(ts){const d=new Date(ts);return isNaN(d)?'':d.toLocaleString('en-CA',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
+function telBtn(ph){const digits=(ph||'').replace(/[^0-9+]/g,'');return digits?`<a class="tel" href="tel:${digits}">&#9742; Call</a>`:''}
+const $=id=>document.getElementById(id);
+
+let supa=null, me=null, briefs=[], current=null;
+
+// ── Brief renderer (same shape as ivory-vendor.html, exposed for tests) ──
+function renderBrief(data, into){
+  const v=data.vendor||{};
+  const couple=((data.couple_name_1||'')+(data.couple_name_2?' & '+data.couple_name_2:'')).trim()||'The Couple';
+  const pt=t=>{if(!t)return 1e9;const m=String(t).match(/(\d+):(\d+)\s*(AM|PM)?/i);if(!m)return 1e9;let h=+m[1];const min=+m[2];const ap=(m[3]||'').toUpperCase();if(ap==='PM'&&h!==12)h+=12;if(ap==='AM'&&h===12)h=0;return h*60+min};
+  const schedule=(data.schedule||[]).slice().sort((a,b)=>pt(a.time)-pt(b.time));
+  const evById={};(data.events||[]).forEach(e=>{evById[e.id]=e});
+  const evChip=b=>{const e=b.eventId&&evById[b.eventId];return e&&!e.primary?` <span class="pill" style="font-size:10px;margin:0 0 0 4px">${esc(e.name)}</span>`:''};
+  let html=`
+    <div class="couple">${esc(couple)}</div>
+    <div class="meta">${data.wedding_date?esc(fmtDate(data.wedding_date)):''}${data.venue?' · '+esc(data.venue):''}</div>
+    <span class="badge">Vendor brief — ${esc(v.company||'')}${v.cat?' · '+esc(v.cat):''}</span>
+    <div class="flourish"></div>`;
+  const kv=[];
+  if(v.arrival)kv.push(['Planned arrival',esc(v.arrival)]);
+  if(v.setupLocation)kv.push(['Setup location',esc(v.setupLocation)]);
+  if(v.dayNotes)kv.push(['Notes for you',esc(v.dayNotes)]);
+  if(kv.length){html+=`<div class="card"><h2>Your day</h2><div class="kv">${kv.map(([k,val])=>`<span class="k">${k}</span><span>${val}</span>`).join('')}</div></div>`}
+  const others=(data.events||[]).filter(e=>!e.primary);
+  if(others.length){html+=`<div class="card"><h2>Events</h2>${(data.events||[]).map(e=>`<div class="row"><span class="t">${esc(e.date||'')}</span><span><strong>${esc(e.name)}</strong>${e.time?' · '+esc(e.time):''}${e.venue?`<div class="sub">${esc(e.venue)}</div>`:''}</span></div>`).join('')}</div>`}
+  if(schedule.length){html+=`<div class="card"><h2>Day-of schedule${schedule.some(b=>b.mine)?' — your items highlighted':''}</h2>${schedule.map(b=>`
+    <div class="row${b.mine?' mine':''}"><span class="t">${esc(b.time||'')}${b.end?'–'+esc(b.end):''}</span>
+    <span style="flex:1"><span class="a">${esc(b.activity||'')}</span>${evChip(b)}${b.who?`<div class="sub">${esc(b.who)}</div>`:''}${b.notes?`<div class="sub">${esc(b.notes)}</div>`:''}</span></div>`).join('')}</div>`}
+  if(data.music){
+    const list=(arr,empty)=>Array.isArray(arr)&&arr.length?arr.map(x=>{const t=typeof x==='string'?x:((x.title||x.song||x.name||'')+(x.artist?' — '+x.artist:''));return `<span class="pill">${esc(t)}</span>`}).join(''):`<span class="sub">${empty}</span>`;
+    html+=`<div class="card"><h2>Music</h2>
+      <p style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:6px">Must play</p><div>${list(data.music.mustPlay,'No must-plays listed')}</div>
+      <p style="font-size:12px;font-weight:600;color:var(--red);margin:12px 0 6px">Do NOT play</p><div>${list(data.music.doNotPlay,'No do-not-plays listed')}</div>
+      ${Array.isArray(data.music.ceremony)&&data.music.ceremony.length?`<p style="font-size:12px;font-weight:600;margin:12px 0 6px">Ceremony moments</p>${data.music.ceremony.map(c=>`<div class="row"><span style="flex:1">${esc(c.moment||c.name||'')}</span><span class="sub">${esc(c.song||c.music||'')}</span></div>`).join('')}`:''}
+    </div>`;
+  }
+  if(data.meals){
+    const by=data.meals.byMeal||{};
+    html+=`<div class="card"><h2>Meal counts</h2>
+      <p style="font-size:14px;margin-bottom:10px"><strong>${data.meals.attending||0}</strong> attending so far <span class="sub" style="display:inline">(counts update as RSVPs land — confirm final numbers with the couple)</span></p>
+      ${Object.keys(by).length?`<div class="kv">${Object.entries(by).map(([m,n])=>`<span class="k">${esc(m)}</span><span><strong>${n}</strong></span>`).join('')}</div>`:'<p class="sub">No meal choices recorded yet.</p>'}
+      ${Array.isArray(data.meals.dietary)&&data.meals.dietary.length?`<p style="font-size:12px;font-weight:600;color:var(--red);margin:14px 0 6px">Dietary notes</p>${data.meals.dietary.map(d=>`<div class="sub" style="padding:2px 0">${esc(d)}</div>`).join('')}`:''}
+    </div>`;
+  }
+  if(Array.isArray(data.contacts)&&data.contacts.length){
+    html+=`<div class="card"><h2>Key contacts</h2>${data.contacts.map(c=>`
+      <div class="row" style="align-items:center"><span style="flex:1"><strong>${esc(c.name)}</strong>${c.role?`<div class="sub">${esc(c.role)}</div>`:''}</span>${telBtn(c.phone)}</div>`).join('')}</div>`;
+  }
+  (into||$('brief')).innerHTML=html;
+  document.title='Ivory — Brief for '+(v.company||'Vendor');
+}
+window.renderBrief=renderBrief;
+
+// ── List + detail ────────────────────────────────────────────────────
+function renderList(items){
+  briefs=items||[];
+  const el=$('list-body');
+  if(!briefs.length){
+    el.innerHTML=`<div class="card" style="text-align:center;padding:28px 20px">
+      <p style="font-family:var(--font-serif);font-size:20px;margin-bottom:8px">No briefs shared with you yet</p>
+      <p class="sub" style="line-height:1.6">When a couple adds <strong>${esc(me||'your email')}</strong> to your vendor card in their Ivory planner and clicks <em>Share brief</em>, it appears here. Ask them to check the email on file matches this one.</p></div>`;
+    return;
+  }
+  el.innerHTML=briefs.map((b,i)=>`<button class="item" onclick="openBrief(${i})">
+      <span><span class="c">${esc(b.couple||'The Couple')}</span><span class="d">${esc(fmtDate(b.wedding_date))||'Date TBC'} · ${esc(b.vendor.company||'')}${b.vendor.cat?' · '+esc(b.vendor.cat):''}</span>
+        <span class="d">${b.confirmed_arrival?`<span class="ok">&#10003; Arrival confirmed ${esc(b.confirmed_arrival)}</span>`:(b.vendor.arrival?'Arrival '+esc(b.vendor.arrival)+' — not confirmed yet':'No arrival time set yet')}</span></span>
+      <span style="display:flex;align-items:center;gap:8px;flex-shrink:0">${+b.unread>0?`<span class="dot" title="New notes from the couple">${b.unread}</span>`:''}<span style="color:var(--taupe)">&rsaquo;</span></span>
+    </button>`).join('');
+}
+window.renderList=renderList;
+
+function showList(){ $('detail').style.display='none'; $('list').style.display='block'; current=null; document.title='Ivory — Partners'; loadBriefs(); }
+
+function renderNotes(notes){
+  const el=$('notes-list');
+  if(!notes||!notes.length){el.innerHTML='<p class="sub">No notes yet — say hello, confirm setup needs, or ask a question.</p>';return}
+  el.innerHTML=notes.map(n=>`<div class="note ${n.author==='vendor'?'vendor':'couple'}"><div class="who">${n.author==='vendor'?'You':'The couple'} · ${esc(fmtWhen(n.created_at))}</div>${esc(n.body)}</div>`).join('');
+}
+function renderDetail(data){
+  renderBrief(data);
+  const planned=(data.vendor&&data.vendor.arrival)||'';
+  $('planned-arrival').textContent=planned||'no time yet';
+  $('arrival-input').value=data.confirmed_arrival||planned||'';
+  $('confirm-msg').className='msg';
+  $('confirm-msg').innerHTML=data.confirmed_arrival?`<span class="ok">&#10003; You confirmed ${esc(data.confirmed_arrival)}</span> · ${esc(fmtWhen(data.confirmed_at))}`:'Not confirmed yet.';
+  renderNotes(data.notes||[]);
+  $('note-input').value=''; $('note-msg').textContent='';
+  $('list').style.display='none'; $('detail').style.display='block';
+  window.scrollTo(0,0);
+}
+window.renderDetail=renderDetail;
+
+async function openBrief(i){
+  const b=briefs[i]; if(!b)return;
+  const {data,error}=await supa.rpc('partner_open_brief',{p_link_id:b.link_id});
+  if(error||!data||data.error||!data.ok){alert('Could not open this brief: '+(error?error.message:(data&&data.error)||'unknown error'));return}
+  current={link_id:b.link_id, data};
+  renderDetail(data);
+}
+async function confirmArrival(){
+  if(!current)return;
+  const val=($('arrival-input').value||'').trim();
+  const msg=$('confirm-msg'); const btn=$('confirm-btn');
+  if(!val){msg.className='msg err';msg.textContent='Type the time you will arrive.';return}
+  btn.disabled=true;
+  const {data,error}=await supa.rpc('partner_confirm_arrival',{p_link_id:current.link_id,p_arrival:val});
+  btn.disabled=false;
+  if(error||!data||!data.ok){msg.className='msg err';msg.textContent='Could not save: '+(error?error.message:(data&&data.error)||'unknown error');return}
+  current.data.confirmed_arrival=data.confirmed_arrival; current.data.confirmed_at=data.confirmed_at;
+  msg.className='msg'; msg.innerHTML=`<span class="ok">&#10003; Confirmed ${esc(data.confirmed_arrival)}</span> — the couple can see this now.`;
+}
+async function sendNote(){
+  if(!current)return;
+  const body=($('note-input').value||'').trim();
+  const msg=$('note-msg'); const btn=$('note-btn');
+  if(!body){msg.className='msg err';msg.textContent='Write something first.';return}
+  btn.disabled=true;
+  const {data,error}=await supa.rpc('partner_add_note',{p_link_id:current.link_id,p_body:body});
+  btn.disabled=false;
+  if(error||!data||!data.ok){msg.className='msg err';msg.textContent='Could not send: '+(error?error.message:(data&&data.error)||'unknown error');return}
+  current.data.notes=(current.data.notes||[]).concat([{id:data.id,author:'vendor',body,created_at:data.created_at}]);
+  renderNotes(current.data.notes);
+  $('note-input').value=''; msg.className='msg'; msg.textContent='Sent.';
+}
+
+async function loadBriefs(){
+  const {data,error}=await supa.rpc('partner_my_briefs');
+  if(error){$('list-body').innerHTML=`<div class="card"><p class="sub" style="color:var(--red)">Could not load your briefs: ${esc(error.message)}</p></div>`;return}
+  renderList(Array.isArray(data)?data:[]);
+}
+
+// ── Auth (same OTP flow as the planner) ──────────────────────────────
+function showGate(){ $('gate').style.display='block'; $('list').style.display='none'; $('detail').style.display='none'; me=null; }
+async function onSignedIn(sess){
+  me=(sess.user&&sess.user.email||'').toLowerCase();
+  $('me-email').textContent=me;
+  $('gate').style.display='none'; $('list').style.display='block';
+  await loadBriefs();
+}
+async function sendCode(){
+  const email=($('auth-email').value||'').trim();
+  const msg=$('auth-msg');
+  if(!email){msg.className='msg err';msg.textContent='Enter your email.';return}
+  $('send-code-btn').disabled=true;
+  const {error}=await supa.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
+  $('send-code-btn').disabled=false;
+  if(error){msg.className='msg err';msg.textContent=error.message;return}
+  msg.className='msg'; msg.textContent='Code sent to '+email+' — check spam if it is not there in a minute.';
+  $('otp-block').style.display='block'; $('auth-otp').focus();
+}
+async function verifyCode(){
+  const email=($('auth-email').value||'').trim();
+  const token=($('auth-otp').value||'').replace(/\s+/g,'');
+  const msg=$('auth-msg');
+  if(!email||!token){msg.className='msg err';msg.textContent='Email and code are both needed.';return}
+  const {error}=await supa.auth.verifyOtp({email,token,type:'email'});
+  if(error){msg.className='msg err';msg.textContent=error.message;return}
+  // onAuthStateChange takes it from here
+}
+async function signOut(){ await supa.auth.signOut(); }
+
+(async function init(){
+  if(!window.IVORY_CONFIG||!window.supabase){$('auth-msg').textContent='Configuration missing.';return}
+  supa=window.supabase.createClient(window.IVORY_CONFIG.supabaseUrl,window.IVORY_CONFIG.supabaseAnonKey);
+  window.supa=supa;
+  supa.auth.onAuthStateChange(async(event,sess)=>{
+    if(event==='SIGNED_IN'&&sess)await onSignedIn(sess);
+    if(event==='SIGNED_OUT')showGate();
+  });
+  const {data:{session}}=await supa.auth.getSession();
+  if(session)await onSignedIn(session); else showGate();
+})();
+</script>
+</body>
+</html>

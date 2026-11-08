@@ -115,7 +115,8 @@ function renderBrief(data){
       <div class="row" style="align-items:center"><span style="flex:1"><strong>${esc(c.name)}</strong>${c.role?`<div class="sub">${esc(c.role)}</div>`:''}</span>${telBtn(c.phone)}</div>`).join('')}</div>`;
   }
 
-  html+=`<div class="foot">Prepared for ${esc(v.company||'you')} with the Ivory Invitations planner · <a href="javascript:window.print()" style="color:var(--taupe)">Print</a></div>`;
+  html+=`<div class="foot">Prepared for ${esc(v.company||'you')} with the Ivory Invitations planner · <a href="javascript:window.print()" style="color:var(--taupe)">Print</a></div>
+    <div class="foot" style="margin-top:10px">Working several Ivory weddings? <a href="ivory-partners.html" style="color:var(--taupe)">Sign in to the partners portal</a> to see every brief, confirm your arrival and leave notes for the couple.</div>`;
   const el=document.getElementById('brief');
   el.innerHTML=html;
   el.style.display='block';
