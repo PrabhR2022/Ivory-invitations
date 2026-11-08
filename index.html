@@ -576,6 +576,12 @@ table input[type="number"]{text-align:right;width:90px}
 #readonly-banner{position:fixed;top:0;left:0;right:0;z-index:250;background:linear-gradient(135deg,#b89664,#8a6f44);color:#faf9f7;padding:10px 18px;font-size:13px;font-weight:500;display:none;align-items:center;justify-content:center;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,0.08);font-family:var(--font-sans)}
 body:has(#readonly-banner[style*="flex"]){padding-top:42px}
 @media(max-width:640px){#readonly-banner{font-size:12px;padding:8px 12px}}
+/* 9C.2 — view-only members can look but not type. Form controls lose the
+   pointer; the saveState() gate below catches anything that slips through
+   (keyboard focus, programmatic edits) and rolls it back. */
+body.read-only :is(input,textarea,select):not([type=search]):not([data-ro-allow]):not(#invite-email):not(#invite-role){pointer-events:none;background:#F3F0EA;color:var(--stone);border-color:#E6E1D8}
+body.read-only [contenteditable]{pointer-events:none}
+#readonly-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--charcoal);color:var(--ivory);padding:11px 16px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:400;font-family:var(--font-sans)}
 .ob-progress{display:flex;gap:6px;margin-bottom:32px}
 .ob-dot{flex:1;height:2px;background:var(--border-light);transition:background 300ms}
 .ob-dot.done{background:var(--gold)}
@@ -9873,9 +9879,41 @@ async function createNewWeddingForUser(user) {
   }
 }
 
+// 9C.2 — view-only members (parent / wedding_party / viewer). RLS already
+// rejects their writes server-side; before this gate the client still
+// mutated S, wrote localStorage, showed "Sync error" and silently lost the
+// edit on reload. Now any write attempt is rolled back to the last cloud
+// state immediately and the member is told why.
+function isReadOnlyMember() {
+  return !!currentMemberRole && !WRITE_ROLES.includes(currentMemberRole);
+}
+let _roReverting = false, _roToastTimer = null;
+function revertReadOnlyEdit() {
+  if (_roReverting) return;
+  _roReverting = true;
+  try {
+    if (Object.keys(lastSyncedSections).length) {
+      const restored = {};
+      Object.keys(lastSyncedSections).forEach(k => { restored[k] = JSON.parse(lastSyncedSections[k]); });
+      S = Object.assign({}, defaultState(), restored);
+      migratePositionalRefs(); migrateToEvents();   // reinstall eventLayouts accessors
+    }
+    const undo = document.getElementById('undo-toast'); if (undo) undo.remove();
+    if (typeof renderTab === 'function') renderTab(currentTabId);
+    let t = document.getElementById('readonly-toast');
+    if (!t) {
+      t = document.createElement('div'); t.id = 'readonly-toast'; t.setAttribute('role', 'status');
+      t.textContent = 'View-only access — that change wasn’t saved. Ask a partner or planner to make it.';
+      document.body.appendChild(t);
+    }
+    clearTimeout(_roToastTimer); _roToastTimer = setTimeout(() => t.remove(), 4000);
+  } finally { _roReverting = false; }
+}
+
 // Wrap saveState() — keep localStorage write, add debounced cloud sync
 const _origSaveState_phase9a = saveState;
 saveState = function() {
+  if (isReadOnlyMember()) { revertReadOnlyEdit(); return; }
   _origSaveState_phase9a();
   if (!supa || !currentWeddingId) return;
   cloudDirty = true;
@@ -9886,6 +9924,7 @@ saveState = function() {
 
 async function flushCloudSync() {
   if (!cloudDirty || !currentWeddingId || !supa) return;
+  if (isReadOnlyMember()) { cloudDirty = false; return; }   // 9C.2: never even try
   cloudDirty = false;
   setSyncStatus('syncing');
   const stateSnapshot = S;
@@ -10183,7 +10222,7 @@ function applyRoleBasedUI() {
       banner.style.display = 'flex';
       const label = ROLE_LABEL[role] || 'View-only';
       banner.querySelector('.readonly-banner-text').textContent =
-        `View-only access — you're added as ${label.toLowerCase()}. Ask a partner or planner if you need to make changes.`;
+        `View-only access — you're added as ${label.toLowerCase()}. You can browse everything, but changes won't save; ask a partner or planner to make them.`;
     } else {
       banner.style.display = 'none';
     }
